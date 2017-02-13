@@ -4,7 +4,7 @@
 #include "string"
 #include "windows.h"
 
-PluginSetup("Utility++ by Rembrandt");
+PluginSetup("Utility PRO++ by Rembrandt");
 
 IMenu* MainMenu;
 IMenu* AutoSmiteMenu;
@@ -111,8 +111,6 @@ void LoadSpells()
 
 	auto PlayerSum1  = GPluginSDK->GetEntityList()->Player()->GetSpellName(kSummonerSlot1);
 	auto PlayerSum2 = GPluginSDK->GetEntityList()->Player()->GetSpellName(kSummonerSlot2);
-	GGame->PrintChat(PlayerSum1);
-	GGame->PrintChat(PlayerSum2);
 
 	if (strcmp(PlayerSum1, "SummonerSmite") == 0) { SMITE = GPluginSDK->CreateSpell(kSummonerSlot1, 500); }
 	else if (strcmp(PlayerSum1, "SummonerHeal") == 0) { HEAL = GPluginSDK->CreateSpell(kSummonerSlot1, 850); }
@@ -179,6 +177,14 @@ int EnemiesInRange(IUnit* Source, float range)
 		}
 	}
 	return enemiesInRange;
+}
+
+bool InFountain(IUnit* Source)
+{
+	if (Source->GetPosition().x < 1276 && Source->GetPosition().z < 1344) { return true; }
+	if (Source->GetPosition().x > 13540 && Source->GetPosition().z > 13470) { return true; }
+
+	return false;
 }
 
 void UseDefensives()
@@ -268,7 +274,7 @@ void UseDefensives()
 		!(GEntityList->Player()->HasBuff("RegenerationPotion") || GEntityList->Player()->HasBuff("ItemMiniRegenPotion") || GEntityList->Player()->HasBuff("ItemCrystalFlaskJungle") ||
 			GEntityList->Player()->HasBuff("ItemCrystalFlask") || GEntityList->Player()->HasBuff("ItemDarkCrystalFlask")) )
 	{
-		if (HealthPotion->IsOwned() && HealthPotion->IsReady()) {
+		if (HealthPotion->IsOwned() && HealthPotion->IsReady() && !InFountain(Hero)) {
 			HealthPotion->CastOnPlayer();
 		}
 		if (RefillablePotion->IsOwned() && RefillablePotion->IsReady()) {
@@ -280,7 +286,7 @@ void UseDefensives()
 		if (CorruptingPotion->IsOwned() && CorruptingPotion->IsReady()) {
 			CorruptingPotion->CastOnPlayer();
 		}
-		if (Biscuit->IsOwned() && Biscuit->IsReady()) {
+		if (Biscuit->IsOwned() && Biscuit->IsReady() && !InFountain(Hero)) {
 			Biscuit->CastOnPlayer();
 		}
 	}
@@ -640,7 +646,7 @@ PLUGIN_API void OnLoad(IPluginSDK* PluginSDK)
 	BotrkEnabled = BotrkMenu->CheckBox("Enabled in Combo:", true);
 	CutlassMenu = OffensiveItems->AddMenu("Bilgewater Cutlass");
 	CutlassEnabled = CutlassMenu->CheckBox("Enabled in Combo:", true);
-	YoumuusMenu = OffensiveItems->AddMenu("Yomuus Ghostblade");
+	YoumuusMenu = OffensiveItems->AddMenu("Youmuus Ghostblade");
 	YoumuusEnabled = YoumuusMenu->CheckBox("Enabled in Combo:", true);
 
 	GLP800Menu = OffensiveItems->AddMenu("Hextech GLP-800");
