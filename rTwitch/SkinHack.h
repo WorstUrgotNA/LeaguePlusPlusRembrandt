@@ -2,6 +2,7 @@
 #include "PluginSDK.h"
 
 IMenuOption* SkinID;
+IMenuOption* SkinEnable;
 
 IMenu* SkinMenu;
 
@@ -13,6 +14,7 @@ public:
 
 		SkinMenu = MenuSpot->AddMenu("Skin Changer");
 		{
+			SkinEnable = SkinMenu->CheckBox("Enable:", false);
 			SkinID = SkinMenu->AddInteger("Select Skin ID:", 1, 30, 1);
 		}
 	}
@@ -20,7 +22,10 @@ public:
 public: 
 	void UpdateSkin()
 	{
-		int SkinNum = SkinID->GetInteger();
-		GEntityList->Player()->SetSkinId(SkinNum);
+		if (SkinEnable->Enabled())
+		{
+			int SkinNum = SkinID->GetInteger();
+			GEntityList->Player()->SetSkinId(SkinNum);
+		}
 	}
 };

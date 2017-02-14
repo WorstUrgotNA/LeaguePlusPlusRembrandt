@@ -3,6 +3,8 @@
 #include "SkinHack.h"
 #include "string"
 #include "windows.h"
+#include "Gui.h"
+#include "DrawTowerRange.h"
 
 PluginSetup("Utility PRO++ by Rembrandt");
 
@@ -27,6 +29,9 @@ IMenu* BotrkMenu;
 IMenu* CutlassMenu;
 IMenu* YoumuusMenu;
 IMenu* GLP800Menu;
+IMenu* AutoTrinketMenu;
+IMenu* MikaelsMenu;
+IMenu* CCFilter;
 
 IMenuOption* SmiteActive;
 IMenuOption* SmiteKey;
@@ -58,6 +63,29 @@ IMenuOption* BotrkEnabled;
 IMenuOption* CutlassEnabled;
 IMenuOption* YoumuusEnabled;
 IMenuOption* GLP800Enabled;
+IMenuOption* AutoUpgradeTrinket;
+IMenuOption* CleanseCharm;
+IMenuOption* CleanseDisarm;
+IMenuOption* CleanseFear;
+IMenuOption* CleanseFlee;
+IMenuOption* CleansePolymorph;
+IMenuOption* CleanseSnare;
+IMenuOption* CleanseTaunt;
+IMenuOption* CleanseStun;
+IMenuOption* CleanseExhaust;
+IMenuOption* CleanseSuppression;
+IMenuOption* CleanseBlind;
+IMenuOption* CleanseTeamate1;
+IMenuOption* CleanseTeamate2;
+IMenuOption* CleanseTeamate3;
+IMenuOption* CleanseTeamate4;
+IMenuOption* CleanseTeamate5;
+
+IUnit* CleanseTeamate01;
+IUnit* CleanseTeamate02;
+IUnit* CleanseTeamate03;
+IUnit* CleanseTeamate04;
+IUnit* CleanseTeamate05;
 
 
 
@@ -90,7 +118,9 @@ IInventoryItem* Cutlass;
 IInventoryItem* Youmuus;
 IInventoryItem* GLP800;
 
+IFont* SmiteEnabledFont;
 
+int HumanizeDelayCleanse;
 
 short keystate;
 bool smiteKeyWasDown = false;
@@ -147,6 +177,12 @@ void LoadSpells()
 	Cutlass = GPluginSDK->CreateItemForId(3144, 550);
 	Youmuus = GPluginSDK->CreateItemForId(3142, 0);
 	GLP800 = GPluginSDK->CreateItemForId(3030, 800);
+
+
+	SmiteEnabledFont = GRender->CreateFont("Tahoma", 18.f);
+
+	SmiteEnabledFont->SetLocationFlags(kFontLocationCenter);
+	SmiteEnabledFont->SetOutline(true);
 }
 
 float GetDistance(IUnit* source, IUnit* target)
@@ -158,6 +194,45 @@ float GetDistance(IUnit* source, IUnit* target)
 	auto z1 = source->GetPosition().z;
 	auto z2 = target->GetPosition().z;
 	return static_cast<float>(sqrt(pow((x2-x1), 2.0) + pow((y2-y1), 2.0) + pow((z2-z1), 2.0)));
+}
+
+void AddTeamatesToCleanse()
+{
+	int indx = 0;
+	auto Teamates = GEntityList->GetAllHeros(true, false);
+	for (auto teamate : Teamates)
+	{
+		if (indx == 0)
+		{
+			indx++;
+			CleanseTeamate1 = MikaelsMenu->CheckBox(teamate->ChampionName(), true);
+			CleanseTeamate01 = teamate;
+		}
+		else if (indx == 1)
+		{
+			indx++;
+			CleanseTeamate2 = MikaelsMenu->CheckBox(teamate->ChampionName(), true);
+			CleanseTeamate02 = teamate;
+		}
+		else if (indx == 2)
+		{
+			indx++;
+			CleanseTeamate3 = MikaelsMenu->CheckBox(teamate->ChampionName(), true);
+			CleanseTeamate03 = teamate;
+		}
+		else if (indx == 3)
+		{
+			indx++;
+			CleanseTeamate4 = MikaelsMenu->CheckBox(teamate->ChampionName(), true);
+			CleanseTeamate04 = teamate;
+		}
+		else if (indx == 4)
+		{
+			CleanseTeamate5 = MikaelsMenu->CheckBox(teamate->ChampionName(), true);
+			CleanseTeamate05 = teamate;
+			return;
+		}
+	}
 }
 
 int EnemiesInRange(IUnit* Source, float range)
@@ -315,7 +390,7 @@ void CheckKeyPresses()
 	}
 }
 
-void AutoSmite()
+void AutoSmite() // AUTO SMITE PRO BY REMBRANDT
 {	
 	if (SMITE != nullptr && SMITE->IsReady() && SmiteActive->Enabled()) {
 		auto minions = GEntityList->GetAllMinions(false, false, true);
@@ -330,6 +405,31 @@ void AutoSmite()
 			}
 		}
 	}
+}
+
+bool TargetValidForMikaels(IUnit* Source)
+{
+	if (CleanseTeamate1 != nullptr && CleanseTeamate1->Enabled() && CleanseTeamate01->ChampionName() == Source->ChampionName())
+	{
+		return true;
+	}
+	if (CleanseTeamate2 != nullptr && CleanseTeamate2->Enabled() && CleanseTeamate02->ChampionName() == Source->ChampionName())
+	{
+		return true;
+	}
+	if (CleanseTeamate3 != nullptr && CleanseTeamate3->Enabled() && CleanseTeamate03->ChampionName() == Source->ChampionName())
+	{
+		return true;
+	}
+	if (CleanseTeamate4 != nullptr && CleanseTeamate4->Enabled() && CleanseTeamate04->ChampionName() == Source->ChampionName())
+	{
+		return true;
+	}
+	if (CleanseTeamate5 != nullptr && CleanseTeamate5->Enabled() && CleanseTeamate05->ChampionName() == Source->ChampionName())
+	{
+		return true;
+	}
+	return false;
 }
 
 void Combo()
@@ -400,6 +500,24 @@ void Combo()
 
 }
 
+void AutoTrinket()
+{
+	auto HeroDad = GEntityList->Player();
+	if (GEntityList->Player()->GetLevel() < 9 || !(InFountain(GEntityList->Player()))) { return; }
+	if (AutoUpgradeTrinket->Enabled())
+	{
+		if (HeroDad->HasItemId(3341)) //sweeping lense
+		{
+			GGame->BuyItem(3364); //oracle alteration
+		}
+		if (HeroDad->HasItemId(3340)) //ward
+		{
+			GGame->BuyItem(3363); //oracle alteration
+		}
+	}
+}
+
+
 PLUGIN_EVENT(void) OnOrbwalkBeforeAttack(IUnit* Target)
 {
 
@@ -437,12 +555,24 @@ PLUGIN_EVENT(void) OnGameUpdate()
 	SkinHack().UpdateSkin();
 	CheckKeyPresses();
 	AutoSmite();
+	AutoTrinket();
 
 	if (GOrbwalking->GetOrbwalkingMode() == kModeCombo) { Combo();}
 }
 
 PLUGIN_EVENT(void) OnRender()
 {
+	DrawTowerRange().UpdateTowerRanges();
+
+	Vec2 vecScreen;
+
+	vecScreen.y = 300.f;
+	vecScreen.x = 500.f;
+
+	//if (GGame->Projection(camp.Position, &vecScreen))
+	//SmiteEnabledFont->Render(vecScreen.x, vecScreen.y, "AUTO-SMITE ACTIVE");
+	//GRender->DrawOutlinedCircle(GEntityList->Player()->GetPosition(), Vec4(255, 255, 0, 255), Q->Range());
+	//GRender->
 
 }
 
@@ -492,29 +622,151 @@ PLUGIN_EVENT(void) OnBuffAdd(IUnit* Source, void* BuffData)
 	//CLEANSE
 	if (CLEANSE != nullptr && CLEANSE->IsReady() && !(GPluginSDK->GetEntityList()->Player()->IsDead()))
 	{
-		if (Source == GEntityList->Player() && CleanseActive->Enabled() && !Source->IsDead() && (Source->HasBuffOfType(BUFF_Charm) || Source->HasBuffOfType(BUFF_Blind) || Source->HasBuffOfType(BUFF_Disarm) || Source->HasBuffOfType(BUFF_Fear) ||
-			Source->HasBuffOfType(BUFF_Flee) || Source->HasBuffOfType(BUFF_Polymorph) || Source->HasBuffOfType(BUFF_Snare) || Source->HasBuffOfType(BUFF_Taunt) ||
-			Source->HasBuff("SummonerExhaust") || Source->HasBuffOfType(BUFF_Stun)))
+		if (Source == GEntityList->Player() && CleanseActive->Enabled() && !Source->IsDead())
 		{
-			CLEANSE->CastOnPlayer();
+			if (Source->HasBuffOfType(BUFF_Charm) && CleanseCharm->Enabled())
+			{
+				CLEANSE->CastOnPlayer();
+			}
+			else if (Source->HasBuffOfType(BUFF_Blind) && CleanseBlind->Enabled())
+			{
+				CLEANSE->CastOnPlayer();
+			}
+			else if(Source->HasBuffOfType(BUFF_Disarm) && CleanseDisarm->Enabled())
+			{
+				CLEANSE->CastOnPlayer();
+			}
+			else if(Source->HasBuffOfType(BUFF_Fear) && CleanseFear->Enabled())
+			{
+				CLEANSE->CastOnPlayer();
+			}
+			else if(Source->HasBuffOfType(BUFF_Flee) && CleanseFlee->Enabled())
+			{
+				CLEANSE->CastOnPlayer();
+			}
+			else if(Source->HasBuffOfType(BUFF_Polymorph) && CleansePolymorph->Enabled())
+			{
+				CLEANSE->CastOnPlayer();
+			}
+			else if(Source->HasBuffOfType(BUFF_Snare) && CleanseSnare->Enabled())
+			{
+				CLEANSE->CastOnPlayer();
+			}
+			else if(Source->HasBuffOfType(BUFF_Taunt) && CleanseTaunt->Enabled())
+			{
+				CLEANSE->CastOnPlayer();
+			}
+			else if(Source->HasBuff("SummonerExhaust") && CleanseExhaust->Enabled())
+			{
+				CLEANSE->CastOnPlayer();
+			}
+			else if(Source->HasBuffOfType(BUFF_Stun) && CleanseStun->Enabled())
+			{
+				CLEANSE->CastOnPlayer();
+			}
 		}
 	}
 
 	//QSS
-	if (Source == GEntityList->Player() && !Source->IsDead() && CleanseActive->Enabled() && (Source->HasBuffOfType(BUFF_Charm) || Source->HasBuffOfType(BUFF_Blind) || Source->HasBuffOfType(BUFF_Disarm) || Source->HasBuffOfType(BUFF_Fear) ||
-		Source->HasBuffOfType(BUFF_Flee) || Source->HasBuffOfType(BUFF_Polymorph) || Source->HasBuffOfType(BUFF_Snare) || Source->HasBuffOfType(BUFF_Taunt) || Source->HasBuff("SummonerExhaust") ||
-		Source->HasBuffOfType(BUFF_Suppression) || Source->HasBuffOfType(BUFF_Stun)))
+	if (Source == GEntityList->Player() && !Source->IsDead() && CleanseActive->Enabled() && (QSS->IsOwned() || Scimitar->IsOwned()))
 	{
-		if (QSS->IsOwned() && QSS->IsReady()) { QSS->CastOnPlayer(); }
-		else if (Scimitar->IsOwned() && Scimitar->IsReady()) { Scimitar->CastOnPlayer(); }
+		if (Source->HasBuffOfType(BUFF_Charm) && CleanseCharm->Enabled())
+		{
+			if (QSS->IsOwned() && QSS->IsReady()) { QSS->CastOnPlayer(); }
+			else if (Scimitar->IsOwned() && Scimitar->IsReady()) { Scimitar->CastOnPlayer(); }
+		}
+		else if (Source->HasBuffOfType(BUFF_Blind) && CleanseBlind->Enabled())
+		{
+			if (QSS->IsOwned() && QSS->IsReady()) { QSS->CastOnPlayer(); }
+			else if (Scimitar->IsOwned() && Scimitar->IsReady()) { Scimitar->CastOnPlayer(); }
+		}
+		else if (Source->HasBuffOfType(BUFF_Disarm) && CleanseDisarm->Enabled())
+		{
+			if (QSS->IsOwned() && QSS->IsReady()) { QSS->CastOnPlayer(); }
+			else if (Scimitar->IsOwned() && Scimitar->IsReady()) { Scimitar->CastOnPlayer(); }
+		}
+		else if (Source->HasBuffOfType(BUFF_Fear) && CleanseFear->Enabled())
+		{
+			if (QSS->IsOwned() && QSS->IsReady()) { QSS->CastOnPlayer(); }
+			else if (Scimitar->IsOwned() && Scimitar->IsReady()) { Scimitar->CastOnPlayer(); }
+		}
+		else if (Source->HasBuffOfType(BUFF_Flee) && CleanseFlee->Enabled())
+		{
+			if (QSS->IsOwned() && QSS->IsReady()) { QSS->CastOnPlayer(); }
+			else if (Scimitar->IsOwned() && Scimitar->IsReady()) { Scimitar->CastOnPlayer(); }
+		}
+		else if (Source->HasBuffOfType(BUFF_Polymorph) && CleansePolymorph->Enabled())
+		{
+			if (QSS->IsOwned() && QSS->IsReady()) { QSS->CastOnPlayer(); }
+			else if (Scimitar->IsOwned() && Scimitar->IsReady()) { Scimitar->CastOnPlayer(); }
+		}
+		else if (Source->HasBuffOfType(BUFF_Snare) && CleanseSnare->Enabled())
+		{
+			if (QSS->IsOwned() && QSS->IsReady()) { QSS->CastOnPlayer(); }
+			else if (Scimitar->IsOwned() && Scimitar->IsReady()) { Scimitar->CastOnPlayer(); }
+		}
+		else if (Source->HasBuffOfType(BUFF_Taunt) && CleanseTaunt->Enabled())
+		{
+			if (QSS->IsOwned() && QSS->IsReady()) { QSS->CastOnPlayer(); }
+			else if (Scimitar->IsOwned() && Scimitar->IsReady()) { Scimitar->CastOnPlayer(); }
+		}
+		else if (Source->HasBuff("SummonerExhaust") && CleanseExhaust->Enabled())
+		{
+			if (QSS->IsOwned() && QSS->IsReady()) { QSS->CastOnPlayer(); }
+			else if (Scimitar->IsOwned() && Scimitar->IsReady()) { Scimitar->CastOnPlayer(); }
+		}
+		else if (Source->HasBuffOfType(BUFF_Stun) && CleanseStun->Enabled())
+		{
+			if (QSS->IsOwned() && QSS->IsReady()) { QSS->CastOnPlayer(); }
+			else if (Scimitar->IsOwned() && Scimitar->IsReady()) { Scimitar->CastOnPlayer(); }
+		}
+		else if (Source->HasBuffOfType(BUFF_Suppression) && CleanseSuppression->Enabled())
+		{
+			if (QSS->IsOwned() && QSS->IsReady()) { QSS->CastOnPlayer(); }
+			else if (Scimitar->IsOwned() && Scimitar->IsReady()) { Scimitar->CastOnPlayer(); }
+		}
 	}
 
 	//Mikael's
-	if (Mikaels->IsOwned() && Mikaels->IsReady() && !GEntityList->Player()->IsDead() && GetDistance(GEntityList->Player(), Source) <= 600)
+	if (Mikaels->IsOwned() && Mikaels->IsReady() && !(GEntityList->Player()->IsDead()) && TargetValidForMikaels(Source) && GetDistance(GEntityList->Player(), Source) <= 600 && !Source->IsEnemy(Source) && CleanseActive->Enabled() && !Source->IsDead())
 	{
-		if (!Source->IsEnemy(Source) && CleanseActive->Enabled() && !Source->IsDead() && (Source->HasBuffOfType(BUFF_Charm) || Source->HasBuffOfType(BUFF_Blind) || Source->HasBuffOfType(BUFF_Disarm) || Source->HasBuffOfType(BUFF_Fear) ||
-			Source->HasBuffOfType(BUFF_Flee) || Source->HasBuffOfType(BUFF_Polymorph) || Source->HasBuffOfType(BUFF_Snare) || Source->HasBuffOfType(BUFF_Taunt) ||
-			Source->HasBuff("SummonerExhaust") || Source->HasBuffOfType(BUFF_Stun)))
+		if (Source->HasBuffOfType(BUFF_Charm) && CleanseCharm->Enabled())
+		{
+			Mikaels->CastOnTarget(Source);
+		}
+		else if (Source->HasBuffOfType(BUFF_Blind) && CleanseBlind->Enabled())
+		{
+			Mikaels->CastOnTarget(Source);
+		}
+		else if (Source->HasBuffOfType(BUFF_Disarm) && CleanseDisarm->Enabled())
+		{
+			Mikaels->CastOnTarget(Source);
+		}
+		else if (Source->HasBuffOfType(BUFF_Fear) && CleanseFear->Enabled())
+		{
+			Mikaels->CastOnTarget(Source);
+		}
+		else if (Source->HasBuffOfType(BUFF_Flee) && CleanseFlee->Enabled())
+		{
+			Mikaels->CastOnTarget(Source);
+		}
+		else if (Source->HasBuffOfType(BUFF_Polymorph) && CleansePolymorph->Enabled())
+		{
+			Mikaels->CastOnTarget(Source);
+		}
+		else if (Source->HasBuffOfType(BUFF_Snare) && CleanseSnare->Enabled())
+		{
+			Mikaels->CastOnTarget(Source);
+		}
+		else if (Source->HasBuffOfType(BUFF_Taunt) && CleanseTaunt->Enabled())
+		{
+			Mikaels->CastOnTarget(Source);
+		}
+		else if (Source->HasBuff("SummonerExhaust") && CleanseExhaust->Enabled())
+		{
+			Mikaels->CastOnTarget(Source);
+		}
+		else if (Source->HasBuffOfType(BUFF_Stun) && CleanseStun->Enabled())
 		{
 			Mikaels->CastOnTarget(Source);
 		}
@@ -614,6 +866,19 @@ PLUGIN_API void OnLoad(IPluginSDK* PluginSDK)
 	
 	CleanseMenu = Defensives->AddMenu("Cleanse / QSS / Mikaels");
 	CleanseActive = CleanseMenu->CheckBox("Enabled: ", true);
+	MikaelsMenu = CleanseMenu->AddMenu("Mikaels Filter");
+	AddTeamatesToCleanse();
+	CCFilter = CleanseMenu->AddMenu("CC Filter");
+	CleanseCharm = CCFilter->CheckBox("Use on Charm ", true);
+	CleanseDisarm = CCFilter->CheckBox("Use on Disarm ", true);
+	CleanseFear = CCFilter->CheckBox("Use on Fear ", true);
+	CleanseFlee = CCFilter->CheckBox("Use on Flee ", true);
+	CleansePolymorph = CCFilter->CheckBox("Use on Polymorph ", true);
+	CleanseSnare = CCFilter->CheckBox("Use on Snare", true);
+	CleanseStun = CCFilter->CheckBox("Use on Stun ", true);
+	CleanseExhaust = CCFilter->CheckBox("Use on Exhaust ", true);
+	CleanseSuppression = CCFilter->CheckBox("Use on Suppression ", true);
+	CleanseBlind = CCFilter->CheckBox("Use on Blind ", true);
 
 	DefensiveItems = Defensives->AddMenu("Defensive Items"); // DEFENSIVE ITEMS MENU
 	FaceOfTheMountainMenu = DefensiveItems->AddMenu("Face of The Mountain");
@@ -675,8 +940,13 @@ PLUGIN_API void OnLoad(IPluginSDK* PluginSDK)
 	ALUW = AutoLevelUp->AddInteger("W: ", 1, 4, 3);
 	ALUE = AutoLevelUp->AddInteger("E: ", 1, 4, 4);
 	ALUStartLevel = AutoLevelUp->AddInteger("Start at level: ", 1, 16, 4);
+	
+	AutoTrinketMenu = MainMenu->AddMenu("Auto Trinket");
+	AutoUpgradeTrinket = AutoTrinketMenu->CheckBox("Auto Upgrade Trinket:", false);
+
 	SkinHack().InitMenu(MainMenu);
 	SkinHack().UpdateSkin();
+	DrawTowerRange().InitMenu(MainMenu);
 	LoadSpells();
 
 	
