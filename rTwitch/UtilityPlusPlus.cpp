@@ -492,7 +492,7 @@ PLUGIN_EVENT(void) OnBuffAdd(IUnit* Source, void* BuffData)
 	//CLEANSE
 	if (CLEANSE != nullptr && CLEANSE->IsReady() && !(GPluginSDK->GetEntityList()->Player()->IsDead()))
 	{
-		if (Source->IsHero() && CleanseActive->Enabled() && !Source->IsDead() && (Source->HasBuffOfType(BUFF_Charm) || Source->HasBuffOfType(BUFF_Blind) || Source->HasBuffOfType(BUFF_Disarm) || Source->HasBuffOfType(BUFF_Fear) ||
+		if (Source == GEntityList->Player() && CleanseActive->Enabled() && !Source->IsDead() && (Source->HasBuffOfType(BUFF_Charm) || Source->HasBuffOfType(BUFF_Blind) || Source->HasBuffOfType(BUFF_Disarm) || Source->HasBuffOfType(BUFF_Fear) ||
 			Source->HasBuffOfType(BUFF_Flee) || Source->HasBuffOfType(BUFF_Polymorph) || Source->HasBuffOfType(BUFF_Snare) || Source->HasBuffOfType(BUFF_Taunt) ||
 			Source->HasBuff("SummonerExhaust") || Source->HasBuffOfType(BUFF_Stun)))
 		{
@@ -501,7 +501,7 @@ PLUGIN_EVENT(void) OnBuffAdd(IUnit* Source, void* BuffData)
 	}
 
 	//QSS
-	if (Source->IsHero() && !Source->IsDead() && CleanseActive->Enabled() && (Source->HasBuffOfType(BUFF_Charm) || Source->HasBuffOfType(BUFF_Blind) || Source->HasBuffOfType(BUFF_Disarm) || Source->HasBuffOfType(BUFF_Fear) ||
+	if (Source == GEntityList->Player() && !Source->IsDead() && CleanseActive->Enabled() && (Source->HasBuffOfType(BUFF_Charm) || Source->HasBuffOfType(BUFF_Blind) || Source->HasBuffOfType(BUFF_Disarm) || Source->HasBuffOfType(BUFF_Fear) ||
 		Source->HasBuffOfType(BUFF_Flee) || Source->HasBuffOfType(BUFF_Polymorph) || Source->HasBuffOfType(BUFF_Snare) || Source->HasBuffOfType(BUFF_Taunt) || Source->HasBuff("SummonerExhaust") ||
 		Source->HasBuffOfType(BUFF_Suppression) || Source->HasBuffOfType(BUFF_Stun)))
 	{
@@ -533,7 +533,7 @@ PLUGIN_EVENT(void) OnGameEnd()
 
 PLUGIN_EVENT(void) OnLevelUp(IUnit* Source, int NewLevel)
 {
-	if (EnableAutoLevelUp->Enabled() && Source->IsHero() && NewLevel >= ALUStartLevel->GetInteger()) //auto level
+	if (EnableAutoLevelUp->Enabled() && Source == GEntityList->Player() && NewLevel >= ALUStartLevel->GetInteger()) //auto level
 	{
 		for (int i = 1; i <= 3; i++)
 		{
