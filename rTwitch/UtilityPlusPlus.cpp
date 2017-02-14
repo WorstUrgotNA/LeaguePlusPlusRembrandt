@@ -787,7 +787,7 @@ PLUGIN_EVENT(void) OnLevelUp(IUnit* Source, int NewLevel)
 {
 	if (EnableAutoLevelUp->Enabled() && Source == GEntityList->Player() && NewLevel >= ALUStartLevel->GetInteger()) //auto level
 	{
-		for (int i = 1; i <= 3; i++)
+		for (int i = 1; i <= 4; i++)
 		{
 			if (ALUR->GetInteger() == i) {
 				Source->LevelUpSpell(kSlotR); 
