@@ -4,7 +4,7 @@
 #include "string"
 #include "windows.h"
 #include "Gui.h"
-#include "DrawTowerRange.h"
+#include "Awareness.h"
 
 PluginSetup("Utility PRO++ by Rembrandt");
 
@@ -13,6 +13,7 @@ IMenu* AutoSmiteMenu;
 IMenu* Defensives;
 IMenu* SummonerHealMenu;
 IMenu* SummonerBarrierMenu;
+IMenu* SummonerIgniteMenu;
 IMenu* CleanseMenu;
 IMenu* AutoLevelUp;
 IMenu* Potions;
@@ -37,9 +38,13 @@ IMenuOption* SmiteActive;
 IMenuOption* SmiteKey;
 IMenuOption* HealActive;
 IMenuOption* HealPercent;
+IMenuOption* HealTeamateActive;
+IMenuOption* HealTeamatePercent;
 IMenuOption* BarrierActive;
 IMenuOption* BarrierPercent;
 IMenuOption* CleanseActive;
+IMenuOption* IgniteKSEnable;
+IMenuOption* IgniteInCombo;
 IMenuOption* EnableAutoLevelUp;
 IMenuOption* ALUQ;
 IMenuOption* ALUW;
@@ -80,20 +85,23 @@ IMenuOption* CleanseTeamate2;
 IMenuOption* CleanseTeamate3;
 IMenuOption* CleanseTeamate4;
 IMenuOption* CleanseTeamate5;
+IMenuOption* CleanseHumanizerDelay;
+IMenuOption* DrawSmiteEnabled;
+IMenuOption* CleanseDurationMin;
 
 IUnit* CleanseTeamate01;
 IUnit* CleanseTeamate02;
 IUnit* CleanseTeamate03;
 IUnit* CleanseTeamate04;
 IUnit* CleanseTeamate05;
-
-
+IUnit* MikaelsTargetToCast;
 
 ISpell* HEAL;
 ISpell* BARRIER;
 ISpell* EXHAUST;
 ISpell* CLEANSE;
 ISpell* SMITE;
+ISpell* IGNITE;
 
 IInventoryItem* QSS;
 IInventoryItem* Scimitar;
@@ -118,12 +126,18 @@ IInventoryItem* Cutlass;
 IInventoryItem* Youmuus;
 IInventoryItem* GLP800;
 
-IFont* SmiteEnabledFont;
+Vec3 JungleNotification;
 
+Awareness* GPluginInstance = nullptr;
+
+IFont* UtilityFont;
+
+int DelayedSpellIndex = 0;
 int HumanizeDelayCleanse;
 
 short keystate;
 bool smiteKeyWasDown = false;
+bool DelayedCleanse = false;
 
 //  DEBUG CODE
 //std::string SmiteDamage = std::to_string(GDamage->GetSummonerSpellDamage(GEntityList->Player(), minion, kSummonerSpellSmite)); // Converting the smite damage to a string
@@ -134,25 +148,59 @@ bool smiteKeyWasDown = false;
 //GGame->PrintChat("Smite cast on:");
 //GGame->PrintChat(minion->GetObjectName());
 
+/*  DISABLE ATTACKING CLONES - TO DO LATER
+if (Menu.TrackClones->Enabled())
+{
+	for (auto pUnit : GEntityList->GetAllHeros(true, true))
+	{
+		if (std::find_if(Clones.begin(), Clones.end(), [&](ClonedUnit& Clone)
+		{
+			return (Clone.IsValid && Clone.RealPlayer == pUnit);
+		}) != Clones.end())
+		{
+			Vec3 vecPosition = pUnit->GetPosition();
+
+			Vec2 vecScreen;
+			if (GGame->Projection(vecPosition, &vecScreen))
+			{
+				TrackerFont->SetColor(Vec4(0, 255, 0, 255));
+				TrackerFont->Render(vecScreen.x, vecScreen.y, "Real Player");
+				TrackerFont->SetColor(Vec4(255, 255, 255, 255));
+			}
+		}
+	}
+}*/
+
 #pragma region Events
 void LoadSpells()
 {
-
-
+	MikaelsTargetToCast = nullptr;
 	auto PlayerSum1  = GPluginSDK->GetEntityList()->Player()->GetSpellName(kSummonerSlot1);
 	auto PlayerSum2 = GPluginSDK->GetEntityList()->Player()->GetSpellName(kSummonerSlot2);
 
-	if (strcmp(PlayerSum1, "SummonerSmite") == 0) { SMITE = GPluginSDK->CreateSpell(kSummonerSlot1, 500); }
+
+	if (strstr(PlayerSum1, "SummonerSmite")) { SMITE = GPluginSDK->CreateSpell(kSummonerSlot1, 500); }
 	else if (strcmp(PlayerSum1, "SummonerHeal") == 0) { HEAL = GPluginSDK->CreateSpell(kSummonerSlot1, 850); }
 	else if (strcmp(PlayerSum1, "SummonerBarrier") == 0) { BARRIER = GPluginSDK->CreateSpell(kSummonerSlot1, 0); }
 	else if (strcmp(PlayerSum1, "SummonerExhaust") == 0) { EXHAUST = GPluginSDK->CreateSpell(kSummonerSlot1, 650); }
 	else if (strcmp(PlayerSum1, "SummonerBoost") == 0) { CLEANSE = GPluginSDK->CreateSpell(kSummonerSlot1, 0); }
+	else if (strcmp(PlayerSum1, "summonerdot") == 0) { IGNITE = GPluginSDK->CreateSpell(kSummonerSlot1, 600); }
 
-	if (strcmp(PlayerSum2, "SummonerSmite") == 0) { SMITE = GPluginSDK->CreateSpell(kSummonerSlot2, 500); }
+	if (strstr(PlayerSum2, "SummonerSmite")) { SMITE = GPluginSDK->CreateSpell(kSummonerSlot2, 500); }
 	else if (strcmp(PlayerSum2, "SummonerHeal") == 0) { HEAL = GPluginSDK->CreateSpell(kSummonerSlot2, 850); }
 	else if (strcmp(PlayerSum2, "SummonerBarrier") == 0) { BARRIER = GPluginSDK->CreateSpell(kSummonerSlot2, 0); }
 	else if (strcmp(PlayerSum2, "SummonerExhaust") == 0) { EXHAUST = GPluginSDK->CreateSpell(kSummonerSlot2, 650); }
 	else if (strcmp(PlayerSum2, "SummonerBoost") == 0) { CLEANSE = GPluginSDK->CreateSpell(kSummonerSlot2, 0); }
+	else if (strcmp(PlayerSum1, "summonerdot") == 0) { IGNITE = GPluginSDK->CreateSpell(kSummonerSlot2, 600); }
+
+	UtilityFont = GRender->CreateFont("Tahoma", 14.f);
+
+	UtilityFont->SetLocationFlags(kFontLocationCenter);
+	UtilityFont->SetOutline(false);
+
+	UtilityFont->SetColor(Vec4(255, 255, 255, 255));
+
+	JungleNotification = Vec3(0, 0, 0);
 
 	//Cleansers
 	QSS = GPluginSDK->CreateItemForId(3140, 0);
@@ -177,12 +225,42 @@ void LoadSpells()
 	Cutlass = GPluginSDK->CreateItemForId(3144, 550);
 	Youmuus = GPluginSDK->CreateItemForId(3142, 0);
 	GLP800 = GPluginSDK->CreateItemForId(3030, 800);
+}
 
+void DrawHpBarDamage(IRender *renderer, IUnit *hero, float damage, Vec4 &color)
+{
+	static auto font = renderer->CreateFontW("Tahoma", 12.f, kFontWeightThin);
 
-	SmiteEnabledFont = GRender->CreateFont("Tahoma", 18.f);
+	const auto xOffset = 10;
+	const auto yOffset = 20;
+	const auto width = 103;
+	const auto height = 8;
 
-	SmiteEnabledFont->SetLocationFlags(kFontLocationCenter);
-	SmiteEnabledFont->SetOutline(true);
+	Vec2 barPos;
+	if (hero->GetHPBarPosition(barPos))
+	{
+		auto hp = hero->GetHealth();
+		auto maxHp = hero->GetMaxHealth();
+		auto percentHealthAfterDamage = max(0, hp - damage) / maxHp;
+		auto yPos = barPos.y + yOffset;
+		auto xPosDamage = barPos.x + xOffset + (width * percentHealthAfterDamage);
+		auto xPosCurrentHp = barPos.y + xOffset + ((width * hp) / maxHp);
+
+		renderer->DrawOutlinedCircle(hero->GetPosition(), color, 30);
+	
+		
+		
+
+		//renderer->DrawLine(Vec2(xPosDamage, yPos), Vec2(xPosDamage, yPos + height), color);
+
+		auto differenceInHp = xPosCurrentHp - xPosDamage;
+		auto pos1 = barPos.x + 9 + (107 * percentHealthAfterDamage);
+
+		for (auto i = 0; i < differenceInHp; i++)
+		{
+			//renderer->DrawLine(Vec2(pos1 + i, yPos), Vec2(pos1 + i, yPos + height), color);
+		}
+	}
 }
 
 float GetDistance(IUnit* source, IUnit* target)
@@ -235,6 +313,33 @@ void AddTeamatesToCleanse()
 	}
 }
 
+void DelayCast()
+{
+	if (HumanizeDelayCleanse > 0) { HumanizeDelayCleanse--; } //every game tick --
+
+	if (DelayedSpellIndex == 1 && HumanizeDelayCleanse == 0) //SUMMONER CLEANSE
+	{
+		CLEANSE->CastOnPlayer();
+		DelayedSpellIndex = 0;
+	}
+	if (DelayedSpellIndex == 2 && HumanizeDelayCleanse == 0) //QSS
+	{
+		QSS->CastOnPlayer();
+		DelayedSpellIndex = 0;
+	}
+	if (DelayedSpellIndex == 3 && HumanizeDelayCleanse == 0) //SCIMITAR
+	{
+		Scimitar->CastOnPlayer();
+		DelayedSpellIndex = 0;
+	}
+	if (DelayedSpellIndex == 4 && HumanizeDelayCleanse == 0) //MIKAELS
+	{
+		Mikaels->CastOnTarget(MikaelsTargetToCast);
+		DelayedSpellIndex = 0;
+		MikaelsTargetToCast = nullptr;
+	}
+}
+
 int EnemiesInRange(IUnit* Source, float range)
 {
 	auto Targets = GEntityList->GetAllHeros(false, true);
@@ -242,7 +347,7 @@ int EnemiesInRange(IUnit* Source, float range)
 
 	for (auto target : Targets)
 	{
-		if (target != nullptr)
+		if (target != nullptr && !target->IsDead())
 		{
 			auto flDistance = (target->GetPosition() - Source->GetPosition()).Length();
 			if (flDistance < range)
@@ -296,7 +401,7 @@ void UseDefensives()
 		auto Teamates = GEntityList->GetAllHeros(true, false);
 		for (IUnit* Teamate : Teamates)
 		{
-			if (!(Teamate->IsDead()) && FaceOfTheMountain->IsTargetInRange(Teamate) && Teamate->HealthPercent() <= FaceOfTheMountainPercent->GetFloat() && EnemiesInRange(Teamate, 800) > 0) { FaceOfTheMountain->CastOnTarget(Teamate); } //Cast on injured teamate
+			if (!(Teamate->IsDead()) && FaceOfTheMountain->IsTargetInRange(Teamate) && Teamate->HealthPercent() <= FaceOfTheMountainPercent->GetFloat() && EnemiesInRange(Teamate, 600) > 0 && Teamate->HasIncomingDamage()) { FaceOfTheMountain->CastOnTarget(Teamate); } //Cast on injured teamate
 		}
 	}
 
@@ -305,13 +410,13 @@ void UseDefensives()
 		auto Teamates = GEntityList->GetAllHeros(true, false);
 		for (IUnit* Teamate : Teamates)
 		{
-			if (!(Teamate->IsDead()) && Redemption->IsTargetInRange(Teamate) && Teamate->HealthPercent() <= RedemptionPercent->GetFloat() && EnemiesInRange(Teamate, 800) > 0) { Redemption->CastOnPosition(Teamate->GetPosition()); } //Cast on injured teamate
+			if (!(Teamate->IsDead()) && Redemption->IsTargetInRange(Teamate) && Teamate->HealthPercent() <= RedemptionPercent->GetFloat() && EnemiesInRange(Teamate, 700) > 0 && Teamate->HasIncomingDamage()) { Redemption->CastOnPosition(Teamate->GetPosition()); } //Cast on injured teamate
 		}
 	}
 
 	if (Seraphs->IsOwned() && Seraphs->IsReady() && SeraphsEnabled->Enabled() && !(Hero->IsDead()))
 	{
-		if (Hero->HealthPercent() <= SeraphsPercent->GetFloat() && EnemiesInRange(Hero, 800) > 0) { Seraphs->CastOnPlayer(); }
+		if (Hero->HealthPercent() <= SeraphsPercent->GetFloat() && EnemiesInRange(Hero, 500) > 0) { Seraphs->CastOnPlayer(); }
 
 	}
 
@@ -320,7 +425,7 @@ void UseDefensives()
 		auto Teamates = GEntityList->GetAllHeros(true, false);
 		for (IUnit* Teamate : Teamates)
 		{
-			if (!(Teamate->IsDead()) && Locket->IsTargetInRange(Teamate) && Teamate->HealthPercent() <= LocketPercent->GetFloat() && EnemiesInRange(Teamate, 600) > 0) { Locket->CastOnPlayer(); } //Cast on injured teamate
+			if (!(Teamate->IsDead()) && Locket->IsTargetInRange(Teamate) && Teamate->HealthPercent() <= LocketPercent->GetFloat() && EnemiesInRange(Teamate, 600) > 0 && Teamate->HasIncomingDamage()) { Locket->CastOnPlayer(); } //Cast on injured teamate
 		}
 	}
 
@@ -328,18 +433,21 @@ void UseDefensives()
 	//HEAL
 	if (HEAL != nullptr && HEAL->IsReady() && HealActive->Enabled() && !(GPluginSDK->GetEntityList()->Player()->IsDead()))
 	{
-		if (GPluginSDK->GetEntityList()->Player()->HealthPercent() <= HealPercent->GetInteger()) { HEAL->CastOnPlayer(); } //Cast on self
+		if (GPluginSDK->GetEntityList()->Player()->HealthPercent() <= HealPercent->GetInteger() && EnemiesInRange(Hero, 600) > 0) { HEAL->CastOnPlayer(); } //Cast on self
 
-		auto Teamates = GEntityList->GetAllHeros(true, false);
-		for (IUnit* Teamate : Teamates)
+		if (HealTeamateActive->Enabled())
 		{
-			if (!(Teamate->IsDead()) && GetDistance(Hero, Teamate) <= HEAL->GetSpellRange() && Teamate->HealthPercent() <= HealPercent->GetInteger() && EnemiesInRange(Teamate, 700) > 0) { HEAL->CastOnUnit(Teamate); } //Cast on injured teamate
+			auto Teamates = GEntityList->GetAllHeros(true, false);
+			for (IUnit* Teamate : Teamates)
+			{
+				if (!(Teamate->IsDead()) && GetDistance(Hero, Teamate) <= HEAL->GetSpellRange() && Teamate->HealthPercent() <= HealTeamatePercent->GetInteger() && EnemiesInRange(Teamate, 600) > 0) { HEAL->CastOnUnit(Teamate); } //Cast on injured teamate
+			}
 		}
 	}
 	
 
 	//BARRIER
-	if (BARRIER != nullptr && BARRIER->IsReady() && BarrierActive->Enabled() && !(Hero->IsDead()) && Hero->HealthPercent() <= BarrierPercent->GetInteger() && EnemiesInRange(Hero, 700) > 0)
+	if (BARRIER != nullptr && BARRIER->IsReady() && BarrierActive->Enabled() && !(Hero->IsDead()) && Hero->HealthPercent() <= BarrierPercent->GetInteger() && EnemiesInRange(Hero, 500) > 0)
 	{
 		BARRIER->CastOnPlayer();
 	}
@@ -372,21 +480,24 @@ void CheckKeyPresses()
 {
 	keystate = GetAsyncKeyState(SmiteKey->GetInteger());
 
-	if (keystate < 0) // If most-significant bit is set...
+	if (GUtility->IsLeagueWindowFocused() && !GGame->IsChatOpen())
 	{
-		// key is down . . .
-		if (smiteKeyWasDown == false)
+		if (keystate < 0) // If most-significant bit is set...
 		{
-			//toggle smite
-			if (SmiteActive->GetInteger() == 0) { SmiteActive->UpdateInteger(1); }
-			else { SmiteActive->UpdateInteger(0); }
-			smiteKeyWasDown = true;
+			// key is down . . .
+			if (smiteKeyWasDown == false)
+			{
+				//toggle smite
+				if (SmiteActive->GetInteger() == 0) { SmiteActive->UpdateInteger(1); }
+				else { SmiteActive->UpdateInteger(0); }
+				smiteKeyWasDown = true;
+			}
 		}
-	}
-	else
-	{
-		// key is up . . .
-		smiteKeyWasDown = false;
+		else
+		{
+			// key is up . . .
+			smiteKeyWasDown = false;
+		}
 	}
 }
 
@@ -480,7 +591,7 @@ void Combo()
 	//Youmuus
 	if (Youmuus->IsOwned() && Youmuus->IsReady() && YoumuusEnabled->Enabled() && !(Hero->IsDead()))
 	{
-		if (EnemiesInRange(Hero, 600) > 0)
+		if (EnemiesInRange(Hero, 400) > 0)
 		{
 			Youmuus->CastOnPlayer();
 		}
@@ -495,6 +606,20 @@ void Combo()
 		else
 		{
 			GLP800->CastOnTarget(GTargetSelector->FindTarget(QuickestKill, SpellDamage, 800));
+		}
+	}
+	//IGNITE
+	if (IGNITE != nullptr && (IgniteInCombo->Enabled() || IgniteKSEnable->Enabled()))
+	{
+		if (IGNITE->IsReady()) {
+			auto BadDudes = GEntityList->GetAllHeros(false, true);
+			for (IUnit* BadDude : BadDudes)
+			{
+				if (BadDude != nullptr && !BadDude->IsDead() && GetDistance(Hero, BadDude) <= 600 && BadDude->GetHealth() <= GDamage->GetSummonerSpellDamage(GEntityList->Player(), BadDude, kSummonerSpellIgnite))
+				{
+					IGNITE->CastOnUnit(BadDude);
+				}
+			}
 		}
 	}
 
@@ -517,6 +642,10 @@ void AutoTrinket()
 	}
 }
 
+PLUGIN_EVENT(void) OnJungleNotify(JungleNotifyData* Args)
+{
+	
+}
 
 PLUGIN_EVENT(void) OnOrbwalkBeforeAttack(IUnit* Target)
 {
@@ -552,6 +681,7 @@ PLUGIN_EVENT(void) OnOrbwalkNonKillableMinion(IUnit* NonKillableMinion)
 PLUGIN_EVENT(void) OnGameUpdate()
 {
 	UseDefensives();
+	DelayCast();
 	SkinHack().UpdateSkin();
 	CheckKeyPresses();
 	AutoSmite();
@@ -562,18 +692,24 @@ PLUGIN_EVENT(void) OnGameUpdate()
 
 PLUGIN_EVENT(void) OnRender()
 {
-	DrawTowerRange().UpdateTowerRanges();
 
-	Vec2 vecScreen;
+	if (SMITE != nullptr && DrawSmiteEnabled->Enabled())
+	{
+		Vec3 vecPosition = GEntityList->Player()->GetPosition();
+		Vec2 vecScreen;
 
-	vecScreen.y = 300.f;
-	vecScreen.x = 500.f;
-
-	//if (GGame->Projection(camp.Position, &vecScreen))
-	//SmiteEnabledFont->Render(vecScreen.x, vecScreen.y, "AUTO-SMITE ACTIVE");
-	//GRender->DrawOutlinedCircle(GEntityList->Player()->GetPosition(), Vec4(255, 255, 0, 255), Q->Range());
-	//GRender->
-
+		if (GGame->Projection(vecPosition, &vecScreen))
+		{
+			if (SmiteActive->Enabled())
+			{
+				UtilityFont->Render(vecScreen.x, vecScreen.y + 100, "AUTOSMITE ON"); // draw ward or trap timer on minimap
+			}
+			else
+			{
+				UtilityFont->Render(vecScreen.x, vecScreen.y + 100, "AUTOSMITE OFF"); // draw ward or trap timer on minimap
+			}
+		}
+	}		
 }
 
 PLUGIN_EVENT(void) OnSpellCast(CastedSpell const& Args)
@@ -619,156 +755,277 @@ PLUGIN_EVENT(bool) OnIssueOrder(IUnit* Source, DWORD OrderIdx, Vec3* Position, I
 
 PLUGIN_EVENT(void) OnBuffAdd(IUnit* Source, void* BuffData)
 {
-	//CLEANSE
-	if (CLEANSE != nullptr && CLEANSE->IsReady() && !(GPluginSDK->GetEntityList()->Player()->IsDead()))
+	if (GBuffData->GetEndTime(BuffData) - GBuffData->GetStartTime(BuffData) >= CleanseDurationMin->GetFloat())
 	{
-		if (Source == GEntityList->Player() && CleanseActive->Enabled() && !Source->IsDead())
+		//CLEANSE
+		if (CLEANSE != nullptr && CLEANSE->IsReady() && !(GPluginSDK->GetEntityList()->Player()->IsDead()))
+		{
+			if (Source == GEntityList->Player() && CleanseActive->Enabled() && !Source->IsDead())
+			{
+				if (Source->HasBuffOfType(BUFF_Charm) && CleanseCharm->Enabled())
+				{
+					if (HumanizeDelayCleanse == 0) { HumanizeDelayCleanse = CleanseHumanizerDelay->GetInteger(); }
+					DelayedSpellIndex = 1;
+				}
+				else if (Source->HasBuffOfType(BUFF_Blind) && CleanseBlind->Enabled())
+				{
+					if (HumanizeDelayCleanse == 0) { HumanizeDelayCleanse = CleanseHumanizerDelay->GetInteger(); }
+					DelayedSpellIndex = 1;
+				}
+				else if (Source->HasBuffOfType(BUFF_Disarm) && CleanseDisarm->Enabled())
+				{
+					if (HumanizeDelayCleanse == 0) { HumanizeDelayCleanse = CleanseHumanizerDelay->GetInteger(); }
+					DelayedSpellIndex = 1;
+				}
+				else if (Source->HasBuffOfType(BUFF_Fear) && CleanseFear->Enabled())
+				{
+					if (HumanizeDelayCleanse == 0) { HumanizeDelayCleanse = CleanseHumanizerDelay->GetInteger(); }
+					DelayedSpellIndex = 1;
+				}
+				else if (Source->HasBuffOfType(BUFF_Flee) && CleanseFlee->Enabled())
+				{
+					if (HumanizeDelayCleanse == 0) { HumanizeDelayCleanse = CleanseHumanizerDelay->GetInteger(); }
+					DelayedSpellIndex = 1;
+				}
+				else if (Source->HasBuffOfType(BUFF_Polymorph) && CleansePolymorph->Enabled())
+				{
+					if (HumanizeDelayCleanse == 0) { HumanizeDelayCleanse = CleanseHumanizerDelay->GetInteger(); }
+					DelayedSpellIndex = 1;
+				}
+				else if (Source->HasBuffOfType(BUFF_Snare) && CleanseSnare->Enabled())
+				{
+					if (HumanizeDelayCleanse == 0) { HumanizeDelayCleanse = CleanseHumanizerDelay->GetInteger(); }
+					DelayedSpellIndex = 1;
+				}
+				else if (Source->HasBuffOfType(BUFF_Taunt) && CleanseTaunt->Enabled())
+				{
+					if (HumanizeDelayCleanse == 0) { HumanizeDelayCleanse = CleanseHumanizerDelay->GetInteger(); }
+					DelayedSpellIndex = 1;
+				}
+				else if (Source->HasBuff("SummonerExhaust") && CleanseExhaust->Enabled())
+				{
+					if (HumanizeDelayCleanse == 0) { HumanizeDelayCleanse = CleanseHumanizerDelay->GetInteger(); }
+					DelayedSpellIndex = 1;
+				}
+				else if (Source->HasBuffOfType(BUFF_Stun) && CleanseStun->Enabled())
+				{
+					if (HumanizeDelayCleanse == 0) { HumanizeDelayCleanse = CleanseHumanizerDelay->GetInteger(); }
+					DelayedSpellIndex = 1;
+				}
+			}
+		}
+
+		//QSS
+		if (Source == GEntityList->Player() && !Source->IsDead() && CleanseActive->Enabled() && (QSS->IsOwned() || Scimitar->IsOwned()))
 		{
 			if (Source->HasBuffOfType(BUFF_Charm) && CleanseCharm->Enabled())
 			{
-				CLEANSE->CastOnPlayer();
+				if (QSS->IsOwned() && QSS->IsReady())
+				{
+					if (HumanizeDelayCleanse == 0) { HumanizeDelayCleanse = CleanseHumanizerDelay->GetInteger(); }
+					DelayedSpellIndex = 2;
+				}
+				else if (Scimitar->IsOwned() && Scimitar->IsReady())
+				{
+					if (HumanizeDelayCleanse == 0) { HumanizeDelayCleanse = CleanseHumanizerDelay->GetInteger(); }
+					DelayedSpellIndex = 3;
+				}
 			}
 			else if (Source->HasBuffOfType(BUFF_Blind) && CleanseBlind->Enabled())
 			{
-				CLEANSE->CastOnPlayer();
+				if (QSS->IsOwned() && QSS->IsReady())
+				{
+					if (HumanizeDelayCleanse == 0) { HumanizeDelayCleanse = CleanseHumanizerDelay->GetInteger(); }
+					DelayedSpellIndex = 2;
+				}
+				else if (Scimitar->IsOwned() && Scimitar->IsReady())
+				{
+					if (HumanizeDelayCleanse == 0) { HumanizeDelayCleanse = CleanseHumanizerDelay->GetInteger(); }
+					DelayedSpellIndex = 3;
+				}
 			}
-			else if(Source->HasBuffOfType(BUFF_Disarm) && CleanseDisarm->Enabled())
+			else if (Source->HasBuffOfType(BUFF_Disarm) && CleanseDisarm->Enabled())
 			{
-				CLEANSE->CastOnPlayer();
+				if (QSS->IsOwned() && QSS->IsReady())
+				{
+					if (HumanizeDelayCleanse == 0) { HumanizeDelayCleanse = CleanseHumanizerDelay->GetInteger(); }
+					DelayedSpellIndex = 2;
+				}
+				else if (Scimitar->IsOwned() && Scimitar->IsReady())
+				{
+					if (HumanizeDelayCleanse == 0) { HumanizeDelayCleanse = CleanseHumanizerDelay->GetInteger(); }
+					DelayedSpellIndex = 3;
+				}
 			}
-			else if(Source->HasBuffOfType(BUFF_Fear) && CleanseFear->Enabled())
+			else if (Source->HasBuffOfType(BUFF_Fear) && CleanseFear->Enabled())
 			{
-				CLEANSE->CastOnPlayer();
+				if (QSS->IsOwned() && QSS->IsReady())
+				{
+					if (HumanizeDelayCleanse == 0) { HumanizeDelayCleanse = CleanseHumanizerDelay->GetInteger(); }
+					DelayedSpellIndex = 2;
+				}
+				else if (Scimitar->IsOwned() && Scimitar->IsReady())
+				{
+					if (HumanizeDelayCleanse == 0) { HumanizeDelayCleanse = CleanseHumanizerDelay->GetInteger(); }
+					DelayedSpellIndex = 3;
+				}
 			}
-			else if(Source->HasBuffOfType(BUFF_Flee) && CleanseFlee->Enabled())
+			else if (Source->HasBuffOfType(BUFF_Flee) && CleanseFlee->Enabled())
 			{
-				CLEANSE->CastOnPlayer();
+				if (QSS->IsOwned() && QSS->IsReady())
+				{
+					if (HumanizeDelayCleanse == 0) { HumanizeDelayCleanse = CleanseHumanizerDelay->GetInteger(); }
+					DelayedSpellIndex = 2;
+				}
+				else if (Scimitar->IsOwned() && Scimitar->IsReady())
+				{
+					if (HumanizeDelayCleanse == 0) { HumanizeDelayCleanse = CleanseHumanizerDelay->GetInteger(); }
+					DelayedSpellIndex = 3;
+				}
 			}
-			else if(Source->HasBuffOfType(BUFF_Polymorph) && CleansePolymorph->Enabled())
+			else if (Source->HasBuffOfType(BUFF_Polymorph) && CleansePolymorph->Enabled())
 			{
-				CLEANSE->CastOnPlayer();
+				if (QSS->IsOwned() && QSS->IsReady())
+				{
+					if (HumanizeDelayCleanse == 0) { HumanizeDelayCleanse = CleanseHumanizerDelay->GetInteger(); }
+					DelayedSpellIndex = 2;
+				}
+				else if (Scimitar->IsOwned() && Scimitar->IsReady())
+				{
+					if (HumanizeDelayCleanse == 0) { HumanizeDelayCleanse = CleanseHumanizerDelay->GetInteger(); }
+					DelayedSpellIndex = 3;
+				}
 			}
-			else if(Source->HasBuffOfType(BUFF_Snare) && CleanseSnare->Enabled())
+			else if (Source->HasBuffOfType(BUFF_Snare) && CleanseSnare->Enabled())
 			{
-				CLEANSE->CastOnPlayer();
+				if (QSS->IsOwned() && QSS->IsReady())
+				{
+					if (HumanizeDelayCleanse == 0) { HumanizeDelayCleanse = CleanseHumanizerDelay->GetInteger(); }
+					DelayedSpellIndex = 2;
+				}
+				else if (Scimitar->IsOwned() && Scimitar->IsReady())
+				{
+					if (HumanizeDelayCleanse == 0) { HumanizeDelayCleanse = CleanseHumanizerDelay->GetInteger(); }
+					DelayedSpellIndex = 3;
+				}
 			}
-			else if(Source->HasBuffOfType(BUFF_Taunt) && CleanseTaunt->Enabled())
+			else if (Source->HasBuffOfType(BUFF_Taunt) && CleanseTaunt->Enabled())
 			{
-				CLEANSE->CastOnPlayer();
+				if (QSS->IsOwned() && QSS->IsReady())
+				{
+					if (HumanizeDelayCleanse == 0) { HumanizeDelayCleanse = CleanseHumanizerDelay->GetInteger(); }
+					DelayedSpellIndex = 2;
+				}
+				else if (Scimitar->IsOwned() && Scimitar->IsReady())
+				{
+					if (HumanizeDelayCleanse == 0) { HumanizeDelayCleanse = CleanseHumanizerDelay->GetInteger(); }
+					DelayedSpellIndex = 3;
+				}
 			}
-			else if(Source->HasBuff("SummonerExhaust") && CleanseExhaust->Enabled())
+			else if (Source->HasBuff("SummonerExhaust") && CleanseExhaust->Enabled())
 			{
-				CLEANSE->CastOnPlayer();
+				if (QSS->IsOwned() && QSS->IsReady())
+				{
+					if (HumanizeDelayCleanse == 0) { HumanizeDelayCleanse = CleanseHumanizerDelay->GetInteger(); }
+					DelayedSpellIndex = 2;
+				}
+				else if (Scimitar->IsOwned() && Scimitar->IsReady())
+				{
+					if (HumanizeDelayCleanse == 0) { HumanizeDelayCleanse = CleanseHumanizerDelay->GetInteger(); }
+					DelayedSpellIndex = 3;
+				}
 			}
-			else if(Source->HasBuffOfType(BUFF_Stun) && CleanseStun->Enabled())
+			else if (Source->HasBuffOfType(BUFF_Stun) && CleanseStun->Enabled())
 			{
-				CLEANSE->CastOnPlayer();
+				if (QSS->IsOwned() && QSS->IsReady())
+				{
+					if (HumanizeDelayCleanse == 0) { HumanizeDelayCleanse = CleanseHumanizerDelay->GetInteger(); }
+					DelayedSpellIndex = 2;
+				}
+				else if (Scimitar->IsOwned() && Scimitar->IsReady())
+				{
+					if (HumanizeDelayCleanse == 0) { HumanizeDelayCleanse = CleanseHumanizerDelay->GetInteger(); }
+					DelayedSpellIndex = 3;
+				}
+			}
+			else if (Source->HasBuffOfType(BUFF_Suppression) && CleanseSuppression->Enabled())
+			{
+				if (QSS->IsOwned() && QSS->IsReady())
+				{
+					if (HumanizeDelayCleanse == 0) { HumanizeDelayCleanse = CleanseHumanizerDelay->GetInteger(); }
+					DelayedSpellIndex = 2;
+				}
+				else if (Scimitar->IsOwned() && Scimitar->IsReady())
+				{
+					if (HumanizeDelayCleanse == 0) { HumanizeDelayCleanse = CleanseHumanizerDelay->GetInteger(); }
+					DelayedSpellIndex = 3;
+				}
 			}
 		}
-	}
 
-	//QSS
-	if (Source == GEntityList->Player() && !Source->IsDead() && CleanseActive->Enabled() && (QSS->IsOwned() || Scimitar->IsOwned()))
-	{
-		if (Source->HasBuffOfType(BUFF_Charm) && CleanseCharm->Enabled())
+		//Mikael's
+		if (Mikaels->IsOwned() && Mikaels->IsReady() && !(GEntityList->Player()->IsDead()) && TargetValidForMikaels(Source) && GetDistance(GEntityList->Player(), Source) <= 600 && !Source->IsEnemy(Source) && CleanseActive->Enabled() && !Source->IsDead())
 		{
-			if (QSS->IsOwned() && QSS->IsReady()) { QSS->CastOnPlayer(); }
-			else if (Scimitar->IsOwned() && Scimitar->IsReady()) { Scimitar->CastOnPlayer(); }
-		}
-		else if (Source->HasBuffOfType(BUFF_Blind) && CleanseBlind->Enabled())
-		{
-			if (QSS->IsOwned() && QSS->IsReady()) { QSS->CastOnPlayer(); }
-			else if (Scimitar->IsOwned() && Scimitar->IsReady()) { Scimitar->CastOnPlayer(); }
-		}
-		else if (Source->HasBuffOfType(BUFF_Disarm) && CleanseDisarm->Enabled())
-		{
-			if (QSS->IsOwned() && QSS->IsReady()) { QSS->CastOnPlayer(); }
-			else if (Scimitar->IsOwned() && Scimitar->IsReady()) { Scimitar->CastOnPlayer(); }
-		}
-		else if (Source->HasBuffOfType(BUFF_Fear) && CleanseFear->Enabled())
-		{
-			if (QSS->IsOwned() && QSS->IsReady()) { QSS->CastOnPlayer(); }
-			else if (Scimitar->IsOwned() && Scimitar->IsReady()) { Scimitar->CastOnPlayer(); }
-		}
-		else if (Source->HasBuffOfType(BUFF_Flee) && CleanseFlee->Enabled())
-		{
-			if (QSS->IsOwned() && QSS->IsReady()) { QSS->CastOnPlayer(); }
-			else if (Scimitar->IsOwned() && Scimitar->IsReady()) { Scimitar->CastOnPlayer(); }
-		}
-		else if (Source->HasBuffOfType(BUFF_Polymorph) && CleansePolymorph->Enabled())
-		{
-			if (QSS->IsOwned() && QSS->IsReady()) { QSS->CastOnPlayer(); }
-			else if (Scimitar->IsOwned() && Scimitar->IsReady()) { Scimitar->CastOnPlayer(); }
-		}
-		else if (Source->HasBuffOfType(BUFF_Snare) && CleanseSnare->Enabled())
-		{
-			if (QSS->IsOwned() && QSS->IsReady()) { QSS->CastOnPlayer(); }
-			else if (Scimitar->IsOwned() && Scimitar->IsReady()) { Scimitar->CastOnPlayer(); }
-		}
-		else if (Source->HasBuffOfType(BUFF_Taunt) && CleanseTaunt->Enabled())
-		{
-			if (QSS->IsOwned() && QSS->IsReady()) { QSS->CastOnPlayer(); }
-			else if (Scimitar->IsOwned() && Scimitar->IsReady()) { Scimitar->CastOnPlayer(); }
-		}
-		else if (Source->HasBuff("SummonerExhaust") && CleanseExhaust->Enabled())
-		{
-			if (QSS->IsOwned() && QSS->IsReady()) { QSS->CastOnPlayer(); }
-			else if (Scimitar->IsOwned() && Scimitar->IsReady()) { Scimitar->CastOnPlayer(); }
-		}
-		else if (Source->HasBuffOfType(BUFF_Stun) && CleanseStun->Enabled())
-		{
-			if (QSS->IsOwned() && QSS->IsReady()) { QSS->CastOnPlayer(); }
-			else if (Scimitar->IsOwned() && Scimitar->IsReady()) { Scimitar->CastOnPlayer(); }
-		}
-		else if (Source->HasBuffOfType(BUFF_Suppression) && CleanseSuppression->Enabled())
-		{
-			if (QSS->IsOwned() && QSS->IsReady()) { QSS->CastOnPlayer(); }
-			else if (Scimitar->IsOwned() && Scimitar->IsReady()) { Scimitar->CastOnPlayer(); }
-		}
-	}
-
-	//Mikael's
-	if (Mikaels->IsOwned() && Mikaels->IsReady() && !(GEntityList->Player()->IsDead()) && TargetValidForMikaels(Source) && GetDistance(GEntityList->Player(), Source) <= 600 && !Source->IsEnemy(Source) && CleanseActive->Enabled() && !Source->IsDead())
-	{
-		if (Source->HasBuffOfType(BUFF_Charm) && CleanseCharm->Enabled())
-		{
-			Mikaels->CastOnTarget(Source);
-		}
-		else if (Source->HasBuffOfType(BUFF_Blind) && CleanseBlind->Enabled())
-		{
-			Mikaels->CastOnTarget(Source);
-		}
-		else if (Source->HasBuffOfType(BUFF_Disarm) && CleanseDisarm->Enabled())
-		{
-			Mikaels->CastOnTarget(Source);
-		}
-		else if (Source->HasBuffOfType(BUFF_Fear) && CleanseFear->Enabled())
-		{
-			Mikaels->CastOnTarget(Source);
-		}
-		else if (Source->HasBuffOfType(BUFF_Flee) && CleanseFlee->Enabled())
-		{
-			Mikaels->CastOnTarget(Source);
-		}
-		else if (Source->HasBuffOfType(BUFF_Polymorph) && CleansePolymorph->Enabled())
-		{
-			Mikaels->CastOnTarget(Source);
-		}
-		else if (Source->HasBuffOfType(BUFF_Snare) && CleanseSnare->Enabled())
-		{
-			Mikaels->CastOnTarget(Source);
-		}
-		else if (Source->HasBuffOfType(BUFF_Taunt) && CleanseTaunt->Enabled())
-		{
-			Mikaels->CastOnTarget(Source);
-		}
-		else if (Source->HasBuff("SummonerExhaust") && CleanseExhaust->Enabled())
-		{
-			Mikaels->CastOnTarget(Source);
-		}
-		else if (Source->HasBuffOfType(BUFF_Stun) && CleanseStun->Enabled())
-		{
-			Mikaels->CastOnTarget(Source);
+			if (Source->HasBuffOfType(BUFF_Charm) && CleanseCharm->Enabled())
+			{
+				if (HumanizeDelayCleanse == 0) { HumanizeDelayCleanse = CleanseHumanizerDelay->GetInteger(); }
+				DelayedSpellIndex = 4;
+				MikaelsTargetToCast = Source;
+			}
+			else if (Source->HasBuffOfType(BUFF_Blind) && CleanseBlind->Enabled())
+			{
+				if (HumanizeDelayCleanse == 0) { HumanizeDelayCleanse = CleanseHumanizerDelay->GetInteger(); }
+				DelayedSpellIndex = 4;
+				MikaelsTargetToCast = Source;
+			}
+			else if (Source->HasBuffOfType(BUFF_Disarm) && CleanseDisarm->Enabled())
+			{
+				if (HumanizeDelayCleanse == 0) { HumanizeDelayCleanse = CleanseHumanizerDelay->GetInteger(); }
+				DelayedSpellIndex = 4;
+				MikaelsTargetToCast = Source;
+			}
+			else if (Source->HasBuffOfType(BUFF_Fear) && CleanseFear->Enabled())
+			{
+				if (HumanizeDelayCleanse == 0) { HumanizeDelayCleanse = CleanseHumanizerDelay->GetInteger(); }
+				DelayedSpellIndex = 4;
+				MikaelsTargetToCast = Source;
+			}
+			else if (Source->HasBuffOfType(BUFF_Flee) && CleanseFlee->Enabled())
+			{
+				if (HumanizeDelayCleanse == 0) { HumanizeDelayCleanse = CleanseHumanizerDelay->GetInteger(); }
+				DelayedSpellIndex = 4;
+				MikaelsTargetToCast = Source;
+			}
+			else if (Source->HasBuffOfType(BUFF_Polymorph) && CleansePolymorph->Enabled())
+			{
+				if (HumanizeDelayCleanse == 0) { HumanizeDelayCleanse = CleanseHumanizerDelay->GetInteger(); }
+				DelayedSpellIndex = 4;
+				MikaelsTargetToCast = Source;
+			}
+			else if (Source->HasBuffOfType(BUFF_Snare) && CleanseSnare->Enabled())
+			{
+				if (HumanizeDelayCleanse == 0) { HumanizeDelayCleanse = CleanseHumanizerDelay->GetInteger(); }
+				DelayedSpellIndex = 4;
+				MikaelsTargetToCast = Source;
+			}
+			else if (Source->HasBuffOfType(BUFF_Taunt) && CleanseTaunt->Enabled())
+			{
+				if (HumanizeDelayCleanse == 0) { HumanizeDelayCleanse = CleanseHumanizerDelay->GetInteger(); }
+				DelayedSpellIndex = 4;
+				MikaelsTargetToCast = Source;
+			}
+			else if (Source->HasBuff("SummonerExhaust") && CleanseExhaust->Enabled())
+			{
+				if (HumanizeDelayCleanse == 0) { HumanizeDelayCleanse = CleanseHumanizerDelay->GetInteger(); }
+				DelayedSpellIndex = 4;
+				MikaelsTargetToCast = Source;
+			}
+			else if (Source->HasBuffOfType(BUFF_Stun) && CleanseStun->Enabled())
+			{
+				if (HumanizeDelayCleanse == 0) { HumanizeDelayCleanse = CleanseHumanizerDelay->GetInteger(); }
+				DelayedSpellIndex = 4;
+				MikaelsTargetToCast = Source;
+			}
 		}
 	}
 }
@@ -858,143 +1115,156 @@ PLUGIN_API void OnLoad(IPluginSDK* PluginSDK)
 {
 	// Initializes global interfaces for core access
 	PluginSDKSetup(PluginSDK);
-
-	//Initialize Menus
-	MainMenu = GPluginSDK->AddMenu("Utility PRO++ [AIO] by Rembrandt");
-
-	Defensives = MainMenu->AddMenu("Activator");
 	
-	CleanseMenu = Defensives->AddMenu("Cleanse / QSS / Mikaels");
-	CleanseActive = CleanseMenu->CheckBox("Enabled: ", true);
-	MikaelsMenu = CleanseMenu->AddMenu("Mikaels Filter");
-	AddTeamatesToCleanse();
-	CCFilter = CleanseMenu->AddMenu("CC Filter");
-	CleanseCharm = CCFilter->CheckBox("Use on Charm ", true);
-	CleanseDisarm = CCFilter->CheckBox("Use on Disarm ", true);
-	CleanseFear = CCFilter->CheckBox("Use on Fear ", true);
-	CleanseFlee = CCFilter->CheckBox("Use on Flee ", true);
-	CleansePolymorph = CCFilter->CheckBox("Use on Polymorph ", true);
-	CleanseSnare = CCFilter->CheckBox("Use on Snare", true);
-	CleanseStun = CCFilter->CheckBox("Use on Stun ", true);
-	CleanseExhaust = CCFilter->CheckBox("Use on Exhaust ", true);
-	CleanseSuppression = CCFilter->CheckBox("Use on Suppression ", true);
-	CleanseBlind = CCFilter->CheckBox("Use on Blind ", true);
+		//Initialize Menus
+		MainMenu = GPluginSDK->AddMenu("[AIO] Utility Suite PRO++ by Rembrandt");
+		
+		Defensives = MainMenu->AddMenu("Activator PRO");
 
-	DefensiveItems = Defensives->AddMenu("Defensive Items"); // DEFENSIVE ITEMS MENU
-	FaceOfTheMountainMenu = DefensiveItems->AddMenu("Face of The Mountain");
-	FaceOfTheMountainEnabled = FaceOfTheMountainMenu->CheckBox("Enabled:", true);
-	FaceOfTheMountainPercent = FaceOfTheMountainMenu->AddFloat("Use at Health %:", 1, 99, 50);
+		GPluginInstance = new Awareness(MainMenu);
+		
+		CleanseMenu = Defensives->AddMenu("Cleanse / QSS / Mikaels");
+		CleanseActive = CleanseMenu->CheckBox("Enabled: ", true);
+		CleanseHumanizerDelay = CleanseMenu->AddInteger("Humanizer Delay in Ticks:", 0, 60, 0);
+		CleanseDurationMin = CleanseMenu->AddFloat("Minimum Duration (secs) to Cleanse:", 0, 3, 1);
+		CCFilter = CleanseMenu->AddMenu("CC Filter");
+		MikaelsMenu = CleanseMenu->AddMenu("Mikaels Filter");
+		AddTeamatesToCleanse();
+		CleanseCharm = CCFilter->CheckBox("Use on Charm ", true);
+		CleanseDisarm = CCFilter->CheckBox("Use on Disarm ", true);
+		CleanseFear = CCFilter->CheckBox("Use on Fear ", true);
+		CleanseFlee = CCFilter->CheckBox("Use on Flee ", true);
+		CleansePolymorph = CCFilter->CheckBox("Use on Polymorph ", true);
+		CleanseSnare = CCFilter->CheckBox("Use on Snare", true);
+		CleanseStun = CCFilter->CheckBox("Use on Stun ", true);
+		CleanseExhaust = CCFilter->CheckBox("Use on Exhaust ", true);
+		CleanseSuppression = CCFilter->CheckBox("Use on Suppression ", true);
+		CleanseBlind = CCFilter->CheckBox("Use on Blind ", true);
+		CleanseTaunt = CCFilter->CheckBox("Use on Taunt ", true);
 
-	RedemptionMenu = DefensiveItems->AddMenu("Redemption");
-	RedemptionEnabled = RedemptionMenu->CheckBox("Enabled:", true);
-	RedemptionPercent = RedemptionMenu->AddFloat("Use at Health %:", 1, 99, 40);
+		DefensiveItems = Defensives->AddMenu("Defensive Items"); // DEFENSIVE ITEMS MENU
+		FaceOfTheMountainMenu = DefensiveItems->AddMenu("Face of The Mountain");
+		FaceOfTheMountainEnabled = FaceOfTheMountainMenu->CheckBox("Enabled:", true);
+		FaceOfTheMountainPercent = FaceOfTheMountainMenu->AddFloat("Use at Health %:", 1, 99, 50);
 
-	ZhonyasMenu = DefensiveItems->AddMenu("Zhonyas Hourglass");
-	ZhonyasEnabled = ZhonyasMenu->CheckBox("COMING SOON WITH DAMAGE PREDICTION:", true);
+		RedemptionMenu = DefensiveItems->AddMenu("Redemption");
+		RedemptionEnabled = RedemptionMenu->CheckBox("Enabled:", true);
+		RedemptionPercent = RedemptionMenu->AddFloat("Use at Health %:", 1, 99, 40);
 
-	SeraphsMenu = DefensiveItems->AddMenu("Seraphs Embrace");
-	SeraphsEnabled = SeraphsMenu->CheckBox("Enabled:", true);
-	SeraphsPercent = SeraphsMenu->AddFloat("Use at Health %:", 1, 99, 50);
+		ZhonyasMenu = DefensiveItems->AddMenu("Zhonyas Hourglass");
+		ZhonyasEnabled = ZhonyasMenu->CheckBox("COMING SOON WITH DAMAGE PREDICTION:", true);
 
-	LocketMenu = DefensiveItems->AddMenu("Locket of the Iron Solari");
-	LocketEnabled = LocketMenu->CheckBox("Enabled:", true);
-	LocketPercent = LocketMenu->AddFloat("Use at Health %:", 1, 99, 45);
+		SeraphsMenu = DefensiveItems->AddMenu("Seraphs Embrace");
+		SeraphsEnabled = SeraphsMenu->CheckBox("Enabled:", true);
+		SeraphsPercent = SeraphsMenu->AddFloat("Use at Health %:", 1, 99, 50);
 
-	RanduinsMenu = DefensiveItems->AddMenu("Randuins Omen");
-	RanduinsEnabled = RanduinsMenu->CheckBox("Enabled:", true);
+		LocketMenu = DefensiveItems->AddMenu("Locket of the Iron Solari");
+		LocketEnabled = LocketMenu->CheckBox("Enabled:", true);
+		LocketPercent = LocketMenu->AddFloat("Use at Health %:", 1, 99, 45);
 
-	OffensiveItems = Defensives->AddMenu("Offensive Items");//OFFENSIVE ITEMS MENU
+		RanduinsMenu = DefensiveItems->AddMenu("Randuins Omen");
+		RanduinsEnabled = RanduinsMenu->CheckBox("Enabled:", true);
 
-	GunbladeMenu = OffensiveItems->AddMenu("Hextech Gunblade");
-	GunbladeEnabled = GunbladeMenu->CheckBox("Enabled in Combo:", true);
-	BotrkMenu = OffensiveItems->AddMenu("Blade of the Ruined King");
-	BotrkEnabled = BotrkMenu->CheckBox("Enabled in Combo:", true);
-	CutlassMenu = OffensiveItems->AddMenu("Bilgewater Cutlass");
-	CutlassEnabled = CutlassMenu->CheckBox("Enabled in Combo:", true);
-	YoumuusMenu = OffensiveItems->AddMenu("Youmuus Ghostblade");
-	YoumuusEnabled = YoumuusMenu->CheckBox("Enabled in Combo:", true);
+		OffensiveItems = Defensives->AddMenu("Offensive Items");//OFFENSIVE ITEMS MENU
 
-	GLP800Menu = OffensiveItems->AddMenu("Hextech GLP-800");
-	GLP800Enabled = GLP800Menu->CheckBox("Enabled in Combo:", true);
+		GunbladeMenu = OffensiveItems->AddMenu("Hextech Gunblade");
+		GunbladeEnabled = GunbladeMenu->CheckBox("Enabled in Combo:", true);
+		BotrkMenu = OffensiveItems->AddMenu("Blade of the Ruined King");
+		BotrkEnabled = BotrkMenu->CheckBox("Enabled in Combo:", true);
+		CutlassMenu = OffensiveItems->AddMenu("Bilgewater Cutlass");
+		CutlassEnabled = CutlassMenu->CheckBox("Enabled in Combo:", true);
+		YoumuusMenu = OffensiveItems->AddMenu("Youmuus Ghostblade");
+		YoumuusEnabled = YoumuusMenu->CheckBox("Enabled in Combo:", true);
 
-	SummonerHealMenu = Defensives->AddMenu("Summoner: Heal");
-	HealActive = SummonerHealMenu->CheckBox("Enabled: ", true);
-	HealPercent = SummonerHealMenu->AddInteger("Use at Health %: ", 1, 99, 30);
+		GLP800Menu = OffensiveItems->AddMenu("Hextech GLP-800");
+		GLP800Enabled = GLP800Menu->CheckBox("Enabled in Combo:", true);
 
-	SummonerBarrierMenu = Defensives->AddMenu("Summoner: Barrier");
-	BarrierActive = SummonerBarrierMenu->CheckBox("Enabled: ", true);
-	BarrierPercent = SummonerBarrierMenu->AddInteger("Use at Health %: ", 1, 99, 30);
+		SummonerHealMenu = Defensives->AddMenu("Summoner: Heal");
+		HealActive = SummonerHealMenu->CheckBox("Enabled: ", true);
+		HealPercent = SummonerHealMenu->AddInteger("Use at Health %: ", 1, 99, 30);
+		HealTeamateActive = SummonerHealMenu->CheckBox("Use on Teamates: ", true);
+		HealTeamatePercent = SummonerHealMenu->AddInteger("Use at Teamate Health %: ", 1, 99, 30);
+		
+		SummonerBarrierMenu = Defensives->AddMenu("Summoner: Barrier");
+		BarrierActive = SummonerBarrierMenu->CheckBox("Enabled: ", true);
+		BarrierPercent = SummonerBarrierMenu->AddInteger("Use at Health %: ", 1, 99, 30);
 
-	AutoSmiteMenu = Defensives->AddMenu("Summoner: Smite");
-	SmiteActive = AutoSmiteMenu->CheckBox("Smite Buffs/Epic Monsters: ", true);
-	SmiteKey = AutoSmiteMenu->AddKey("Toggle Key:", 77);
+		AutoSmiteMenu = Defensives->AddMenu("Summoner: Smite");
+		SmiteActive = AutoSmiteMenu->CheckBox("Smite Buffs/Epic Monsters: ", true);
+		SmiteKey = AutoSmiteMenu->AddKey("Toggle Key:", 77);
+		DrawSmiteEnabled = AutoSmiteMenu->CheckBox("Draw Auto Smite Enabled:", true);
 
-	Potions = Defensives->AddMenu("Potions");
-	PotionsEnabled = Potions->CheckBox("Use Potions: ", true);
-	PotionsPercent = Potions->AddFloat("Drink at Health %: ", 1, 99, 60);
+		SummonerIgniteMenu = Defensives->AddMenu("Summoner: Ignite");
+		IgniteKSEnable = SummonerIgniteMenu->CheckBox("Enable Ignite KS:", true);
+		IgniteInCombo = SummonerIgniteMenu->CheckBox("Enable Ignite in Combo:", true);
 
-	AutoLevelUp = MainMenu->AddMenu("Auto Level");
-	EnableAutoLevelUp = AutoLevelUp->CheckBox("Enable: ", false);
-	ALUR = AutoLevelUp->AddInteger("R: ", 1, 4, 1);
-	ALUQ = AutoLevelUp->AddInteger("Q: ", 1, 4, 2);
-	ALUW = AutoLevelUp->AddInteger("W: ", 1, 4, 3);
-	ALUE = AutoLevelUp->AddInteger("E: ", 1, 4, 4);
-	ALUStartLevel = AutoLevelUp->AddInteger("Start at level: ", 1, 16, 4);
-	
-	AutoTrinketMenu = MainMenu->AddMenu("Auto Trinket");
-	AutoUpgradeTrinket = AutoTrinketMenu->CheckBox("Auto Upgrade Trinket:", false);
+		Potions = Defensives->AddMenu("Potions");
+		PotionsEnabled = Potions->CheckBox("Use Potions: ", true);
+		PotionsPercent = Potions->AddFloat("Drink at Health %: ", 1, 99, 60);
 
-	SkinHack().InitMenu(MainMenu);
-	SkinHack().UpdateSkin();
-	DrawTowerRange().InitMenu(MainMenu);
-	LoadSpells();
+		AutoLevelUp = MainMenu->AddMenu("Auto Level");
+		EnableAutoLevelUp = AutoLevelUp->CheckBox("Enable: ", false);
+		ALUR = AutoLevelUp->AddInteger("R: ", 1, 4, 1);
+		ALUQ = AutoLevelUp->AddInteger("Q: ", 1, 4, 2);
+		ALUW = AutoLevelUp->AddInteger("W: ", 1, 4, 3);
+		ALUE = AutoLevelUp->AddInteger("E: ", 1, 4, 4);
+		ALUStartLevel = AutoLevelUp->AddInteger("Start at level: ", 1, 16, 4);
 
-	
+		AutoTrinketMenu = MainMenu->AddMenu("Auto Trinket");
+		AutoUpgradeTrinket = AutoTrinketMenu->CheckBox("Auto Upgrade Trinket:", false);
 
-	GEventManager->AddEventHandler(kEventOrbwalkBeforeAttack, OnOrbwalkBeforeAttack);
-	GEventManager->AddEventHandler(kEventOrbwalkOnAttack, OnOrbwalkAttack);
-	GEventManager->AddEventHandler(kEventOrbwalkAfterAttack, OnOrbwalkAfterAttack);
-	GEventManager->AddEventHandler(kEventOrbwalkFindTarget, OnOrbwalkingFindTarget);
-	GEventManager->AddEventHandler(kEventOrbwalkTargetChange, OnOrbwalkTargetChange);
-	GEventManager->AddEventHandler(kEventOrbwalkNonKillableMinion, OnOrbwalkNonKillableMinion);
-	GEventManager->AddEventHandler(kEventOnGameUpdate, OnGameUpdate);
-	GEventManager->AddEventHandler(kEventOnRender, OnRender);
-	GEventManager->AddEventHandler(kEventOnSpellCast, OnSpellCast);
-	GEventManager->AddEventHandler(kEventOnUnitDeath, OnUnitDeath);
-	GEventManager->AddEventHandler(kEventOnCreateObject, OnCreateObject);
-	GEventManager->AddEventHandler(kEventOnDestroyObject, OnDestroyObject);
-	GEventManager->AddEventHandler(kEventOnDoCast, OnDoCast);
-	GEventManager->AddEventHandler(kEventOnInterruptible, OnInterruptible);
-	GEventManager->AddEventHandler(kEventOnGapCloser, OnGapCloser);
-	GEventManager->AddEventHandler(kEventOnIssueOrder, OnIssueOrder);
-	GEventManager->AddEventHandler(kEventOnBuffAdd, OnBuffAdd);
-	GEventManager->AddEventHandler(kEventOnBuffRemove, OnBuffRemove);
-	GEventManager->AddEventHandler(kEventOnGameEnd, OnGameEnd);
-	GEventManager->AddEventHandler(kEventOnLevelUp, OnLevelUp);
-	GEventManager->AddEventHandler(kEventOnPreCast, OnPreCast);
-	GEventManager->AddEventHandler(kEventOnDash, OnDash);
-	GEventManager->AddEventHandler(kEventOnD3DPresent, OnD3DPresent);
-	GEventManager->AddEventHandler(kEventOnD3DPreReset, OnD3DPreReset);
-	GEventManager->AddEventHandler(kEventOnD3DPostReset, OnD3DPostReset);
-	GEventManager->AddEventHandler(kEventOnRenderBehindHud, OnRenderBehindHUD);
-	GEventManager->AddEventHandler(kEventOnWndProc, OnWndProc);
-	GEventManager->AddEventHandler(kEventOnEnterVisible, OnEnterVisible);
-	GEventManager->AddEventHandler(kEventOnExitVisible, OnExitVisible);
+		SkinHack().InitMenu(MainMenu);
+		SkinHack().UpdateSkin();
+		LoadSpells();
 
-	GRender->NotificationEx(Color::Orange().Get(), 2, true, true, "Utility PRO++ loaded - Updated for Patch 7.3 by Rembrandt");
+		
+
+		/*GEventManager->AddEventHandler(kEventOrbwalkBeforeAttack, OnOrbwalkBeforeAttack);
+		GEventManager->AddEventHandler(kEventOrbwalkOnAttack, OnOrbwalkAttack);
+		GEventManager->AddEventHandler(kEventOrbwalkAfterAttack, OnOrbwalkAfterAttack);
+		GEventManager->AddEventHandler(kEventOrbwalkFindTarget, OnOrbwalkingFindTarget);
+		GEventManager->AddEventHandler(kEventOrbwalkTargetChange, OnOrbwalkTargetChange);
+		GEventManager->AddEventHandler(kEventOrbwalkNonKillableMinion, OnOrbwalkNonKillableMinion);*/
+		GEventManager->AddEventHandler(kEventOnGameUpdate, OnGameUpdate);
+		GEventManager->AddEventHandler(kEventOnJungleNotification, OnJungleNotify);
+		GEventManager->AddEventHandler(kEventOnRender, OnRender);
+		GEventManager->AddEventHandler(kEventOnSpellCast, OnSpellCast);
+		GEventManager->AddEventHandler(kEventOnUnitDeath, OnUnitDeath);
+		GEventManager->AddEventHandler(kEventOnCreateObject, OnCreateObject);
+		GEventManager->AddEventHandler(kEventOnDestroyObject, OnDestroyObject);
+		GEventManager->AddEventHandler(kEventOnDoCast, OnDoCast);
+		GEventManager->AddEventHandler(kEventOnInterruptible, OnInterruptible);
+		GEventManager->AddEventHandler(kEventOnGapCloser, OnGapCloser);
+		GEventManager->AddEventHandler(kEventOnIssueOrder, OnIssueOrder);
+		GEventManager->AddEventHandler(kEventOnBuffAdd, OnBuffAdd);
+		GEventManager->AddEventHandler(kEventOnBuffRemove, OnBuffRemove);
+		GEventManager->AddEventHandler(kEventOnGameEnd, OnGameEnd);
+		GEventManager->AddEventHandler(kEventOnLevelUp, OnLevelUp);
+		GEventManager->AddEventHandler(kEventOnPreCast, OnPreCast);
+		GEventManager->AddEventHandler(kEventOnDash, OnDash);
+		GEventManager->AddEventHandler(kEventOnD3DPresent, OnD3DPresent);
+		GEventManager->AddEventHandler(kEventOnD3DPreReset, OnD3DPreReset);
+		GEventManager->AddEventHandler(kEventOnD3DPostReset, OnD3DPostReset);
+		GEventManager->AddEventHandler(kEventOnRenderBehindHud, OnRenderBehindHUD);
+		GEventManager->AddEventHandler(kEventOnWndProc, OnWndProc);
+		GEventManager->AddEventHandler(kEventOnEnterVisible, OnEnterVisible);
+		GEventManager->AddEventHandler(kEventOnExitVisible, OnExitVisible);
+
+		GGame->PrintChat("<b><font color=\"#f8a101\">Utility PRO<b><font color=\"#FFFFFF\">++</font></b> Loaded</font></b>");
 }
 
 // Called when plugin is unloaded
 PLUGIN_API void OnUnload()
 {
 	MainMenu->Remove();
-
+	/*
 	GEventManager->RemoveEventHandler(kEventOrbwalkBeforeAttack, OnOrbwalkBeforeAttack);
 	GEventManager->RemoveEventHandler(kEventOrbwalkOnAttack, OnOrbwalkAttack);
 	GEventManager->RemoveEventHandler(kEventOrbwalkAfterAttack, OnOrbwalkAfterAttack);
 	GEventManager->RemoveEventHandler(kEventOrbwalkFindTarget, OnOrbwalkingFindTarget);
 	GEventManager->RemoveEventHandler(kEventOrbwalkTargetChange, OnOrbwalkTargetChange);
-	GEventManager->RemoveEventHandler(kEventOrbwalkNonKillableMinion, OnOrbwalkNonKillableMinion);
+	GEventManager->RemoveEventHandler(kEventOrbwalkNonKillableMinion, OnOrbwalkNonKillableMinion);*/
+	GEventManager->RemoveEventHandler(kEventOnJungleNotification, OnJungleNotify);
 	GEventManager->RemoveEventHandler(kEventOnGameUpdate, OnGameUpdate);
 	GEventManager->RemoveEventHandler(kEventOnRender, OnRender);
 	GEventManager->RemoveEventHandler(kEventOnSpellCast, OnSpellCast);
@@ -1018,4 +1288,6 @@ PLUGIN_API void OnUnload()
 	GEventManager->RemoveEventHandler(kEventOnWndProc, OnWndProc);
 	GEventManager->RemoveEventHandler(kEventOnEnterVisible, OnEnterVisible);
 	GEventManager->RemoveEventHandler(kEventOnExitVisible, OnExitVisible);
+
+	delete GPluginInstance;
 }

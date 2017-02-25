@@ -8,6 +8,7 @@ struct HeroUI
 	ITexture*	ChampionIcon;
 	ITexture*	SummonerSpellIcons[2];
 	ITexture*	SummonerSpellIconsSmall[2];
+	ITexture*	SummonerSpellIconsCircle[2];
 	ITexture*	SpellIcons[4];
 	float		RespawnTime;
 	bool		RespawnNotification;
@@ -21,6 +22,7 @@ struct UiFonts
 	IFont* DeathFont;
 	IFont* CooldownFont;
 	IFont* HudFont;
+	IFont* HudFont2;
 };
 
 struct UiTextures
@@ -29,6 +31,14 @@ struct UiTextures
 	ITexture* OutlineRight;
 	ITexture* EmptyLeft;
 	ITexture* EmptyRight;
+	ITexture* HUD1_icons;
+	ITexture* HUD1_champ;
+	ITexture* HUD1_bar;
+	ITexture* HUD1_iconsleft;
+	ITexture* HUD1_champleft;
+	ITexture* HUD1_barleft;
+	ITexture* HUD1_hp;
+	ITexture* HUD1_mp;
 
 	ITexture* SmallOutline;
 	ITexture* UltimateReady;
@@ -37,11 +47,19 @@ struct UiTextures
 	ITexture* Mana;
 	ITexture* CDHud;
 	ITexture* CDHudSelf;
+
+	ITexture* UN_bg;
+	ITexture* UN_r;
+
+	ITexture* OKTW_circle;
+	ITexture* OKTW_bar;
 };
 
 struct UiMenu
 {
 	IMenu* Owner;
+	IMenu* PlayersGUI;
+	IMenu* SideGUI;
 	IMenuOption* Enabled;
 	IMenuOption* Show2DHud;
 	IMenuOption* Show3DHud;
@@ -52,6 +70,14 @@ struct UiMenu
 	IMenuOption* NotifyOnRespawn;
 	IMenuOption* NotifyOnUltimate;
 	IMenuOption* MinimalisticHud;
+	IMenuOption* XOffset;
+	IMenuOption* YOffset;
+	IMenuOption* RadiusOffset;
+	IMenuOption* Resize;
+	IMenuOption* DrawHPBarText;
+	IMenuOption* DrawManaBarText;
+	IMenuOption* HPBarTextStyle;
+	IMenuOption* ManaBarTextStyle;
 };
 
 class Gui
@@ -63,6 +89,7 @@ public:
 	void OnRender();
 	void OnCreateObject(IUnit* Args);
 	void OnDestroyObject(IUnit* Args);
+	void OnD3DPostReset();
 
 private:
 	void GetLatestVersionNo();
@@ -94,4 +121,5 @@ private:
 	std::string				VersionNo;
 	Vec2					Resolution;
 	bool					DownloadIsComplete;
+	bool					ReSizeNeeded;
 };

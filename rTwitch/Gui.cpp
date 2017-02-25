@@ -1,0 +1,823 @@
+#include <string>
+
+#include "Gui.h"
+
+Gui::Gui(IMenu* Parent)
+{
+	Menu.Owner = Parent->AddMenu("HUD");
+
+	ReSizeNeeded = true;
+
+	GetLatestVersionNo();
+	LoadFonts();
+	LoadTextureIcons();
+	LoadMenu();
+}
+
+Gui::~Gui()
+{
+}
+
+void Gui::OnD3DPostReset()
+{
+		ReSizeNeeded = true;
+}
+
+void Gui::OnRender()
+{
+	Resolution = GRender->ScreenSize();
+
+	UpdateChampions();
+
+	if (Menu.Enabled->Enabled())
+	{
+		if (Menu.ShowTeam->Enabled())
+			RenderTeammates();
+		
+		if (Menu.ShowEnemies->Enabled())
+			RenderEnemies();
+	}
+	ReSizeNeeded = false;
+}
+
+void Gui::OnCreateObject(IUnit* Args)
+{
+	if (Args->IsHero() && Args->GetMaxHealth() < 9000)
+	{
+		auto pszName = Args->ChampionName();
+
+		for (auto pGui : UiPool)
+		{
+			if (!_stricmp(pszName, pGui->ChampionName))
+			{
+				pGui->Player = Args;
+				pGui->Valid = true;
+			}
+		}
+	}
+}
+
+void Gui::OnDestroyObject(IUnit* Args)
+{
+	for (auto pGui : UiPool)
+	{
+		if (pGui->Player == Args)
+			pGui->Valid = false;
+	}
+}
+
+void Gui::RenderPlayer2DElementBig(HeroUI* Ui, Vec2 const& Position, bool Left)
+{
+	float ScreenRatio = Resolution.y / 1440.f;
+
+
+	Vec2 vecHealthOffset	= Left ? Vec2(9, 79) : Vec2(17, 79);
+	Vec2 vecManaOffset		= Left ? Vec2(9, 90) : Vec2(17, 90);
+	Vec2 vecChampionOffset	= Left ? Vec2(43, 6) : Vec2(13, 6);
+	Vec2 vecSpell1Offset	= Left ? Vec2(6, 6) : Vec2(82, 7);
+	Vec2 vecSpell2Offset	= Left ? Vec2(6, 40) : Vec2(82, 40);
+	Vec2 vecUltimateOffset	= Left ? Vec2(106, 20) : Vec2(18, 20);
+	Vec2 vecChampionSize	= Ui->ChampionIcon->GetSize();
+	Vec2 vecLevelPosition	= Position + vecChampionOffset;
+	Vec2 HPScaledOffset = Vec2(Position.x - 150, Position.y);
+
+	Vec2 LeftOffsetBase = Left ? Vec2(0, 0) : Vec2(150 * ScreenRatio, 0);
+
+	HPScaledOffset.x -= 150;
+
+	auto pEmptyIcon		= Left ? Textures->EmptyLeft : Textures->EmptyRight;
+	auto pOutlineIcon	= Left ? Textures->OutlineLeft : Textures->OutlineRight;
+
+	auto pHUD1_bar = Left ? Textures->HUD1_barleft :Textures->HUD1_bar;
+	auto pHUD1_champ = Left ? Textures->HUD1_champleft : Textures->HUD1_champ;
+	auto pHUD1_icons = Left ? Textures->HUD1_iconsleft : Textures->HUD1_icons;
+	auto pHUD1_hp = Textures->HUD1_hp;
+	auto pHUD1_mp = Textures->HUD1_mp;
+	auto Sum1 = Ui->SummonerSpellIconsCircle[0];
+	auto Sum2 = Ui->SummonerSpellIconsCircle[1];
+
+	//RESIZE TO FIT SCREEN
+	
+	pHUD1_bar->Scale(ScreenRatio);
+	pHUD1_champ->Scale(ScreenRatio);
+	pHUD1_icons->Scale(ScreenRatio);
+	pHUD1_hp->Scale(ScreenRatio);
+	pHUD1_mp->Scale(ScreenRatio);
+	Sum1->Scale(ScreenRatio);
+	Sum2->Scale(ScreenRatio);
+	
+
+	if (Left)
+		vecLevelPosition += vecChampionSize - Vec2(8, 5) - Vec2(26, 26);
+	else
+		vecLevelPosition += Vec2(0, vecChampionSize.y) + Vec2(3, -4) - Vec2(0, 26);
+
+	//pHUD1_hp->Scale(Ui->Player->HealthPercent() / 100.f, 1.f);
+	//pHUD1_mp->Scale(Ui->Player->ManaPercent() / 100.f, 1.f);
+
+	if (!Left)
+	{
+		//Vec2 barSize = pHUD1_bar->Scale;
+		//float ScaledSizeAroo = (2 * barSize.x + 2 * barSize.y) * ScreenRatio;
+		
+
+		pHUD1_bar->Draw(Position.x - LeftOffsetBase.x, Position.y);
+		{
+			//draw hp bars
+			pHUD1_hp->Draw(Position.x - LeftOffsetBase.x, Position.y);
+			GRender->DrawFilledBox(Vec2(HPScaledOffset.x + 295, HPScaledOffset.y + 50 * ScreenRatio), Vec2(-(133.f * ((100.f - Ui->Player->HealthPercent()) / 100)) * ScreenRatio, 16.f * ScreenRatio), Vec4(0, 0, 0, 225));
+			if (Ui->Player->GetMaxMana() > 200 && !Ui->Player->IsDead())
+				pHUD1_mp->Draw(Position.x - LeftOffsetBase.x, Position.y);
+			GRender->DrawFilledBox(Vec2(HPScaledOffset.x + 295, HPScaledOffset.y + 67 * ScreenRatio), Vec2(-(133.f * ((100.f - Ui->Player->ManaPercent()) / 100)) * ScreenRatio, 11 * ScreenRatio), Vec4(0, 0, 0, 200));
+			//draw champ icon
+			pHUD1_champ->Draw(Position.x - LeftOffsetBase.x, Position.y );
+			Ui->ChampionIcon->DrawCircle(Position.x + 33 * ScreenRatio, Position.y + 63 * ScreenRatio, 37 * ScreenRatio);
+			//draw icons
+			Sum1->Draw(Position.x + 62 * ScreenRatio, Position.y + 43 * ScreenRatio);
+			Sum2->Draw(Position.x + 48 * ScreenRatio, Position.y + 77 * ScreenRatio);
+			Ui->SpellIcons[kSlotR]->DrawCircle(Position.x + 68 * ScreenRatio, Position.y + 29 * ScreenRatio, 17 * ScreenRatio);
+			pHUD1_icons->Draw(Position.x - LeftOffsetBase.x, Position.y);
+
+			//HP BAR TEXT
+			if (Menu.DrawHPBarText->Enabled())
+			{
+				switch (Menu.HPBarTextStyle->GetInteger())
+				{
+				case 1:
+					Fonts->HudFont2->Render(Position.x + (-300 + 221) * ScreenRatio, HPScaledOffset.y + 54 * ScreenRatio, "%i ", static_cast<int>(Ui->Player->GetHealth()));
+					break;
+				case 2:
+					Fonts->HudFont2->Render(Position.x  + (- 300 + 209) * ScreenRatio, HPScaledOffset.y + 54 * ScreenRatio, "%i/%i ", static_cast<int>(Ui->Player->GetHealth()), static_cast<int>(Ui->Player->GetMaxHealth()));
+					break;
+				case 3:
+					Fonts->HudFont2->Render(Position.x + (-300 + 221) * ScreenRatio, HPScaledOffset.y + 54 * ScreenRatio, "%i%%", static_cast<int>(Ui->Player->HealthPercent()));
+					break;
+				}
+			}
+			//MP BAR TEXT
+			if (Menu.DrawManaBarText->Enabled() && Ui->Player->GetMaxMana() > 200)
+			{
+				switch (Menu.ManaBarTextStyle->GetInteger())
+				{
+				case 1:
+					Fonts->HudFont2->Render(Position.x + (-300 + 221) * ScreenRatio, HPScaledOffset.y + 68 * ScreenRatio, "%i ", static_cast<int>(Ui->Player->GetMana()));
+					break;
+				case 2:
+					Fonts->HudFont2->Render(Position.x + (-300 + 209) * ScreenRatio, HPScaledOffset.y + 68 * ScreenRatio, "%i/%i ", static_cast<int>(Ui->Player->GetMana()), static_cast<int>(Ui->Player->GetMaxMana()));
+					break;
+				case 3:
+					Fonts->HudFont2->Render(Position.x + (-300 + 221) * ScreenRatio, HPScaledOffset.y + 68 * ScreenRatio, "%i%%", static_cast<int>(Ui->Player->ManaPercent()));
+					break;
+				}
+			}
+
+			float flCooldown1 = Ui->Player->GetSpellRemainingCooldown(kSummonerSlot1);
+			float flCooldown2 = Ui->Player->GetSpellRemainingCooldown(kSummonerSlot2);
+			float flCooldown3 = Ui->Player->GetSpellLevel(kSlotR) > 0 ? Ui->Player->GetSpellRemainingCooldown(kSlotR) : 0.f;
+
+			if (flCooldown1 > 0)
+			{
+				flCooldown1 += 1.f;
+				Vec2 vecSpell1CD = Position + vecSpell1Offset + Ui->SummonerSpellIconsCircle[0]->GetSize() / 2;
+				Fonts->HudFont->Render(Position.x + (Sum1->GetSize().x / 2 + 63) * ScreenRatio, Position.y + (Sum1->GetSize().y / 2 + 42) * ScreenRatio, "%i", static_cast<int>(flCooldown1));
+			}
+
+			if (flCooldown2 > 0)
+			{
+				flCooldown2 += 1.f;
+				Vec2 vecSpell2CD = Position + vecSpell2Offset + Ui->SummonerSpellIconsCircle[1]->GetSize() / 2;
+				Fonts->HudFont->Render(Position.x + (Sum2->GetSize().x / 2 + 49) * ScreenRatio , Position.y + (vecSpell2Offset.y + Sum2->GetSize().y / 2 + 36) * ScreenRatio, "%i", static_cast<int>(flCooldown2));
+			}
+
+			if (flCooldown3 > 0)
+			{
+				flCooldown3 += 1.f;
+				Vec2 vecUltiCD = Position + vecUltimateOffset;
+				Fonts->HudFont->Render(Position.x + (vecUltimateOffset.x + 52) * ScreenRatio, Position.y + (vecUltimateOffset.y + 9) * ScreenRatio, "%i", static_cast<int>(flCooldown3));
+			}
+
+			if (Ui->RespawnTime > 0)
+			{
+				Vec2 vecChampionCenter = Position + vecChampionOffset + vecChampionSize / 2;
+				Fonts->HudFont->Render(Position.x + (vecChampionOffset.x + vecChampionSize.x / 2 - 14) * ScreenRatio, Position.y + (vecChampionOffset.y + vecChampionSize.y / 2 + 19) * ScreenRatio, "%i", static_cast<int>(Ui->RespawnTime - GGame->Time()));
+			}
+
+			//Fonts->HudFont->Render(vecLevelPosition.x + 13, vecLevelPosition.y + 13, "%i", Ui->Player->GetLevel());
+		}
+	}
+	else
+	{
+		pHUD1_bar->Draw(Position.x - LeftOffsetBase.x, Position.y);
+		{
+			//draw hp bars
+			pHUD1_hp->Draw((Position.x + 102) * ScreenRatio, Position.y);
+			GRender->DrawFilledBox(Vec2((HPScaledOffset.x + 546) * ScreenRatio, HPScaledOffset.y + 50 * ScreenRatio), Vec2((-(133.f * ((100.f - Ui->Player->HealthPercent()) / 100))) * ScreenRatio, 16.f * ScreenRatio), Vec4(0, 0, 0, 225));
+			if (Ui->Player->GetMaxMana() > 200 && !Ui->Player->IsDead())
+				pHUD1_mp->Draw((Position.x + 102) * ScreenRatio, (Position.y));
+			GRender->DrawFilledBox(Vec2((HPScaledOffset.x + 546) * ScreenRatio, HPScaledOffset.y + 67 * ScreenRatio), Vec2((-(133.f * ((100.f - Ui->Player->ManaPercent()) / 100))) * ScreenRatio, 11 * ScreenRatio), Vec4(0, 0, 0, 200));
+			//draw champ icon
+			pHUD1_champ->Draw((Position.x) * ScreenRatio, Position.y);
+			Ui->ChampionIcon->DrawCircle((Position.x + 75) * ScreenRatio, Position.y + 63 * ScreenRatio, 37 * ScreenRatio);
+			//draw icons
+			Sum1->Draw((Position.x + 7) * ScreenRatio, Position.y + 43 * ScreenRatio);
+			Sum2->Draw((Position.x + 21) * ScreenRatio, Position.y + 77 * ScreenRatio);
+			Ui->SpellIcons[kSlotR]->DrawCircle((Position.x + 42) * ScreenRatio, Position.y + 29 * ScreenRatio, 17 * ScreenRatio);
+			pHUD1_icons->Draw(Position.x, Position.y);
+
+			//HP BAR TEXT
+			if (Menu.DrawHPBarText->Enabled())
+			{
+				switch (Menu.HPBarTextStyle->GetInteger())
+				{
+				case 1:
+					Fonts->HudFont2->Render((HPScaledOffset.x + 467) * ScreenRatio, HPScaledOffset.y + 54 * ScreenRatio, "%i ", static_cast<int>(Ui->Player->GetHealth()));
+					break;
+				case 2:
+					Fonts->HudFont2->Render((HPScaledOffset.x + 457) * ScreenRatio, HPScaledOffset.y + 54 * ScreenRatio, "%i/%i ", static_cast<int>(Ui->Player->GetHealth()), static_cast<int>(Ui->Player->GetMaxHealth()));
+					break;
+				case 3:
+					Fonts->HudFont2->Render((HPScaledOffset.x + 467) * ScreenRatio, HPScaledOffset.y + 54 * ScreenRatio, "%i%%", static_cast<int>(Ui->Player->HealthPercent()));
+					break;
+				}
+			}
+			//MP BAR TEXT
+			if (Menu.DrawManaBarText->Enabled() && Ui->Player->GetMaxMana() > 200)
+			{
+				switch (Menu.ManaBarTextStyle->GetInteger())
+				{
+				case 1:
+					Fonts->HudFont2->Render((HPScaledOffset.x + 467) * ScreenRatio, HPScaledOffset.y + 68 * ScreenRatio, "%i ", static_cast<int>(Ui->Player->GetMana()));
+					break;
+				case 2:
+					Fonts->HudFont2->Render((HPScaledOffset.x + 457) * ScreenRatio, HPScaledOffset.y + 68 * ScreenRatio, "%i/%i ", static_cast<int>(Ui->Player->GetMana()), static_cast<int>(Ui->Player->GetMaxMana()));
+					break;
+				case 3:
+					Fonts->HudFont2->Render((HPScaledOffset.x + 467) * ScreenRatio, HPScaledOffset.y + 68 * ScreenRatio, "%i%%", static_cast<int>(Ui->Player->ManaPercent()));
+					break;
+				}
+			}
+
+			float flCooldown1 = Ui->Player->GetSpellRemainingCooldown(kSummonerSlot1);
+			float flCooldown2 = Ui->Player->GetSpellRemainingCooldown(kSummonerSlot2);
+			float flCooldown3 = Ui->Player->GetSpellLevel(kSlotR) > 0 ? Ui->Player->GetSpellRemainingCooldown(kSlotR) : 0.f;
+
+			if (flCooldown1 > 0)
+			{
+				flCooldown1 += 1.f;
+				Vec2 vecSpell1CD = Position + vecSpell1Offset + Sum1->GetSize() / 2;
+				Fonts->HudFont->Render(vecSpell1CD.x * ScreenRatio, Position.y + (vecSpell1Offset.y + Sum1->GetSize().y / 2 + 35) * ScreenRatio, "%i", static_cast<int>(flCooldown1));
+			}
+
+			if (flCooldown2 > 0)
+			{
+				flCooldown2 += 1.f;
+				Vec2 vecSpell2CD = Position + vecSpell2Offset + Sum2->GetSize() / 2;
+				Fonts->HudFont->Render((vecSpell2CD.x + 14) * ScreenRatio, Position.y + (vecSpell2Offset.y + Sum2->GetSize().y / 2 + 36) * ScreenRatio, "%i", static_cast<int>(flCooldown2));
+			}
+
+			if (flCooldown3 > 0)
+			{
+				flCooldown3 += 1.f;
+				Vec2 vecUltiCD = Position + vecUltimateOffset;
+				Fonts->HudFont->Render((vecUltiCD.x - 64) * ScreenRatio, Position.y + (vecUltimateOffset.y + 9) * ScreenRatio, "%i", static_cast<int>(flCooldown3));
+			}
+
+			if (Ui->RespawnTime > 0)
+			{
+				Vec2 vecChampionCenter = Position + vecChampionOffset + vecChampionSize / 2;
+				Fonts->HudFont->Render(vecChampionCenter.x * ScreenRatio, Position.y + (vecChampionOffset.y + vecChampionSize.y / 2 + 19) * ScreenRatio, "%i", static_cast<int>(Ui->RespawnTime - GGame->Time()));
+			}
+
+			//Fonts->HudFont->Render(vecLevelPosition.x + 13, vecLevelPosition.y + 13, "%i", Ui->Player->GetLevel());
+		}
+	}
+}
+
+void Gui::RenderPlayer2DElementSmall(HeroUI* Ui, Vec2 const& Position)
+{
+	Vec2 vecHealthOffset	= Position + Vec2(13, 62);
+	Vec2 vecManaOffset		= Position + Vec2(13, 71);
+	Vec2 vecChampionOffset	= Position + Vec2(12, 10);
+	Vec2 vecSpell1Offset	= Position + Vec2(63, 8);
+	Vec2 vecSpell2Offset	= Position + Vec2(63, 34);
+	Vec2 vecUltimateOffset	= Position + Vec2(2, 2);
+
+	Ui->ChampionIcon->SetScaleBySize(Vec2(43, 43));
+	Ui->SummonerSpellIcons[0]->SetScaleBySize(Vec2(22, 22));
+	Ui->SummonerSpellIcons[1]->SetScaleBySize(Vec2(22, 22));
+
+	Ui->SummonerSpellIcons[0]->Draw(vecSpell1Offset.x, vecSpell1Offset.y);
+	Ui->SummonerSpellIcons[1]->Draw(vecSpell2Offset.x, vecSpell2Offset.y);
+	Ui->ChampionIcon->Draw(vecChampionOffset.x, vecChampionOffset.y);
+
+	Textures->SmallOutline->Draw(Position.x, Position.y);
+
+	if (Ui->Player->GetSpellLevel(kSlotR) > 0 && Ui->Player->GetSpellRemainingCooldown(kSlotR) == 0.f)
+		Textures->UltimateReady->Draw(vecUltimateOffset.x, vecUltimateOffset.y);
+
+	GRender->DrawFilledBox(vecHealthOffset, Vec2(74.5f * (Ui->Player->HealthPercent() / 100.f), 7.f), Vec4(0, 255, 0, 255));
+	GRender->DrawFilledBox(vecManaOffset, Vec2(74.5f * (Ui->Player->ManaPercent() / 100.f), 7.f), Vec4(0, 0, 255, 255));
+
+	Ui->ChampionIcon->Scale(1.f);
+	Ui->SummonerSpellIcons[0]->Scale(1.f);
+	Ui->SummonerSpellIcons[1]->Scale(1.f);
+}
+
+void Gui::RenderPlayer3DElement(HeroUI* Ui)
+{
+	Vec2 vecHealthBar;
+	if (!Ui->Player->GetHPBarPosition(vecHealthBar) || !Ui->Player->IsVisible() || Ui->Player->IsDead())
+		return;
+
+	IUnit* pLocal = GEntityList->Player();
+	bool bIsLocal = Ui->Player == GEntityList->Player();
+	bool bIsEnemy = pLocal->IsEnemy(Ui->Player);
+	Vec2 vecOffset = Vec2(bIsLocal ? 10.f : -8.f, bIsEnemy ? 17.f : (bIsLocal ? 6.f : 14.f));
+
+	vecHealthBar += vecOffset;
+
+	if (bIsLocal)
+	{
+		Textures->CDHudSelf->Draw(vecHealthBar.x, vecHealthBar.y);
+		Ui->SummonerSpellIconsSmall[0]->Draw(vecHealthBar.x + 130 , vecHealthBar.y + 2);
+		Ui->SummonerSpellIconsSmall[1]->Draw(vecHealthBar.x + 152, vecHealthBar.y + 2);
+	}
+	else
+	{
+		vecHealthBar.x -= 34;
+		vecHealthBar.y -= 9;
+		Textures->CDHud->Draw(vecHealthBar.x, vecHealthBar.y);
+		Ui->SummonerSpellIconsSmall[0]->Draw(vecHealthBar.x + 3, vecHealthBar.y + 2);
+		Ui->SummonerSpellIconsSmall[1]->Draw(vecHealthBar.x + 25, vecHealthBar.y + 2);
+	}
+
+	Vec2 vecSpell = Vec2(20, 20);
+	Vec2 vecSize = Vec2(22, 2);
+	float flSkip = 27.f;
+
+	if (bIsLocal)
+		vecSpell = Vec2(24, 19);
+	
+	vecHealthBar.y ++;
+
+	for (auto i = 0; i < 4; i++)
+	{
+		Vec4 vecColor = Vec4(8, 131, 32, 200);
+		float flCooldown = Ui->Player->GetSpellRemainingCooldown(i);
+		float flWidth = vecSize.x;
+
+		if (flCooldown > 0.f && Ui->Player->GetSpellLevel(i) > 0)
+		{
+			flWidth *= (Ui->Player->GetSpellTotalCooldown(i) - (flCooldown + 1)) / Ui->Player->GetSpellTotalCooldown(i);
+			vecColor = Vec4(215, 139, 32, 200);
+		}
+
+		if (bIsLocal)
+		{
+			if (Ui->Player->GetSpellLevel(i) != 0)
+				GRender->DrawFilledBox(vecHealthBar + vecSpell, Vec2(flWidth, vecSize.y), vecColor);
+
+			// Needs to account for ammo CD as well
+			if (flCooldown > 0.f && Ui->Player->GetSpellLevel(i) > 0)
+				Fonts->CooldownFont->Render(vecHealthBar.x + vecSpell.x + (vecSize.x + 3) / 2, vecHealthBar.y + vecSpell.y + vecSize.y + 10, "%i", static_cast<int>(Ui->Player->GetSpellRemainingCooldown(i) + 1));
+		}
+		else
+		{
+			Vec2 BoxOffset = Vec2(32, -1);
+			if (Ui->Player->GetSpellLevel(i) != 0)
+				GRender->DrawFilledBox(vecHealthBar + vecSpell + BoxOffset, Vec2(flWidth, vecSize.y), vecColor);
+
+			// Needs to account for ammo CD as well
+			if (flCooldown > 0.f && Ui->Player->GetSpellLevel(i) > 0)
+				Fonts->CooldownFont->Render(vecHealthBar.x + 32 + vecSpell.x + (vecSize.x + 3) / 2, vecHealthBar.y + vecSpell.y + vecSize.y + 9, "%i", static_cast<int>(Ui->Player->GetSpellRemainingCooldown(i) + 1));
+		}
+
+		vecSpell.x += flSkip;
+	}
+}
+
+void Gui::RenderTeammates()
+{
+	if (Teammates.size() == 0)
+		return;
+
+	bool bLeftSide		= Menu.TeamOnLeft->Enabled() ? true : false;
+	Vec2 vecSize		= bLeftSide ? Textures->OutlineLeft->GetSize() : Textures->OutlineRight->GetSize();
+
+	if (Menu.MinimalisticHud->Enabled())
+		vecSize = Textures->SmallOutline->GetSize();
+	else
+		vecSize *= (Resolution.y / 1440);
+
+	float flPadding		= 5 * (Resolution.y / 1440);
+	float flLeft		= bLeftSide ? 0 : Resolution.x - vecSize.x;
+	float flTop			= Menu.MinimalisticHud->Enabled() ? 125.f : 140.f;
+	Vec2 vecPosition	= Vec2(flLeft, flTop);
+
+	for (auto pGui : Teammates)
+	{
+		if (!pGui->Valid)
+			continue;
+
+		if (!Menu.ShowSelf->Enabled() && pGui->Player == GEntityList->Player())
+			continue;
+
+		if (Menu.Show2DHud->Enabled())
+		{
+			if (Menu.MinimalisticHud->Enabled())
+				RenderPlayer2DElementSmall(pGui, vecPosition);
+			else
+				RenderPlayer2DElementBig(pGui, vecPosition, bLeftSide);
+		}
+
+		if (Menu.Show3DHud->Enabled())
+			RenderPlayer3DElement(pGui);
+
+		vecPosition.y += vecSize.y + flPadding;
+	}
+}
+
+void Gui::RenderEnemies()
+{
+	if (Enemies.size() == 0)
+		return;
+
+	bool bLeftSide		= Menu.TeamOnLeft->Enabled() ? false : true;
+	Vec2 vecSize		= bLeftSide ? Textures->OutlineLeft->GetSize() : Textures->OutlineRight->GetSize();
+
+	if (Menu.MinimalisticHud->Enabled())
+		vecSize = Textures->SmallOutline->GetSize();
+	else
+		vecSize *= (Resolution.y / 1440);
+
+	float flPadding		= 5 * (Resolution.y / 1440);
+	float flLeft		= bLeftSide ? 0 : Resolution.x - vecSize.x;
+	float flTop			= Menu.MinimalisticHud->Enabled() ? 125.f : 140.f;
+	Vec2 vecPosition	= Vec2(flLeft, flTop);
+
+	for (auto pGui : Enemies)
+	{
+		if (!pGui->Valid)
+			continue;
+
+		if (Menu.Show2DHud->Enabled())
+		{
+			if (Menu.MinimalisticHud->Enabled())
+				RenderPlayer2DElementSmall(pGui, vecPosition);
+			else
+				RenderPlayer2DElementBig(pGui, vecPosition, bLeftSide);
+		}
+
+		if (Menu.Show3DHud->Enabled())
+			RenderPlayer3DElement(pGui);
+		
+		vecPosition.y += vecSize.y + flPadding;
+	}
+}
+
+void Gui::UpdateChampions()
+{
+	for (auto pGui : UiPool)
+	{
+		if (!pGui->Valid)
+			continue;
+
+
+		auto pPlayer = pGui->Player;
+		
+		if (pPlayer->IsEnemy(GEntityList->Player()) && Menu.NotifyOnUltimate->Enabled() && pPlayer->GetSpellLevel(kSlotR) != 0 && pPlayer->GetSpellTotalCooldown(kSlotR) > 30.f &&
+			pPlayer->GetSpellRemainingCooldown(kSlotR) > 0 && pPlayer->GetSpellRemainingCooldown(kSlotR) < 4)
+		{
+			Vec2 UN_bgWidth = Textures->UN_bg->GetSize();
+			Vec2 UN_pos = Vec2(0, 75);
+			UN_pos.x = Resolution.x / 2 - UN_bgWidth.x / 2;
+			auto rTexture = pGui->SpellIcons[3];
+			auto rChamp = pGui->ChampionIcon;
+			float flCooldown = pPlayer->GetSpellRemainingCooldown(kSlotR);
+			float Opacity = 255 * (flCooldown / 4);
+			
+
+			rTexture->SetColor(Vec4(255, 255, 255, Opacity));
+			rChamp->SetColor(Vec4(255, 255, 255, Opacity));
+			Textures->UN_bg->SetColor(Vec4(255, 255, 255, Opacity));
+			Textures->UN_r->SetColor(Vec4(255, 255, 255, Opacity));
+
+			if (Resolution.y < 1080.f)
+			{
+				rTexture->Scale(Resolution.y / 1080.f);
+				rChamp->Scale(Resolution.y / 1080.f);
+				Textures->UN_bg->Scale(Resolution.y / 1080.f);
+				Textures->UN_r->Scale(Resolution.y / 1080.f);
+			}
+
+			Textures->UN_bg->Draw(UN_pos.x, UN_pos.y - flCooldown * 15);
+			rTexture->Draw(UN_pos.x + 4, UN_pos.y + 3 - flCooldown * 15);
+			rChamp->Draw(UN_pos.x + 156, UN_pos.y - flCooldown * 15);
+			Textures->UN_r->Draw(UN_pos.x, UN_pos.y - flCooldown * 15);
+		}
+		
+
+		for (auto i = 0; i < 4; i++)
+		{
+			if (pGui->SpellIcons[i] == nullptr)
+				continue;
+
+			/*if (Menu.NotifyOnUltimate->Enabled() && i == kSlotR)
+			{
+				if (pPlayer->GetSpellLevel(i) == 0)// || pPlayer->GetSpellRemainingCooldown(i) == 0.f || pPlayer->GetSpellTotalCooldown(i) < 30.f)
+					pGui->UltimateNotification = false;
+
+				if (!pGui->UltimateNotification && pPlayer->GetSpellLevel(i) > 0)
+				{
+					float flCooldown = pPlayer->GetSpellRemainingCooldown(i);
+
+					if (flCooldown < 5.f && flCooldown > 0.f)
+					{
+						pGui->UltimateNotification = true;
+
+						if (Menu.NotifyOnUltimate->Enabled())
+						{
+							
+
+							//GRender->Notification(Vec4(255, 255, 255, 255), 5, "%s ultimate returning in 5 seconds", pPlayer->ChampionName());
+						}
+							
+
+					}
+				}
+			}*/
+
+			if (pPlayer->GetSpellLevel(i) == 0 || pPlayer->GetSpellRemainingCooldown(i) > 0.f)
+				pGui->SpellIcons[i]->SetColor(Vec4(100, 100, 100, 255));
+			else
+				pGui->SpellIcons[i]->SetColor(Vec4(255, 255, 255, 255));
+		}
+
+		if (pPlayer->IsDead())
+		{
+			if (pGui->RespawnTime == 0.f)
+				pGui->RespawnTime = GetRespawnTime(pPlayer) + 1.f;
+
+			if (!pGui->RespawnNotification && pGui->RespawnTime - GGame->Time() <= 5.f)
+			{
+				pGui->RespawnNotification = true;
+
+				//if (Menu.NotifyOnRespawn->Enabled())
+					//GRender->Notification(Vec4(255, 255, 255, 255), 5, "%s is respawning in 5 seconds", pPlayer->ChampionName());
+			}
+		}
+		else
+		{
+			pGui->RespawnTime			= 0.f;
+			pGui->RespawnNotification	= false;
+		}
+
+		pGui->ChampionIcon->SetColor(pPlayer->IsDead() ? Vec4(100, 100, 100, 255) : Vec4(255, 255, 255, 255));
+		pGui->SummonerSpellIcons[0]->SetColor(pPlayer->GetSpellRemainingCooldown(kSummonerSlot1) > 0.f ? Vec4(100, 100, 100, 255) : Vec4(255, 255, 255, 255));
+		pGui->SummonerSpellIcons[1]->SetColor(pPlayer->GetSpellRemainingCooldown(kSummonerSlot2) > 0.f ? Vec4(100, 100, 100, 255) : Vec4(255, 255, 255, 255));
+		pGui->SummonerSpellIconsCircle[0]->SetColor(pPlayer->GetSpellRemainingCooldown(kSummonerSlot1) > 0.f ? Vec4(100, 100, 100, 255) : Vec4(255, 255, 255, 255));
+		pGui->SummonerSpellIconsCircle[1]->SetColor(pPlayer->GetSpellRemainingCooldown(kSummonerSlot2) > 0.f ? Vec4(100, 100, 100, 255) : Vec4(255, 255, 255, 255));
+		pGui->SummonerSpellIconsSmall[0]->SetColor(pPlayer->GetSpellRemainingCooldown(kSummonerSlot1) > 0.f ? Vec4(100, 100, 100, 255) : Vec4(255, 255, 255, 255));
+		pGui->SummonerSpellIconsSmall[1]->SetColor(pPlayer->GetSpellRemainingCooldown(kSummonerSlot2) > 0.f ? Vec4(100, 100, 100, 255) : Vec4(255, 255, 255, 255));
+	}
+}
+
+void Gui::LoadMenu()
+{
+	Menu.Enabled = Menu.Owner->CheckBox("Enabled:", true);
+	Menu.ShowSelf = Menu.Owner->CheckBox("My GUI Elements:", true);
+	Menu.ShowTeam = Menu.Owner->CheckBox("Team GUI Elements:", true);
+	Menu.ShowEnemies = Menu.Owner->CheckBox("Enemy GUI Elements:", true);
+
+	Menu.SideGUI = Menu.Owner->AddMenu("Side GUI");
+	Menu.Show3DHud = Menu.Owner->CheckBox("Draw 3D UI", true);
+	Menu.Show2DHud = Menu.Owner->CheckBox("Draw 2D UI:", true);
+	Menu.MinimalisticHud = Menu.Owner->CheckBox("Small Style UI", false);
+	Menu.TeamOnLeft = Menu.Owner->CheckBox("Flip Sides:", true);
+	
+	Menu.DrawHPBarText = Menu.Owner->CheckBox("Draw Health Bar Text:", true);
+	Menu.HPBarTextStyle = Menu.Owner->AddInteger("Health Bar Text Style:", 1, 3, 2);
+	Menu.DrawManaBarText = Menu.Owner->CheckBox("Draw Mana Bar Text:", true);
+	Menu.ManaBarTextStyle = Menu.Owner->AddInteger("Mana Bar Text Style:", 1, 3, 1);;
+	
+	
+	
+	//Menu.NotifyOnRespawn = Menu.Owner->CheckBox("Notify on Respawn", false);
+	Menu.NotifyOnUltimate = Menu.Owner->CheckBox("Notify on Ultimates:", true);
+	
+	/*Menu.XOffset = Menu.Owner->AddFloat("X offset:", -200, 200, 0);
+	Menu.YOffset = Menu.Owner->AddFloat("Y offset:", -200, 200, 0);
+	Menu.RadiusOffset = Menu.Owner->AddFloat("Radius:", -200, 200, 40);
+	Menu.Resize = Menu.Owner->AddFloat("Resize bonus:", 0, 200, 75);*/
+}
+
+void Gui::LoadFonts()
+{
+	Resolution = GRender->ScreenSize();
+	float ScreenRatio = Resolution.y / 1440.f;
+
+	Fonts = new UiFonts;
+
+	Fonts->DeathFont		= GRender->CreateFont("Tahoma", 18.f, kFontWeightBold);
+	Fonts->CooldownFont		= GRender->CreateFont("Tahoma", 12.f, kFontWeightBold);
+	Fonts->HudFont			= GRender->CreateFont("Tahoma", 11.f * ScreenRatio + 1.f, kFontWeightBold);
+	Fonts->HudFont2			= GRender->CreateFont("Tahoma", 11.f * ScreenRatio + 1.f, kFontWeightBold);
+
+	Fonts->HudFont2->SetOutline(false);
+
+	Fonts->CooldownFont->SetLocationFlags(kFontLocationCenter);
+	Fonts->CooldownFont->SetOutline(true);
+
+	Fonts->HudFont->SetLocationFlags(kFontLocationCenter);
+	Fonts->HudFont->SetOutline(true);
+}
+
+void Gui::LoadTextureIcons()
+{
+	Textures = new UiTextures;
+
+	// 2D Hud
+	Textures->OutlineLeft	= GRender->CreateTextureFromFile("UtilityPRO/LeftHUD.png");
+	Textures->OutlineRight	= GRender->CreateTextureFromFile("UtilityPRO/RightHUD.png");
+	Textures->EmptyLeft		= GRender->CreateTextureFromFile("UtilityPRO/LeftEmpty.png");
+	Textures->EmptyRight	= GRender->CreateTextureFromFile("UtilityPRO/RightEmpty.png");
+	Textures->Health		= GRender->CreateTextureFromFile("UtilityPRO/HP.png");
+	Textures->Mana			= GRender->CreateTextureFromFile("UtilityPRO/MP.png");
+	Textures->HUD1_bar		= GRender->CreateTextureFromFile("UtilityPRO/HUD1_bar.png");
+	Textures->HUD1_champ		= GRender->CreateTextureFromFile("UtilityPRO/HUD1_champ.png");
+	Textures->HUD1_icons		= GRender->CreateTextureFromFile("UtilityPRO/HUD1_icons.png");
+	Textures->HUD1_barleft = GRender->CreateTextureFromFile("UtilityPRO/HUD1_barleft.png");
+	Textures->HUD1_champleft = GRender->CreateTextureFromFile("UtilityPRO/HUD1_champleft.png");
+	Textures->HUD1_iconsleft = GRender->CreateTextureFromFile("UtilityPRO/HUD1_iconsleft.png");
+	Textures->HUD1_hp = GRender->CreateTextureFromFile("UtilityPRO/HUD1_hp.png");
+	Textures->HUD1_mp = GRender->CreateTextureFromFile("UtilityPRO/HUD1_mp.png");
+	Textures->OKTW_circle = GRender->CreateTextureFromFile("UtilityPRO/OKTW_circle.png");
+	Textures->OKTW_bar = GRender->CreateTextureFromFile("UtilityPRO/OKTW_bar.png");
+
+	//Ult Notification
+	Textures->UN_bg = GRender->CreateTextureFromFile("UtilityPRO/UN_bg.png");
+	Textures->UN_r = GRender->CreateTextureFromFile("UtilityPRO/UN_r.png");
+
+	// 2D Hud Small
+	Textures->SmallOutline	= GRender->CreateTextureFromFile("UtilityPRO/SB_Hud.png");
+	Textures->UltimateReady = GRender->CreateTextureFromFile("UtilityPRO/SB_Ultimate.png");
+	
+	// 3D Hud
+	Textures->CDHud			= GRender->CreateTextureFromFile("UtilityPRO/CD_Hud.png");
+	Textures->CDHudSelf		= GRender->CreateTextureFromFile("UtilityPRO/CD_HudSelf.png");
+
+	for (auto pPlayer : GEntityList->GetAllHeros(true, true))
+	{
+		if (pPlayer->GetMaxHealth() < 9000)
+		{
+			HeroUI* lpGui = new HeroUI();
+
+			lpGui->Player = pPlayer;
+			lpGui->RespawnTime = 0.f;
+			lpGui->Valid = true;
+
+			strcpy_s(lpGui->ChampionName, pPlayer->ChampionName());
+
+			LoadHeroIcon(lpGui);
+			LoadSpellIcons(lpGui);
+
+			if (pPlayer->GetTeam() == GEntityList->Player()->GetTeam())
+				Teammates.push_back(lpGui);
+			else
+				Enemies.push_back(lpGui);
+
+			UiPool.push_back(lpGui);
+		}
+	}
+}
+
+void Gui::LoadHeroIcon(HeroUI* Ui)
+{
+	//Ui->ChampionIcon = CreateTextureEx(Ui->Player->ChampionName(), "ddragon.leagueoflegends.com/cdn/" + VersionNo + "/img/champion/" + Ui->Player->ChampionName() + ".png");
+	Ui->ChampionIcon = CreateTextureEx(Ui->Player->ChampionName(), "ddragon.leagueoflegends.com/cdn/" + VersionNo + "/img/champion/" + Ui->Player->ChampionName() + ".png");
+
+	if (Ui->ChampionIcon)
+		Ui->ChampionIcon->Resize(69);
+}
+
+void Gui::LoadSpellIcons(HeroUI* Ui)
+{
+	// Champion Spells
+	for (auto i = 0; i < 4; i++)
+	{
+		const char* pszSpellName = Ui->Player->GetSpellName(i);
+
+		if (pszSpellName == nullptr)
+		{
+			Ui->SpellIcons[i] = nullptr;
+			continue;
+		}
+		Ui->SpellIcons[i] = nullptr;
+		if (i == kSlotR)
+			Ui->SpellIcons[i] = CreateTextureEx(pszSpellName, "ddragon.leagueoflegends.com/cdn/" + VersionNo + "/img/spell/" + pszSpellName + ".png");
+			
+
+		//if (Ui->SpellIcons[i])
+			//Ui->SpellIcons[i]->Resize(38);
+	}
+
+
+	// Summoner Spells
+	for (auto i = 0; i < 2; i++)
+	{
+		const char* pszSpellName = Ui->Player->GetSpellName(i + 4);
+		std::string pszSpellNameSmall;
+		std::string pszSpellNameSS;
+		pszSpellNameSmall += pszSpellName;
+		pszSpellNameSmall += "Small";
+		pszSpellNameSS += pszSpellName;
+		pszSpellNameSS += "SS";
+
+		Ui->SummonerSpellIcons[i]		= CreateTextureEx(pszSpellName, "ddragon.leagueoflegends.com/cdn/" + VersionNo + "/img/spell/" + pszSpellName + ".png");
+		Ui->SummonerSpellIconsSmall[i]	= CreateTextureEx(pszSpellNameSS, "ddragon.leagueoflegends.com/cdn/" + VersionNo + "/img/spell/" + pszSpellName + ".png");
+		Ui->SummonerSpellIconsCircle[i] = CreateTextureEx(pszSpellNameSmall, "ddragon.leagueoflegends.com/cdn/" + VersionNo + "/img/spell/" + pszSpellName + ".png");
+
+	}
+}
+
+bool Gui::DoesTextureExist(std::string const& Filename, std::string& FullPath)
+{
+	std::string szFinalPath;
+	GPluginSDK->GetBaseDirectory(szFinalPath);
+
+	szFinalPath		+= "\\Textures\\UtilityPRO\\" + Filename + ".png";
+	FullPath		= szFinalPath;
+
+	HANDLE hFile = CreateFileA(szFinalPath.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+	
+	if (hFile != INVALID_HANDLE_VALUE)
+	{
+		CloseHandle(hFile);
+		return true;
+	}
+
+	return false;
+}
+
+ITexture* Gui::CreateTextureEx(std::string const& Filename, std::string const& DownloadUrl)
+{
+
+	std::string szFullPath;
+	if (DoesTextureExist(Filename, szFullPath))
+		return GRender->CreateTextureFromFile(("UtilityPRO/" + Filename + ".png").c_str());
+	
+	std::string szImage;
+	if (GPluginSDK->ReadFileFromURL(DownloadUrl, szImage))
+		return GRender->CreateTextureFromMemory((uint8_t*)szImage.data(), szImage.length(), Filename.c_str());
+	
+	return nullptr;
+}
+
+void Gui::GetLatestVersionNo()
+{
+	VersionNo = "7.3.3";
+
+	std::string szJson;
+	if (GPluginSDK->ReadFileFromURL("ddragon.leagueoflegends.com/api/versions.json", szJson))
+	{
+		size_t n = szJson.find("\"");
+
+		if (n != szJson.npos)
+			n++;
+
+		szJson = szJson.substr(n, szJson.length() - n);
+		n = szJson.find("\"");
+
+		if (n != szJson.npos)
+			VersionNo = szJson.substr(0, n);
+	}
+}
+
+// http://leagueoflegends.wikia.com/wiki/Death
+float Gui::GetRespawnTime(IUnit* Player)
+{
+	// Level × 2.5 + 7.5 = your Base Respawn Wait time (BRW)
+	float flWait = static_cast<float>(Player->GetLevel()) * 2.5f + 7.5f;
+	float flMinutes = GGame->Time() / 60.f;
+
+	// After minute 15, the wait time is increase by multiplying BRW as follows:
+	// Total respawn time = BRW + ((BRW / 100) × (current minutes - 15) × 2 × 0.425)
+	if (flMinutes >= 15.f && flMinutes < 30.f)
+		flWait += ((flWait / 100.f) * (flMinutes - 15) * 2 * 0.425f);
+
+	// After minute 30, the wait time is as follows:
+	// Total respawn time = BRW + ((BRW / 100) × (current minutes - 15) × 2 × 0.425) + ((BRW / 100) × (current minutes - 30) × 2 × 0.30)
+	if (flMinutes >= 30.f && flMinutes < 45.f)
+		flWait += ((flWait / 100.f) * (flWait - 15) * 2 * 0.425f) + ((flWait / 100.f) * (flMinutes - 30.f) * 2 * 0.30f);
+
+	// After minute 45, the wait time is as follows:
+	// Total respawn time = BRW + ((BRW / 100) × (current minutes - 15) × 2 × 0.425) + ((BRW / 100) × (current minutes - 30) × 2 × 0.30) + ((BRW / 100) × (current minutes - 45) × 2 × 1.45)
+	if (flMinutes >= 45.f)
+		flWait += ((flWait / 100.f) * (flMinutes - 15.f) * 2 * 0.425f) + ((flWait / 100.f) * (flMinutes - 30) * 2 * 0.30f) + ((flWait / 100.f) * (flMinutes - 45.f) * 2 * 1.45f);
+
+	// After minute 53.5 minutes, the respawn time is maxed out at 150% BRW.
+	if (flMinutes >= 53.5)
+		flWait *= 1.5;
+
+	return flWait + GGame->Time();
+}
