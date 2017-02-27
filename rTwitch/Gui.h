@@ -21,6 +21,7 @@ struct UiFonts
 {
 	IFont* DeathFont;
 	IFont* CooldownFont;
+	IFont* SummonerCooldownFont3D;
 	IFont* HudFont;
 	IFont* HudFont2;
 };
@@ -58,14 +59,17 @@ struct UiTextures
 struct UiMenu
 {
 	IMenu* Owner;
-	IMenu* PlayersGUI;
-	IMenu* SideGUI;
+	IMenu* GUI2D;
+	IMenu* GUI3D;
 	IMenuOption* Enabled;
 	IMenuOption* Show2DHud;
 	IMenuOption* Show3DHud;
 	IMenuOption* ShowSelf;
 	IMenuOption* ShowTeam;
 	IMenuOption* ShowEnemies;
+	IMenuOption* ShowSelf3D;
+	IMenuOption* ShowTeam3D;
+	IMenuOption* ShowEnemies3D;
 	IMenuOption* TeamOnLeft;
 	IMenuOption* NotifyOnRespawn;
 	IMenuOption* NotifyOnUltimate;

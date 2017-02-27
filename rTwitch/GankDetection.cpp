@@ -17,7 +17,7 @@ GankDetection::GankDetection(IMenu* Parent)
 
 	Menu.Parent							= Parent->AddMenu("Awareness");
 	Menu.ShowPredictedMovementCircle	= Menu.Parent->CheckBox("FoW Movement Prediction:", true);
-	Menu.DrawJunglerTracker = Menu.Parent->CheckBox("Draw Enemy Jungle Status:", true);
+	Menu.DrawJunglerTracker = Menu.Parent->CheckBox("Track Enemy Jungler:", true);
 	//Menu.DrawEnemyRadar					= Menu.Parent->CheckBox("Show Radar", false);
 	Menu.ShowClicks						= Menu.Parent->CheckBox("Draw Enemy Clicks:", false);
 	Menu.RenderGankDetectionCircle		= Menu.Parent->CheckBox("Draw Gank Detection Radius:", false);
@@ -164,9 +164,9 @@ void GankDetection::OnRender()
 		{
 			if (unit.IsJungle && Menu.DrawJunglerTracker->Enabled() && GGame->Projection(vecPosition, &vecScreen))
 			{
-				GRender->DrawFilledBox(Vec2(vecScreen.x, vecScreen.y + 100), Vec2(120.f, 15.f), Vec4(0, 117, 0, 255));
-				GRender->DrawOutinedBox(Vec2(vecScreen.x, vecScreen.y + 100), Vec2(120.f, 15.f), 1, Vec4(0, 0, 0, 255));
-				Font1->Render(vecScreen.x + 60, vecScreen.y + 102, "Jungler Dead");
+				GRender->DrawFilledBox(Vec2(vecScreen.x, vecScreen.y + 125), Vec2(120.f, 15.f), Vec4(0, 117, 0, 255));
+				GRender->DrawOutinedBox(Vec2(vecScreen.x, vecScreen.y + 125), Vec2(120.f, 15.f), 1, Vec4(0, 0, 0, 255));
+				Font1->Render(vecScreen.x + 60, vecScreen.y + 127, "Jungler Dead");
 			}
 			continue;
 		}
@@ -211,15 +211,15 @@ void GankDetection::OnRender()
 				float flDistance = (GEntityList->Player()->GetPosition() - unit.Position).Length2D();
 				if (flDistance <= Menu.GankPingDistance->GetFloat())
 				{
-					GRender->DrawFilledBox(Vec2(vecScreen.x, vecScreen.y + 100), Vec2(120.f, 15.f), Vec4(200, 0, 0, 255));
-					GRender->DrawOutinedBox(Vec2(vecScreen.x, vecScreen.y + 100), Vec2(120.f, 15.f), 1, Vec4(0, 0, 0, 255));
-					Font1->Render(vecScreen.x + 60, vecScreen.y + 102, "Jungler Near!");
+					GRender->DrawFilledBox(Vec2(vecScreen.x, vecScreen.y + 125), Vec2(120.f, 15.f), Vec4(200, 0, 0, 255));
+					GRender->DrawOutinedBox(Vec2(vecScreen.x, vecScreen.y + 125), Vec2(120.f, 15.f), 1, Vec4(0, 0, 0, 255));
+					Font1->Render(vecScreen.x + 60, vecScreen.y + 127, "Jungler Near!");
 				}
 				else
 				{
-					GRender->DrawFilledBox(Vec2(vecScreen.x, vecScreen.y + 100), Vec2(120.f, 15.f), Vec4(0, 117, 0, 255));
-					GRender->DrawOutinedBox(Vec2(vecScreen.x, vecScreen.y + 100), Vec2(120.f, 15.f), 1, Vec4(0, 0, 0, 255));
-					Font1->Render(vecScreen.x + 60, vecScreen.y + 102, "Jungler Visible");
+					GRender->DrawFilledBox(Vec2(vecScreen.x, vecScreen.y + 125), Vec2(120.f, 15.f), Vec4(0, 117, 0, 255));
+					GRender->DrawOutinedBox(Vec2(vecScreen.x, vecScreen.y + 125), Vec2(120.f, 15.f), 1, Vec4(0, 0, 0, 255));
+					Font1->Render(vecScreen.x + 60, vecScreen.y + 127, "Jungler Visible");
 				}
 				// 
 			}
@@ -245,9 +245,9 @@ void GankDetection::OnRender()
 
 			if (unit.IsJungle && Menu.DrawJunglerTracker->Enabled() && GGame->Projection(vecPosition, &vecScreen))
 			{
-				GRender->DrawFilledBox(Vec2(vecScreen.x, vecScreen.y + 100), Vec2(120.f, 15.f), Vec4(255, 168, 0, 255));
-				GRender->DrawOutinedBox(Vec2(vecScreen.x, vecScreen.y + 100), Vec2(120.f, 15.f), 1, Vec4(0, 0, 0, 255));
-				Font1->Render(vecScreen.x + 60, vecScreen.y + 102, "Jungler MIA: %i", static_cast<int>(GGame->Time() - unit.LastVisibleTime));
+				GRender->DrawFilledBox(Vec2(vecScreen.x, vecScreen.y + 125), Vec2(120.f, 15.f), Vec4(255, 168, 0, 255));
+				GRender->DrawOutinedBox(Vec2(vecScreen.x, vecScreen.y + 125), Vec2(120.f, 15.f), 1, Vec4(0, 0, 0, 255));
+				Font1->Render(vecScreen.x + 60, vecScreen.y + 127, "Jungler MIA: %i", static_cast<int>(GGame->Time() - unit.LastVisibleTime));
 			}
 			
 			// Draw FoW Circle

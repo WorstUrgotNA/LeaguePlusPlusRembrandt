@@ -184,14 +184,14 @@ void LoadSpells()
 	else if (strcmp(PlayerSum1, "SummonerBarrier") == 0) { BARRIER = GPluginSDK->CreateSpell(kSummonerSlot1, 0); }
 	else if (strcmp(PlayerSum1, "SummonerExhaust") == 0) { EXHAUST = GPluginSDK->CreateSpell(kSummonerSlot1, 650); }
 	else if (strcmp(PlayerSum1, "SummonerBoost") == 0) { CLEANSE = GPluginSDK->CreateSpell(kSummonerSlot1, 0); }
-	else if (strcmp(PlayerSum1, "summonerdot") == 0) { IGNITE = GPluginSDK->CreateSpell(kSummonerSlot1, 600); }
+	else if (strcmp(PlayerSum1, "SummonerDot") == 0) { IGNITE = GPluginSDK->CreateSpell(kSummonerSlot1, 600); }
 
 	if (strstr(PlayerSum2, "SummonerSmite")) { SMITE = GPluginSDK->CreateSpell(kSummonerSlot2, 500); }
 	else if (strcmp(PlayerSum2, "SummonerHeal") == 0) { HEAL = GPluginSDK->CreateSpell(kSummonerSlot2, 850); }
 	else if (strcmp(PlayerSum2, "SummonerBarrier") == 0) { BARRIER = GPluginSDK->CreateSpell(kSummonerSlot2, 0); }
 	else if (strcmp(PlayerSum2, "SummonerExhaust") == 0) { EXHAUST = GPluginSDK->CreateSpell(kSummonerSlot2, 650); }
 	else if (strcmp(PlayerSum2, "SummonerBoost") == 0) { CLEANSE = GPluginSDK->CreateSpell(kSummonerSlot2, 0); }
-	else if (strcmp(PlayerSum1, "summonerdot") == 0) { IGNITE = GPluginSDK->CreateSpell(kSummonerSlot2, 600); }
+	else if (strcmp(PlayerSum2, "SummonerDot") == 0) { IGNITE = GPluginSDK->CreateSpell(kSummonerSlot2, 600); }
 
 	UtilityFont = GRender->CreateFont("Tahoma", 14.f);
 
@@ -359,13 +359,7 @@ int EnemiesInRange(IUnit* Source, float range)
 	return enemiesInRange;
 }
 
-bool InFountain(IUnit* Source)
-{
-	if (Source->GetPosition().x < 1276 && Source->GetPosition().z < 1344) { return true; }
-	if (Source->GetPosition().x > 13540 && Source->GetPosition().z > 13470) { return true; }
 
-	return false;
-}
 
 void UseDefensives()
 {
@@ -401,7 +395,7 @@ void UseDefensives()
 		auto Teamates = GEntityList->GetAllHeros(true, false);
 		for (IUnit* Teamate : Teamates)
 		{
-			if (!(Teamate->IsDead()) && FaceOfTheMountain->IsTargetInRange(Teamate) && Teamate->HealthPercent() <= FaceOfTheMountainPercent->GetFloat() && EnemiesInRange(Teamate, 600) > 0 && Teamate->HasIncomingDamage()) { FaceOfTheMountain->CastOnTarget(Teamate); } //Cast on injured teamate
+			if (!(Teamate->IsDead()) && FaceOfTheMountain->IsTargetInRange(Teamate) && Teamate->HealthPercent() <= FaceOfTheMountainPercent->GetFloat() && EnemiesInRange(Teamate, 600) > 0) { FaceOfTheMountain->CastOnTarget(Teamate); } //Cast on injured teamate
 		}
 	}
 
@@ -410,7 +404,7 @@ void UseDefensives()
 		auto Teamates = GEntityList->GetAllHeros(true, false);
 		for (IUnit* Teamate : Teamates)
 		{
-			if (!(Teamate->IsDead()) && Redemption->IsTargetInRange(Teamate) && Teamate->HealthPercent() <= RedemptionPercent->GetFloat() && EnemiesInRange(Teamate, 700) > 0 && Teamate->HasIncomingDamage()) { Redemption->CastOnPosition(Teamate->GetPosition()); } //Cast on injured teamate
+			if (!(Teamate->IsDead()) && Redemption->IsTargetInRange(Teamate) && Teamate->HealthPercent() <= RedemptionPercent->GetFloat() && EnemiesInRange(Teamate, 700) > 0) { Redemption->CastOnPosition(Teamate->GetPosition()); } //Cast on injured teamate
 		}
 	}
 
@@ -425,7 +419,7 @@ void UseDefensives()
 		auto Teamates = GEntityList->GetAllHeros(true, false);
 		for (IUnit* Teamate : Teamates)
 		{
-			if (!(Teamate->IsDead()) && Locket->IsTargetInRange(Teamate) && Teamate->HealthPercent() <= LocketPercent->GetFloat() && EnemiesInRange(Teamate, 600) > 0 && Teamate->HasIncomingDamage()) { Locket->CastOnPlayer(); } //Cast on injured teamate
+			if (!(Teamate->IsDead()) && Locket->IsTargetInRange(Teamate) && Teamate->HealthPercent() <= LocketPercent->GetFloat() && EnemiesInRange(Teamate, 600) > 0) { Locket->CastOnPlayer(); } //Cast on injured teamate
 		}
 	}
 
@@ -457,7 +451,7 @@ void UseDefensives()
 		!(GEntityList->Player()->HasBuff("RegenerationPotion") || GEntityList->Player()->HasBuff("ItemMiniRegenPotion") || GEntityList->Player()->HasBuff("ItemCrystalFlaskJungle") ||
 			GEntityList->Player()->HasBuff("ItemCrystalFlask") || GEntityList->Player()->HasBuff("ItemDarkCrystalFlask")) )
 	{
-		if (HealthPotion->IsOwned() && HealthPotion->IsReady() && !InFountain(Hero)) {
+		if (HealthPotion->IsOwned() && HealthPotion->IsReady() && !GUtility->IsPositionInFountain(Hero->GetPosition())) {
 			HealthPotion->CastOnPlayer();
 		}
 		if (RefillablePotion->IsOwned() && RefillablePotion->IsReady()) {
@@ -469,7 +463,7 @@ void UseDefensives()
 		if (CorruptingPotion->IsOwned() && CorruptingPotion->IsReady()) {
 			CorruptingPotion->CastOnPlayer();
 		}
-		if (Biscuit->IsOwned() && Biscuit->IsReady() && !InFountain(Hero)) {
+		if (Biscuit->IsOwned() && Biscuit->IsReady() && !GUtility->IsPositionInFountain(Hero->GetPosition())) {
 			Biscuit->CastOnPlayer();
 		}
 	}
@@ -501,17 +495,64 @@ void CheckKeyPresses()
 	}
 }
 
+int GetSmiteDamage(int PlayerLevel)
+{
+	switch (PlayerLevel)
+	{
+		case 1:
+			return 390;
+		case 2:
+			return 410;
+		case 3:
+			return 430;
+		case 4:
+			return 450;
+		case 5:
+			return 480;
+		case 6:
+			return 510;
+		case 7:
+			return 540;
+		case 8:
+			return 570;
+		case 9:
+			return 600;
+		case 10:
+			return 640;
+		case 11:
+			return 680;
+		case 12:
+			return 720;
+		case 13:
+			return 760;
+		case 14:
+			return 800;
+		case 15:
+			return 850;
+		case 16:
+			return 900;
+		case 17:
+			return 950;
+		case 18:
+			return 1000;
+
+	}
+}
+
 void AutoSmite() // AUTO SMITE PRO BY REMBRANDT
 {	
 	if (SMITE != nullptr && SMITE->IsReady() && SmiteActive->Enabled()) {
 		auto minions = GEntityList->GetAllMinions(false, false, true);
 		for (IUnit* minion : minions)
 		{
-			if (strstr(minion->GetObjectName(), "Red") || strstr(minion->GetObjectName(), "Blue") || strstr(minion->GetObjectName(), "Dragon") || strstr(minion->GetObjectName(), "Rift") || strstr(minion->GetObjectName(), "Baron"))
+			if ((minion->GetPosition() - GEntityList->Player()->GetPosition()).Length() <= 570)
 			{
-				if (minion != nullptr && !minion->IsDead() && minion->GetHealth() <= GDamage->GetSummonerSpellDamage(GEntityList->Player(), minion, kSummonerSpellSmite))
+				if (strstr(minion->GetObjectName(), "Red") || strstr(minion->GetObjectName(), "Blue") || strstr(minion->GetObjectName(), "Dragon") || strstr(minion->GetObjectName(), "Rift") || strstr(minion->GetObjectName(), "Baron"))
 				{
-					SMITE->CastOnUnit(minion);
+					if (minion != nullptr && !minion->IsDead() && minion->GetHealth() <= GetSmiteDamage(GEntityList->Player()->GetLevel()))
+					{
+						SMITE->CastOnUnit(minion);
+					}
 				}
 			}
 		}
@@ -591,7 +632,7 @@ void Combo()
 	//Youmuus
 	if (Youmuus->IsOwned() && Youmuus->IsReady() && YoumuusEnabled->Enabled() && !(Hero->IsDead()))
 	{
-		if (EnemiesInRange(Hero, 400) > 0)
+		if (EnemiesInRange(Hero, 500) > 0)
 		{
 			Youmuus->CastOnPlayer();
 		}
@@ -613,8 +654,9 @@ void Combo()
 	{
 		if (IGNITE->IsReady()) {
 			auto BadDudes = GEntityList->GetAllHeros(false, true);
-			for (IUnit* BadDude : BadDudes)
+			for (auto BadDude : BadDudes)
 			{
+				//GRender->Notification(Vec4(255, 255, 255, 255), 5, "Damage: %d", GDamage->GetSummonerSpellDamage(GEntityList->Player(), BadDude, kSummonerSpellIgnite));
 				if (BadDude != nullptr && !BadDude->IsDead() && GetDistance(Hero, BadDude) <= 600 && BadDude->GetHealth() <= GDamage->GetSummonerSpellDamage(GEntityList->Player(), BadDude, kSummonerSpellIgnite))
 				{
 					IGNITE->CastOnUnit(BadDude);
@@ -622,13 +664,12 @@ void Combo()
 			}
 		}
 	}
-
 }
 
 void AutoTrinket()
 {
 	auto HeroDad = GEntityList->Player();
-	if (GEntityList->Player()->GetLevel() < 9 || !(InFountain(GEntityList->Player()))) { return; }
+	if (GEntityList->Player()->GetLevel() < 9 || !GUtility->IsPositionInFountain(GEntityList->Player()->GetPosition())) { return; }
 	if (AutoUpgradeTrinket->Enabled())
 	{
 		if (HeroDad->HasItemId(3341)) //sweeping lense
@@ -1078,15 +1119,15 @@ PLUGIN_EVENT(void) OnD3DPresent(void* Direct3D9DevicePtr)
 
 }
 
-PLUGIN_EVENT(void) OnD3DPreReset(void* Direct3D9DevicePtr)
+/*PLUGIN_EVENT(void) OnD3DPreReset(void* Direct3D9DevicePtr)
 {
 
-}
+}*/
 
-PLUGIN_EVENT(void) OnD3DPostReset(void* Direct3D9DevicePtr)
+/*PLUGIN_EVENT(void) OnD3DPostReset(void* Direct3D9DevicePtr)
 {
 
-}
+}*/
 
 PLUGIN_EVENT(void) OnRenderBehindHUD()
 {
@@ -1116,10 +1157,14 @@ PLUGIN_API void OnLoad(IPluginSDK* PluginSDK)
 	// Initializes global interfaces for core access
 	PluginSDKSetup(PluginSDK);
 	
+	//GUtility->CreateDebugConsole();
+
 		//Initialize Menus
 		MainMenu = GPluginSDK->AddMenu("[AIO] Utility Suite PRO++ by Rembrandt");
 		
 		Defensives = MainMenu->AddMenu("Activator PRO");
+
+		GUtility->LogConsole("Debug before awareness active");
 
 		GPluginInstance = new Awareness(MainMenu);
 		
@@ -1213,9 +1258,13 @@ PLUGIN_API void OnLoad(IPluginSDK* PluginSDK)
 		AutoTrinketMenu = MainMenu->AddMenu("Auto Trinket");
 		AutoUpgradeTrinket = AutoTrinketMenu->CheckBox("Auto Upgrade Trinket:", false);
 
+		GUtility->LogConsole("Menus Loaded");
+
 		SkinHack().InitMenu(MainMenu);
 		SkinHack().UpdateSkin();
+		GUtility->LogConsole("SkinHack Loaded");
 		LoadSpells();
+		GUtility->LogConsole("Spells Created");
 
 		
 
@@ -1226,7 +1275,9 @@ PLUGIN_API void OnLoad(IPluginSDK* PluginSDK)
 		GEventManager->AddEventHandler(kEventOrbwalkTargetChange, OnOrbwalkTargetChange);
 		GEventManager->AddEventHandler(kEventOrbwalkNonKillableMinion, OnOrbwalkNonKillableMinion);*/
 		GEventManager->AddEventHandler(kEventOnGameUpdate, OnGameUpdate);
+		GUtility->LogConsole("Events Section 1");
 		GEventManager->AddEventHandler(kEventOnJungleNotification, OnJungleNotify);
+		GUtility->LogConsole("Events Section 2");
 		GEventManager->AddEventHandler(kEventOnRender, OnRender);
 		GEventManager->AddEventHandler(kEventOnSpellCast, OnSpellCast);
 		GEventManager->AddEventHandler(kEventOnUnitDeath, OnUnitDeath);
@@ -1241,14 +1292,21 @@ PLUGIN_API void OnLoad(IPluginSDK* PluginSDK)
 		GEventManager->AddEventHandler(kEventOnGameEnd, OnGameEnd);
 		GEventManager->AddEventHandler(kEventOnLevelUp, OnLevelUp);
 		GEventManager->AddEventHandler(kEventOnPreCast, OnPreCast);
+		GUtility->LogConsole("Events Section 3");
 		GEventManager->AddEventHandler(kEventOnDash, OnDash);
+		GUtility->LogConsole("OnDash Loaded");
 		GEventManager->AddEventHandler(kEventOnD3DPresent, OnD3DPresent);
-		GEventManager->AddEventHandler(kEventOnD3DPreReset, OnD3DPreReset);
-		GEventManager->AddEventHandler(kEventOnD3DPostReset, OnD3DPostReset);
+		GUtility->LogConsole("OnD3DPresent Loaded");
+		//GEventManager->AddEventHandler(kEventOnD3DPreReset, OnD3DPreReset);
+		//GUtility->LogConsole("OnD3DPostReset Loaded");
+		//GEventManager->AddEventHandler(kEventOnD3DPostReset, OnD3DPostReset);
+		GUtility->LogConsole("Events Section 4");
 		GEventManager->AddEventHandler(kEventOnRenderBehindHud, OnRenderBehindHUD);
 		GEventManager->AddEventHandler(kEventOnWndProc, OnWndProc);
 		GEventManager->AddEventHandler(kEventOnEnterVisible, OnEnterVisible);
 		GEventManager->AddEventHandler(kEventOnExitVisible, OnExitVisible);
+
+		GUtility->LogConsole("Events Created");
 
 		GGame->PrintChat("<b><font color=\"#f8a101\">Utility PRO<b><font color=\"#FFFFFF\">++</font></b> Loaded</font></b>");
 }
@@ -1256,6 +1314,7 @@ PLUGIN_API void OnLoad(IPluginSDK* PluginSDK)
 // Called when plugin is unloaded
 PLUGIN_API void OnUnload()
 {
+	GUtility->LogConsole("--- UNLOADED ---");
 	MainMenu->Remove();
 	/*
 	GEventManager->RemoveEventHandler(kEventOrbwalkBeforeAttack, OnOrbwalkBeforeAttack);
@@ -1282,8 +1341,8 @@ PLUGIN_API void OnUnload()
 	GEventManager->RemoveEventHandler(kEventOnPreCast, OnPreCast);
 	GEventManager->RemoveEventHandler(kEventOnDash, OnDash);
 	GEventManager->RemoveEventHandler(kEventOnD3DPresent, OnD3DPresent);
-	GEventManager->RemoveEventHandler(kEventOnD3DPreReset, OnD3DPreReset);
-	GEventManager->RemoveEventHandler(kEventOnD3DPostReset, OnD3DPostReset);
+	//GEventManager->RemoveEventHandler(kEventOnD3DPreReset, OnD3DPreReset);
+	//GEventManager->RemoveEventHandler(kEventOnD3DPostReset, OnD3DPostReset);
 	GEventManager->RemoveEventHandler(kEventOnRenderBehindHud, OnRenderBehindHUD);
 	GEventManager->RemoveEventHandler(kEventOnWndProc, OnWndProc);
 	GEventManager->RemoveEventHandler(kEventOnEnterVisible, OnEnterVisible);

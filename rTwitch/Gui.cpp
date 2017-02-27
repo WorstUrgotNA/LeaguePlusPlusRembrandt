@@ -31,11 +31,9 @@ void Gui::OnRender()
 
 	if (Menu.Enabled->Enabled())
 	{
-		if (Menu.ShowTeam->Enabled())
-			RenderTeammates();
+		RenderTeammates();
 		
-		if (Menu.ShowEnemies->Enabled())
-			RenderEnemies();
+		RenderEnemies();
 	}
 	ReSizeNeeded = false;
 }
@@ -295,6 +293,7 @@ void Gui::RenderPlayer2DElementBig(HeroUI* Ui, Vec2 const& Position, bool Left)
 
 void Gui::RenderPlayer2DElementSmall(HeroUI* Ui, Vec2 const& Position)
 {
+
 	Vec2 vecHealthOffset	= Position + Vec2(13, 62);
 	Vec2 vecManaOffset		= Position + Vec2(13, 71);
 	Vec2 vecChampionOffset	= Position + Vec2(12, 10);
@@ -325,22 +324,31 @@ void Gui::RenderPlayer2DElementSmall(HeroUI* Ui, Vec2 const& Position)
 
 void Gui::RenderPlayer3DElement(HeroUI* Ui)
 {
+
 	Vec2 vecHealthBar;
 	if (!Ui->Player->GetHPBarPosition(vecHealthBar) || !Ui->Player->IsVisible() || Ui->Player->IsDead())
-		return;
+	return;
 
 	IUnit* pLocal = GEntityList->Player();
 	bool bIsLocal = Ui->Player == GEntityList->Player();
 	bool bIsEnemy = pLocal->IsEnemy(Ui->Player);
 	Vec2 vecOffset = Vec2(bIsLocal ? 10.f : -8.f, bIsEnemy ? 17.f : (bIsLocal ? 6.f : 14.f));
+	float SumCooldown1 = Ui->Player->GetSpellRemainingCooldown(kSummonerSlot1);
+	float SumCooldown2 = Ui->Player->GetSpellRemainingCooldown(kSummonerSlot2);
+
 
 	vecHealthBar += vecOffset;
 
 	if (bIsLocal)
 	{
 		Textures->CDHudSelf->Draw(vecHealthBar.x, vecHealthBar.y);
-		Ui->SummonerSpellIconsSmall[0]->Draw(vecHealthBar.x + 130 , vecHealthBar.y + 2);
+		Ui->SummonerSpellIconsSmall[0]->Draw(vecHealthBar.x + 130, vecHealthBar.y + 2);
 		Ui->SummonerSpellIconsSmall[1]->Draw(vecHealthBar.x + 152, vecHealthBar.y + 2);
+
+		if (Ui->Player->GetSpellRemainingCooldown(kSummonerSlot1) > 0.f)
+			Fonts->SummonerCooldownFont3D->Render(vecHealthBar.x + 142, vecHealthBar.y + 11, "%i", static_cast<int>(Ui->Player->GetSpellRemainingCooldown(kSummonerSlot1) + 1));
+		if (Ui->Player->GetSpellRemainingCooldown(kSummonerSlot2) > 0.f)
+			Fonts->SummonerCooldownFont3D->Render(vecHealthBar.x + 164, vecHealthBar.y + 11, "%i", static_cast<int>(Ui->Player->GetSpellRemainingCooldown(kSummonerSlot2) + 1));
 	}
 	else
 	{
@@ -349,6 +357,11 @@ void Gui::RenderPlayer3DElement(HeroUI* Ui)
 		Textures->CDHud->Draw(vecHealthBar.x, vecHealthBar.y);
 		Ui->SummonerSpellIconsSmall[0]->Draw(vecHealthBar.x + 3, vecHealthBar.y + 2);
 		Ui->SummonerSpellIconsSmall[1]->Draw(vecHealthBar.x + 25, vecHealthBar.y + 2);
+
+		if (Ui->Player->GetSpellRemainingCooldown(kSummonerSlot1) > 0.f)
+			Fonts->SummonerCooldownFont3D->Render(vecHealthBar.x + 14, vecHealthBar.y + 11, "%i", static_cast<int>(Ui->Player->GetSpellRemainingCooldown(kSummonerSlot1) + 1));
+		if (Ui->Player->GetSpellRemainingCooldown(kSummonerSlot2) > 0.f)
+			Fonts->SummonerCooldownFont3D->Render(vecHealthBar.x + 36, vecHealthBar.y + 11, "%i", static_cast<int>(Ui->Player->GetSpellRemainingCooldown(kSummonerSlot2) + 1));
 	}
 
 	Vec2 vecSpell = Vec2(20, 20);
@@ -356,9 +369,9 @@ void Gui::RenderPlayer3DElement(HeroUI* Ui)
 	float flSkip = 27.f;
 
 	if (bIsLocal)
-		vecSpell = Vec2(24, 19);
-	
-	vecHealthBar.y ++;
+	vecSpell = Vec2(24, 19);
+
+	vecHealthBar.y++;
 
 	for (auto i = 0; i < 4; i++)
 	{
@@ -391,7 +404,6 @@ void Gui::RenderPlayer3DElement(HeroUI* Ui)
 			if (flCooldown > 0.f && Ui->Player->GetSpellLevel(i) > 0)
 				Fonts->CooldownFont->Render(vecHealthBar.x + 32 + vecSpell.x + (vecSize.x + 3) / 2, vecHealthBar.y + vecSpell.y + vecSize.y + 9, "%i", static_cast<int>(Ui->Player->GetSpellRemainingCooldown(i) + 1));
 		}
-
 		vecSpell.x += flSkip;
 	}
 }
@@ -401,37 +413,67 @@ void Gui::RenderTeammates()
 	if (Teammates.size() == 0)
 		return;
 
-	bool bLeftSide		= Menu.TeamOnLeft->Enabled() ? true : false;
-	Vec2 vecSize		= bLeftSide ? Textures->OutlineLeft->GetSize() : Textures->OutlineRight->GetSize();
+	bool bLeftSide = Menu.TeamOnLeft->Enabled() ? true : false;
+	Vec2 vecSize = bLeftSide ? Textures->OutlineLeft->GetSize() : Textures->OutlineRight->GetSize();
 
 	if (Menu.MinimalisticHud->Enabled())
 		vecSize = Textures->SmallOutline->GetSize();
 	else
 		vecSize *= (Resolution.y / 1440);
 
-	float flPadding		= 5 * (Resolution.y / 1440);
-	float flLeft		= bLeftSide ? 0 : Resolution.x - vecSize.x;
-	float flTop			= Menu.MinimalisticHud->Enabled() ? 125.f : 140.f;
-	Vec2 vecPosition	= Vec2(flLeft, flTop);
+	float flPadding = 5 * (Resolution.y / 1440);
+	float flLeft = bLeftSide ? 0 : Resolution.x - vecSize.x;
+	float flTop = Menu.MinimalisticHud->Enabled() ? 125.f : 140.f;
+	Vec2 vecPosition = Vec2(flLeft, flTop);
 
 	for (auto pGui : Teammates)
 	{
 		if (!pGui->Valid)
 			continue;
 
-		if (!Menu.ShowSelf->Enabled() && pGui->Player == GEntityList->Player())
-			continue;
-
 		if (Menu.Show2DHud->Enabled())
 		{
-			if (Menu.MinimalisticHud->Enabled())
-				RenderPlayer2DElementSmall(pGui, vecPosition);
-			else
-				RenderPlayer2DElementBig(pGui, vecPosition, bLeftSide);
+			if (pGui->Player == GEntityList->Player()) // pGui is player
+			{
+				if (Menu.ShowSelf->Enabled())
+				{
+					if (Menu.MinimalisticHud->Enabled())
+						RenderPlayer2DElementSmall(pGui, vecPosition);
+					else
+						RenderPlayer2DElementBig(pGui, vecPosition, bLeftSide);
+				}
+			}
+			else //pGui is teamate
+			{
+				if (Menu.ShowTeam->Enabled())
+				{
+					if (Menu.MinimalisticHud->Enabled())
+						RenderPlayer2DElementSmall(pGui, vecPosition);
+					else
+						RenderPlayer2DElementBig(pGui, vecPosition, bLeftSide);
+				}
+			}			
 		}
 
+
 		if (Menu.Show3DHud->Enabled())
-			RenderPlayer3DElement(pGui);
+		{
+			if (pGui->Player == GEntityList->Player()) // pGui is player
+			{
+				if (Menu.ShowSelf3D->Enabled())
+				{
+					RenderPlayer3DElement(pGui);
+				}
+			}
+			else //pGui is teamate
+			{
+				if (Menu.ShowTeam3D->Enabled())
+				{
+					RenderPlayer3DElement(pGui);
+				}
+			}
+		}
+			
 
 		vecPosition.y += vecSize.y + flPadding;
 	}
@@ -460,7 +502,7 @@ void Gui::RenderEnemies()
 		if (!pGui->Valid)
 			continue;
 
-		if (Menu.Show2DHud->Enabled())
+		if (Menu.Show2DHud->Enabled() && Menu.ShowEnemies->Enabled())
 		{
 			if (Menu.MinimalisticHud->Enabled())
 				RenderPlayer2DElementSmall(pGui, vecPosition);
@@ -468,7 +510,7 @@ void Gui::RenderEnemies()
 				RenderPlayer2DElementBig(pGui, vecPosition, bLeftSide);
 		}
 
-		if (Menu.Show3DHud->Enabled())
+		if (Menu.Show3DHud->Enabled() && Menu.ShowEnemies3D->Enabled())
 			RenderPlayer3DElement(pGui);
 		
 		vecPosition.y += vecSize.y + flPadding;
@@ -584,29 +626,31 @@ void Gui::UpdateChampions()
 
 void Gui::LoadMenu()
 {
-	Menu.Enabled = Menu.Owner->CheckBox("Enabled:", true);
-	Menu.ShowSelf = Menu.Owner->CheckBox("My GUI Elements:", true);
-	Menu.ShowTeam = Menu.Owner->CheckBox("Team GUI Elements:", true);
-	Menu.ShowEnemies = Menu.Owner->CheckBox("Enemy GUI Elements:", true);
+	Menu.GUI2D = Menu.Owner->AddMenu("2D GUI Options");
+	Menu.Show2DHud = Menu.GUI2D->CheckBox("Draw 2D HUD:", true);
+	Menu.MinimalisticHud = Menu.GUI2D->CheckBox("Old Style UI", false);
+	Menu.TeamOnLeft = Menu.GUI2D->CheckBox("Flip Sides:", true);
+	Menu.ShowSelf = Menu.GUI2D->CheckBox("Draw My UI:", true);
+	Menu.ShowTeam = Menu.GUI2D->CheckBox("Draw Team UI:", true);
+	Menu.ShowEnemies = Menu.GUI2D->CheckBox("Draw Enemy UI:", true);
+	Menu.DrawHPBarText = Menu.GUI2D->CheckBox("Draw Text on Health Bar:", true);
+	Menu.DrawManaBarText = Menu.GUI2D->CheckBox("Draw Text on Mana Bar:", true);
+	Menu.HPBarTextStyle = Menu.GUI2D->AddInteger("Health Bar Text Style:", 1, 3, 2);
+	Menu.ManaBarTextStyle = Menu.GUI2D->AddInteger("Mana Bar Text Style:", 1, 3, 1);;
 
-	Menu.SideGUI = Menu.Owner->AddMenu("Side GUI");
-	Menu.Show3DHud = Menu.Owner->CheckBox("Draw 3D UI", true);
-	Menu.Show2DHud = Menu.Owner->CheckBox("Draw 2D UI:", true);
-	Menu.MinimalisticHud = Menu.Owner->CheckBox("Small Style UI", false);
-	Menu.TeamOnLeft = Menu.Owner->CheckBox("Flip Sides:", true);
+	Menu.GUI3D = Menu.Owner->AddMenu("3D GUI Options");
+	Menu.Show3DHud = Menu.GUI3D->CheckBox("Draw 3D HUD", true);
+	Menu.ShowSelf3D = Menu.GUI3D->CheckBox("Draw My UI:", true);
+	Menu.ShowTeam3D = Menu.GUI3D->CheckBox("Draw Team UI:", true);
+	Menu.ShowEnemies3D = Menu.GUI3D->CheckBox("Draw Enemy UI:", true);
 	
-	Menu.DrawHPBarText = Menu.Owner->CheckBox("Draw Health Bar Text:", true);
-	Menu.HPBarTextStyle = Menu.Owner->AddInteger("Health Bar Text Style:", 1, 3, 2);
-	Menu.DrawManaBarText = Menu.Owner->CheckBox("Draw Mana Bar Text:", true);
-	Menu.ManaBarTextStyle = Menu.Owner->AddInteger("Mana Bar Text Style:", 1, 3, 1);;
-	
-	
-	
+
+	Menu.Enabled = Menu.Owner->CheckBox("Enable/Disable All GUI:", true);
+	Menu.NotifyOnUltimate = Menu.Owner->CheckBox("Notify on Ultimate CD:", true);
+
 	//Menu.NotifyOnRespawn = Menu.Owner->CheckBox("Notify on Respawn", false);
-	Menu.NotifyOnUltimate = Menu.Owner->CheckBox("Notify on Ultimates:", true);
-	
-	/*Menu.XOffset = Menu.Owner->AddFloat("X offset:", -200, 200, 0);
-	Menu.YOffset = Menu.Owner->AddFloat("Y offset:", -200, 200, 0);
+	Menu.XOffset = Menu.Owner->AddFloat("X offset:", -200, 200, 0);
+	/*Menu.YOffset = Menu.Owner->AddFloat("Y offset:", -200, 200, 0);
 	Menu.RadiusOffset = Menu.Owner->AddFloat("Radius:", -200, 200, 40);
 	Menu.Resize = Menu.Owner->AddFloat("Resize bonus:", 0, 200, 75);*/
 }
@@ -619,6 +663,7 @@ void Gui::LoadFonts()
 	Fonts = new UiFonts;
 
 	Fonts->DeathFont		= GRender->CreateFont("Tahoma", 18.f, kFontWeightBold);
+	Fonts->SummonerCooldownFont3D = GRender->CreateFont("Tahoma", 10.f, kFontWeightBold);
 	Fonts->CooldownFont		= GRender->CreateFont("Tahoma", 12.f, kFontWeightBold);
 	Fonts->HudFont			= GRender->CreateFont("Tahoma", 11.f * ScreenRatio + 1.f, kFontWeightBold);
 	Fonts->HudFont2			= GRender->CreateFont("Tahoma", 11.f * ScreenRatio + 1.f, kFontWeightBold);
@@ -627,6 +672,9 @@ void Gui::LoadFonts()
 
 	Fonts->CooldownFont->SetLocationFlags(kFontLocationCenter);
 	Fonts->CooldownFont->SetOutline(true);
+
+	Fonts->SummonerCooldownFont3D->SetLocationFlags(kFontLocationCenter);
+	Fonts->SummonerCooldownFont3D->SetOutline(true);
 
 	Fonts->HudFont->SetLocationFlags(kFontLocationCenter);
 	Fonts->HudFont->SetOutline(true);
@@ -765,11 +813,13 @@ ITexture* Gui::CreateTextureEx(std::string const& Filename, std::string const& D
 	std::string szFullPath;
 	if (DoesTextureExist(Filename, szFullPath))
 		return GRender->CreateTextureFromFile(("UtilityPRO/" + Filename + ".png").c_str());
-	
+	/*
 	std::string szImage;
 	if (GPluginSDK->ReadFileFromURL(DownloadUrl, szImage))
-		return GRender->CreateTextureFromMemory((uint8_t*)szImage.data(), szImage.length(), Filename.c_str());
-	
+		return GRender->CreateTextureFromMemory((uint8_t*)szImage.data(), szImage.length(), Filename.c_str());*/
+	GUtility->LogConsole("Could not find %s.png", Filename);
+
+
 	return nullptr;
 }
 

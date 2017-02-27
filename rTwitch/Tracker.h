@@ -27,6 +27,9 @@ struct TrackerJungleMenu
 	IMenuOption* TrackDrag;
 	IMenuOption* TrackCrabs;
 	IMenuOption* TrackJungler;
+	IMenuOption* DrawJunglerTrackerPingLocal;
+	IMenuOption* DrawJunglerTrackerPingGlobal;
+	IMenuOption* DrawJunglerTrackerPingType;
 };
 
 struct TrackerMenu
@@ -144,4 +147,8 @@ private:
 	IFont*						TrackerFont;
 	IFont*						MinimapText;
 	Vec3						JGDisplayPos;
+	float						JGDelay;
+	float						LastPingTime;
+	float						LastPingTime2;
+	bool						FoWUpdated;
 };

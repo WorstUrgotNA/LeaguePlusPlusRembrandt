@@ -8,10 +8,14 @@ Awareness::Awareness(IMenu* Parent)
 
 	Menu		= Parent->AddMenu("Tracker PRO");
 	Ui			= new Gui(Menu);
+	GUtility->LogConsole("UI Created");
 	Tracking	= new Tracker(Menu);
+	GUtility->LogConsole("Tracking Created");
 	Ganks		= new GankDetection(Menu);
+	GUtility->LogConsole("Ganks Created");
 
 	LoadEvents();
+	GUtility->LogConsole("Awareness Events Loaded");
 }
 
 Awareness::~Awareness()
