@@ -1308,7 +1308,7 @@ PLUGIN_API void OnLoad(IPluginSDK* PluginSDK)
 
 		GUtility->LogConsole("Events Created");
 
-		GGame->PrintChat("<b><font color=\"#f8a101\">Utility PRO<b><font color=\"#FFFFFF\">++</font></b> Loaded</font></b>");
+		
 }
 
 // Called when plugin is unloaded

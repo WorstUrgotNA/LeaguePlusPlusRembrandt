@@ -123,6 +123,7 @@ private:
 	UiFonts*				Fonts;
 	UiTextures*				Textures;
 	std::string				VersionNo;
+	std::string				VersionOutput;
 	Vec2					Resolution;
 	bool					DownloadIsComplete;
 	bool					ReSizeNeeded;

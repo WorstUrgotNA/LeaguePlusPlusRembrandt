@@ -2,6 +2,8 @@
 
 #include "Gui.h"
 
+int LocalVersion = 0;
+
 Gui::Gui(IMenu* Parent)
 {
 	Menu.Owner = Parent->AddMenu("HUD");
@@ -841,6 +843,37 @@ void Gui::GetLatestVersionNo()
 		if (n != szJson.npos)
 			VersionNo = szJson.substr(0, n);
 	}
+	GGame->PrintChat("<b><font color=\"#f8a101\">Utility PRO<b><font color=\"#FFFFFF\">++</font></b> Loaded</font></b>");
+	GGame->PrintChat("<font color=\"#f8a101\">checking for updates...");
+
+	std::string szData;
+	if (GPluginSDK->ReadFileFromURL("rembrandt.000webhostapp.com/version.txt", szData))
+	{
+		auto n = szData.find("LatestVersion = ");
+
+		if (n != szData.npos)
+		{
+			n += 15;
+			szData = szData.substr(n, szData.size() - n);
+
+		}
+
+		auto k = szData.find(";");
+
+		if (k != szData.npos)
+			szData = szData.substr(0, k);
+
+		auto dwGitVersion = atoi(szData.c_str());
+
+
+		if (dwGitVersion != LocalVersion)
+			GGame->PrintChat("<b><font color=\"#ce0505\">OUT OF DATE: Please download updates from forum!<b>");
+		else
+			GGame->PrintChat("<b><font color=\"#26cd05\">You have the latest version.<b>");
+	}
+
+
+	
 }
 
 // http://leagueoflegends.wikia.com/wiki/Death
