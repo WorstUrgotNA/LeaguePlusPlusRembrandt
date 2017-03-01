@@ -1,6 +1,7 @@
 #pragma once
 
 #include "PluginSDK.h"
+#include <map>
 
 struct HeroUI
 {
@@ -73,6 +74,8 @@ struct UiMenu
 	IMenuOption* TeamOnLeft;
 	IMenuOption* NotifyOnRespawn;
 	IMenuOption* NotifyOnUltimate;
+	IMenuOption* UltimateXOffset;
+	IMenuOption* UltimateYOffset;
 	IMenuOption* MinimalisticHud;
 	IMenuOption* XOffset;
 	IMenuOption* YOffset;
@@ -82,6 +85,9 @@ struct UiMenu
 	IMenuOption* DrawManaBarText;
 	IMenuOption* HPBarTextStyle;
 	IMenuOption* ManaBarTextStyle;
+	IMenuOption* TestNotifyOnUltimate;
+
+	std::map<int, IMenuOption*> ChampionsToNotifyOnR;
 };
 
 class Gui

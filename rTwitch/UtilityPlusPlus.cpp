@@ -2,6 +2,7 @@
 #include "Color.h"
 #include "SkinHack.h"
 #include "string"
+#include <sstream>
 #include "windows.h"
 #include "Gui.h"
 #include "Awareness.h"
@@ -33,9 +34,13 @@ IMenu* GLP800Menu;
 IMenu* AutoTrinketMenu;
 IMenu* MikaelsMenu;
 IMenu* CCFilter;
+IMenu* SummonerTeller;
 
+IMenuOption* SummonerTellerKey;
+IMenuOption* SummonerTellerEnabled;
 IMenuOption* SmiteActive;
 IMenuOption* SmiteKey;
+IMenuOption* SmiteEnemies;
 IMenuOption* HealActive;
 IMenuOption* HealPercent;
 IMenuOption* HealTeamateActive;
@@ -100,7 +105,7 @@ ISpell* HEAL;
 ISpell* BARRIER;
 ISpell* EXHAUST;
 ISpell* CLEANSE;
-ISpell* SMITE;
+ISpell2* SMITE;
 ISpell* IGNITE;
 
 IInventoryItem* QSS;
@@ -125,6 +130,7 @@ IInventoryItem* Botrk;
 IInventoryItem* Cutlass;
 IInventoryItem* Youmuus;
 IInventoryItem* GLP800;
+IInventoryItem* WardTrinket;
 
 Vec3 JungleNotification;
 
@@ -132,10 +138,14 @@ Awareness* GPluginInstance = nullptr;
 
 IFont* UtilityFont;
 
+std::string	formattedTime;
+
 int DelayedSpellIndex = 0;
 int HumanizeDelayCleanse;
 
 short keystate;
+short keystate2;
+bool SummonerTellerKeyWasDown = false;
 bool smiteKeyWasDown = false;
 bool DelayedCleanse = false;
 
@@ -179,14 +189,14 @@ void LoadSpells()
 	auto PlayerSum2 = GPluginSDK->GetEntityList()->Player()->GetSpellName(kSummonerSlot2);
 
 
-	if (strstr(PlayerSum1, "SummonerSmite")) { SMITE = GPluginSDK->CreateSpell(kSummonerSlot1, 500); }
+	if (strstr(PlayerSum1, "SummonerSmite")) { SMITE = GPluginSDK->CreateSpell2(kSummonerSlot1, kTargetCast, false, false, kCollidesWithNothing); }
 	else if (strcmp(PlayerSum1, "SummonerHeal") == 0) { HEAL = GPluginSDK->CreateSpell(kSummonerSlot1, 850); }
 	else if (strcmp(PlayerSum1, "SummonerBarrier") == 0) { BARRIER = GPluginSDK->CreateSpell(kSummonerSlot1, 0); }
 	else if (strcmp(PlayerSum1, "SummonerExhaust") == 0) { EXHAUST = GPluginSDK->CreateSpell(kSummonerSlot1, 650); }
 	else if (strcmp(PlayerSum1, "SummonerBoost") == 0) { CLEANSE = GPluginSDK->CreateSpell(kSummonerSlot1, 0); }
 	else if (strcmp(PlayerSum1, "SummonerDot") == 0) { IGNITE = GPluginSDK->CreateSpell(kSummonerSlot1, 600); }
 
-	if (strstr(PlayerSum2, "SummonerSmite")) { SMITE = GPluginSDK->CreateSpell(kSummonerSlot2, 500); }
+	if (strstr(PlayerSum2, "SummonerSmite")) { SMITE = GPluginSDK->CreateSpell2(kSummonerSlot2, kTargetCast, false, false, kCollidesWithNothing); }
 	else if (strcmp(PlayerSum2, "SummonerHeal") == 0) { HEAL = GPluginSDK->CreateSpell(kSummonerSlot2, 850); }
 	else if (strcmp(PlayerSum2, "SummonerBarrier") == 0) { BARRIER = GPluginSDK->CreateSpell(kSummonerSlot2, 0); }
 	else if (strcmp(PlayerSum2, "SummonerExhaust") == 0) { EXHAUST = GPluginSDK->CreateSpell(kSummonerSlot2, 650); }
@@ -225,6 +235,7 @@ void LoadSpells()
 	Cutlass = GPluginSDK->CreateItemForId(3144, 550);
 	Youmuus = GPluginSDK->CreateItemForId(3142, 0);
 	GLP800 = GPluginSDK->CreateItemForId(3030, 800);
+	WardTrinket = GPluginSDK->CreateItemForId(3340, 525);
 }
 
 void DrawHpBarDamage(IRender *renderer, IUnit *hero, float damage, Vec4 &color)
@@ -470,9 +481,10 @@ void UseDefensives()
 	
 }
 
+
 void CheckKeyPresses()
 {
-	keystate = GetAsyncKeyState(SmiteKey->GetInteger());
+	keystate = GetAsyncKeyState(SmiteKey->GetInteger()); //smite key
 
 	if (GUtility->IsLeagueWindowFocused() && !GGame->IsChatOpen())
 	{
@@ -493,6 +505,84 @@ void CheckKeyPresses()
 			smiteKeyWasDown = false;
 		}
 	}
+
+	if (SummonerTellerEnabled->Enabled())
+	{
+		keystate2 = GetAsyncKeyState(SummonerTellerKey->GetInteger()); // summoner teller key
+
+		if (GUtility->IsLeagueWindowFocused() && !GGame->IsChatOpen())
+		{
+			if (keystate2 < 0) // If most-significant bit is set...
+			{
+				// key is down . . .
+				if (SummonerTellerKeyWasDown == false)
+				{
+					//print sums
+					auto Enemies = GEntityList->GetAllHeros(false, true);
+					const char* PlayerRawSum1;
+					const char* PlayerRawSum2;
+					const char* PlayerActualSum1;
+					const char* PlayerActualSum2;
+					const char* Sum1Timer;
+					const char* Sum2Timer;
+
+
+					for (auto Enemy : Enemies)
+					{
+						if (Enemy->GetSpellRemainingCooldown(kSummonerSlot1) > 0 || Enemy->GetSpellRemainingCooldown(kSummonerSlot2) > 0)
+						{
+							PlayerRawSum1 = Enemy->GetSpellName(kSummonerSlot1);
+							PlayerRawSum2 = Enemy->GetSpellName(kSummonerSlot2);
+
+							if (strstr(PlayerRawSum1, "SummonerSmite")) { PlayerActualSum1 = "Smite"; }
+							else if (strcmp(PlayerRawSum1, "SummonerHeal") == 0) { PlayerActualSum1 = "Heal"; }
+							else if (strcmp(PlayerRawSum1, "SummonerBarrier") == 0) { PlayerActualSum1 = "Barrier"; }
+							else if (strcmp(PlayerRawSum1, "SummonerExhaust") == 0) { PlayerActualSum1 = "Exhaust"; }
+							else if (strcmp(PlayerRawSum1, "SummonerBoost") == 0) { PlayerActualSum1 = "Cleanse"; }
+							else if (strcmp(PlayerRawSum1, "SummonerDot") == 0) { PlayerActualSum1 = "Ignite"; }
+							else if (strcmp(PlayerRawSum1, "SummonerFlash") == 0) { PlayerActualSum1 = "Flash"; }
+							else if (strcmp(PlayerRawSum1, "SummonerHaste") == 0) { PlayerActualSum1 = "Ghost"; }
+							else if (strcmp(PlayerRawSum1, "SummonerTeleport") == 0) { PlayerActualSum1 = "Teleport"; }
+							else PlayerActualSum1 = "";
+
+							if (strstr(PlayerRawSum2, "SummonerSmite")) { PlayerActualSum2 = "Smite"; }
+							else if (strcmp(PlayerRawSum2, "SummonerHeal") == 0) { PlayerActualSum2 = "Heal"; }
+							else if (strcmp(PlayerRawSum2, "SummonerBarrier") == 0) { PlayerActualSum2 = "Barrier"; }
+							else if (strcmp(PlayerRawSum2, "SummonerExhaust") == 0) { PlayerActualSum2 = "Exhaust"; }
+							else if (strcmp(PlayerRawSum2, "SummonerBoost") == 0) { PlayerActualSum2 = "Cleanse"; }
+							else if (strcmp(PlayerRawSum2, "SummonerDot") == 0) { PlayerActualSum2 = "Ignite"; }
+							else if (strcmp(PlayerRawSum2, "SummonerFlash") == 0) { PlayerActualSum2 = "Flash"; }
+							else if (strcmp(PlayerRawSum2, "SummonerHaste") == 0) { PlayerActualSum2 = "Ghost"; }
+							else if (strcmp(PlayerRawSum2, "SummonerTeleport") == 0) { PlayerActualSum2 = "Teleport"; }
+							else PlayerActualSum2 = "";
+
+							std::stringstream parser;
+
+							parser << Enemy->ChampionName();
+							parser << ": ";
+
+							if (Enemy->GetSpellRemainingCooldown(kSummonerSlot1) > 0)
+								parser << PlayerActualSum1 << " " << static_cast<int>(Enemy->GetSpellRemainingCooldown(kSummonerSlot1)) << " ";
+							if (Enemy->GetSpellRemainingCooldown(kSummonerSlot2) > 0)
+								parser << PlayerActualSum2 << " " << static_cast<int>(Enemy->GetSpellRemainingCooldown(kSummonerSlot2)) << " ";
+
+
+							std::string formattedText = parser.str();
+							GGame->Say("%s", formattedText);
+						}
+					}
+
+					SummonerTellerKeyWasDown = true;
+				}
+			}
+			else
+			{
+				// key is up . . .
+				SummonerTellerKeyWasDown = false;
+			}
+		}
+	}
+	
 }
 
 int GetSmiteDamage(int PlayerLevel)
@@ -587,6 +677,30 @@ bool TargetValidForMikaels(IUnit* Source)
 void Combo()
 {
 	auto Hero = GEntityList->Player();
+	
+
+	/*int dad = Hero->GetSpellBook()->GetAmmo(4);
+	GGame->Say("%i", dad);
+	//Smite Enemies
+	if (SMITE != nullptr && SMITE->IsReady())
+	{
+		if (strstr(Hero->GetSpellName(SMITE->GetSpellSlot()), "SummonerSmiteDuel")) // RED SMITE
+		{
+			if (GTargetSelector->GetFocusedTarget() != nullptr && GTargetSelector->GetFocusedTarget()->IsValidTarget() && !(GTargetSelector->GetFocusedTarget()->IsDead()) && (GTargetSelector->GetFocusedTarget()->GetPosition() - Hero->GetPosition()).Length() < 500)
+			{
+				SMITE->CastOnTarget(GTargetSelector->GetFocusedTarget());
+			}
+			else
+			{
+				Botrk->CastOnTarget(GTargetSelector->FindTarget(QuickestKill, SpellDamage, 550));
+			}
+		}
+		else if (strstr(Hero->GetSpellName(SMITE->GetSpellSlot()), "SummonerSmitePlayerGanker")) // BLUE SMITE
+		{
+ 
+		}
+	}*/
+	
 
 	//RANDUINS
 	if (Randuins->IsOwned() && Randuins->IsReady() && RanduinsEnabled->Enabled() && !(Hero->IsDead()))
@@ -670,14 +784,16 @@ void AutoTrinket()
 {
 	auto HeroDad = GEntityList->Player();
 	if (GEntityList->Player()->GetLevel() < 9 || !GUtility->IsPositionInFountain(GEntityList->Player()->GetPosition())) { return; }
-	if (AutoUpgradeTrinket->Enabled())
+	if (AutoUpgradeTrinket->GetInteger() != 0)
 	{
-		if (HeroDad->HasItemId(3341)) //sweeping lense
+		if (AutoUpgradeTrinket->GetInteger() == 1) //sweeping lense
 		{
-			GGame->BuyItem(3364); //oracle alteration
+			if(!HeroDad->HasItemId(3364))
+				GGame->BuyItem(3364); //oracle alteration
 		}
-		if (HeroDad->HasItemId(3340)) //ward
+		if (AutoUpgradeTrinket->GetInteger() == 2) //ward
 		{
+			if (!HeroDad->HasItemId(3363))
 			GGame->BuyItem(3363); //oracle alteration
 		}
 	}
@@ -750,7 +866,9 @@ PLUGIN_EVENT(void) OnRender()
 				UtilityFont->Render(vecScreen.x, vecScreen.y + 100, "AUTOSMITE OFF"); // draw ward or trap timer on minimap
 			}
 		}
-	}		
+	}
+
+	
 }
 
 PLUGIN_EVENT(void) OnSpellCast(CastedSpell const& Args)
@@ -1147,7 +1265,15 @@ PLUGIN_EVENT(void) OnEnterVisible(IUnit* Source)
 
 PLUGIN_EVENT(void) OnExitVisible(IUnit* Source)
 {
-
+	if (GOrbwalking->GetOrbwalkingMode() == kModeCombo && Source == GTargetSelector->GetFocusedTarget())
+	{
+		float flDistance = (Source->GetPosition() - GEntityList->Player()->GetPosition()).Length();
+		GGame->PrintChat(Source->ChampionName());
+		if (flDistance < 525 &&	WardTrinket->IsOwned() && WardTrinket->IsReady())
+		{
+			WardTrinket->CastOnPosition(Source->GetPosition());
+		}
+	}
 }
 #pragma endregion
 
@@ -1238,6 +1364,7 @@ PLUGIN_API void OnLoad(IPluginSDK* PluginSDK)
 		SmiteActive = AutoSmiteMenu->CheckBox("Smite Buffs/Epic Monsters: ", true);
 		SmiteKey = AutoSmiteMenu->AddKey("Toggle Key:", 77);
 		DrawSmiteEnabled = AutoSmiteMenu->CheckBox("Draw Auto Smite Enabled:", true);
+		SmiteEnemies = AutoSmiteMenu->CheckBox("Smite Enemies when 2 Charges:", true);
 
 		SummonerIgniteMenu = Defensives->AddMenu("Summoner: Ignite");
 		IgniteKSEnable = SummonerIgniteMenu->CheckBox("Enable Ignite KS:", true);
@@ -1256,7 +1383,11 @@ PLUGIN_API void OnLoad(IPluginSDK* PluginSDK)
 		ALUStartLevel = AutoLevelUp->AddInteger("Start at level: ", 1, 16, 4);
 
 		AutoTrinketMenu = MainMenu->AddMenu("Auto Trinket");
-		AutoUpgradeTrinket = AutoTrinketMenu->CheckBox("Auto Upgrade Trinket:", false);
+		AutoUpgradeTrinket = AutoTrinketMenu->AddInteger("Auto Buy [0] None [1] Red [2] Blue:", 0, 2, 0);
+
+		SummonerTeller = MainMenu->AddMenu("Summoner Chat-Logger");
+		SummonerTellerEnabled = SummonerTeller->CheckBox("Enabled:", false);
+		SummonerTellerKey = SummonerTeller->AddKey("Press to Post Sums to Chat:", 76);
 
 		GUtility->LogConsole("Menus Loaded");
 

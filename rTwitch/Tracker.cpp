@@ -8,7 +8,6 @@
 ITexture*	TrapDot;
 ITexture*	PinkWard;
 ITexture*	EnemyWard;
-ITexture*	RC_On;
 
 
 #pragma comment(lib, "shlwapi")
@@ -23,18 +22,10 @@ Tracker::Tracker(IMenu* Parent)
 	TrackerFont->SetLocationFlags(kFontLocationCenter);
 	TrackerFont->SetOutline(true);
 
-	FoWUpdated = false;
-	JGDelay = 0.f;
-	LastPingTime = 0.f;
-	LastPingTime2 = 0.f;
 
 	TrapDot = GRender->CreateTextureFromFile("UtilityPRO/trapdot.png"); //load texture
 	PinkWard = GRender->CreateTextureFromFile("UtilityPRO/True_Sight_icon.png"); //load texture
 	EnemyWard = GRender->CreateTextureFromFile("UtilityPRO/EnemyWard.png"); //load texture
-	RC_On = GRender->CreateTextureFromFile("UtilityPRO/RC_On.png");
-	RC_On->SetColor(Vec4(255, 150, 150, 150));
-	RC_On->Scale(GRender->ScreenSize().y / 1440.f);
-
 	
 
 	LoadMenu(Parent);
@@ -46,12 +37,6 @@ Tracker::~Tracker()
 
 }
 
-void Tracker::OnJungleNotify(JungleNotifyData* Args)
-{
-	FoWUpdated = true;
-	JGDisplayPos = Args->Position;
-	JGDelay = GGame->Time() + 5;
-}
 
 void Tracker::OnGameUpdate()
 {
@@ -60,56 +45,7 @@ void Tracker::OnGameUpdate()
 		if (obj.IsValid && GGame->Time() >= obj.DespawnTime)
 			obj.IsValid = false;
 	}
-	//clear junglenotifications vector if too much time has passed
-	if (GGame->Time() - LastPingTime > 5)
-		JungleNotifications.clear();
-
-
-	if (FoWUpdated) //try to push notification position and time to vector
-	{
-		if (Menu.Jungle.TrackJungler->Enabled())
-		{
-			bool FalseAlarm = false;
-
-			for (auto pUnit : GEntityList->GetAllUnits())
-			{					
-				float flDistance = (pUnit->GetPosition() - JGDisplayPos).Length();
-				if (flDistance < 500)
-			{
-				//GRender->Notification(Vec4(255, 255, 255, 255), 5, "%s distance %f to ping", pUnit->GetObjectName(), flDistance);
-				FalseAlarm = true;
-				break;
-				}				
-			}
-
-			if (!FalseAlarm && GGame->Time() - LastPingTime >= 2)
-			{
-				JungleNotification o;
-
-				GGame->WorldToMinimap(JGDisplayPos, o.MinimapPosition);
-				o.WorldPosition = JGDisplayPos;
-				o.TriggerTime = JGDelay;
-
-				JungleNotifications.push_back(o);
-				//GRender->Notification(Vec4(255, 255, 255, 255), 5, "Size: %i", JungleNotifications.size());
-				LastPingTime = GGame->Time();
-
-				if (GGame->Time() - LastPingTime2 >= 5)
-				{
-					if (Menu.Jungle.DrawJunglerTrackerPingGlobal->Enabled()) //ping global
-					{
-						GGame->SendPing(kPingNormal, o.WorldPosition);
-					}
-					else if (Menu.Jungle.DrawJunglerTrackerPingLocal->Enabled())
-					{
-						GGame->ShowPing(kPingNormal, o.WorldPosition, true);
-					}
-					LastPingTime2 = GGame->Time();
-				}
-			}
-			FoWUpdated = false;
-		}
-	}
+	
 }
 
 void Tracker::OnProcessSpell(CastedSpell const& Args)
@@ -140,37 +76,6 @@ void Tracker::StrTimeFormat(int Seconds) //convert seconds to 0:00 format
 
 void Tracker::OnRender()
 {
-	//Draw FoW Jungle Tracker
-	if (Menu.Jungle.TrackJungler->Enabled())
-	{
-		for (auto obj : JungleNotifications)
-		{
-			if (obj.TriggerTime - GGame->Time() > 0)
-			{
-				GRender->DrawOutlinedCircle(obj.WorldPosition, Vec4(255, 0, 0, 255), 20.f); // draw a small circle around notification
-				RC_On->Draw(obj.MinimapPosition.x - 15, obj.MinimapPosition.y - 15);
-			}
-		}
-	}
-	
-	
-
-	/*
-	int j = 0;
-	for (auto obj : JungleNotifications)
-	{
-		if ( && obj.TriggerTime + 2 - GGame->Time() >= 0)
-		{
-			GRender->DrawOutlinedCircle(obj.WorldPosition, Vec4(255, 0, 0, 255), 20.f); // draw a small circle around notification
-		}
-		else
-		{
-			JungleNotifications.erase(JungleNotifications.begin() + j);
-		}
-		j++;
-	}*/
-	
-
 	if (Menu.TrackWards->Enabled() && Menu.Enabled->Enabled())
 	{
 		for (auto obj : HiddenObjects)
@@ -611,11 +516,8 @@ void Tracker::LoadMenu(IMenu* Parent)
 	Menu.Jungle.TrackCrabs = pJungleMenu->CheckBox("Track Scuttle Crabs:", true);
 	Menu.Jungle.TrackDrag = pJungleMenu->CheckBox("Track Dragon:", false);
 
-	IMenu* pFoWJungleTrackerMenu = Parent->AddMenu("FoW Jungle Tracker");
-	Menu.Jungle.TrackJungler = pFoWJungleTrackerMenu->CheckBox("Enabled:", true);
-	Menu.Jungle.DrawJunglerTrackerPingLocal = pFoWJungleTrackerMenu->CheckBox("Ping Local (only you see):", true);
-	Menu.Jungle.DrawJunglerTrackerPingGlobal = pFoWJungleTrackerMenu->CheckBox("Ping Global (everyone sees):", false);
-	//Menu.Jungle.DrawJunglerTrackerPingType = pFoWJungleTrackerMenu->AddInteger("Ping Type:", 1, 3, 1);
+	
+	
 	//Menu.Jungle.ShowNotifications = pJungleMenu->CheckBox("Show Notifications", true);
 }
 

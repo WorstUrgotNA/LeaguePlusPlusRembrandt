@@ -1,30 +1,55 @@
 #include "GankDetection.h"
 
+ITexture*	RC_On;
+
 GankDetection::GankDetection(IMenu* Parent)
 {
 	int i = 0;
 
 	for (auto pUnit : GEntityList->GetAllHeros(false, true))
 	{
-		Heros.emplace_back(pUnit);
-
 		std::string const& Filename = pUnit->ChampionName();
 		ChampIcons[i] = GRender->CreateTextureFromFile(("UtilityPRO/" + Filename + ".png").c_str());
 		ChampIcons[i]->SetColor(Vec4(100, 100, 100, 255));
+		
+		Heros.emplace_back(pUnit);
+		Heros.back().ChampIcon = GRender->CreateTextureFromFile(("UtilityPRO/" + Filename + ".png").c_str());
 		i++;
 	}
-		
+		// init jung fow trackr
+	RC_On = GRender->CreateTextureFromFile("UtilityPRO/RC_On.png");
+	RC_On->SetColor(Vec4(255, 150, 150, 150));
+	RC_On->Scale(GRender->ScreenSize().y / 1440.f);
+
+	JGNUpdated = false;
+	FoWUpdated = false;
+	JGDelay = 0.f;
+	LastPingTimeTracker = 0.f;
+	LastPingTime2 = 0.f;
 
 	Menu.Parent							= Parent->AddMenu("Awareness");
-	Menu.ShowPredictedMovementCircle	= Menu.Parent->CheckBox("FoW Movement Prediction:", true);
-	Menu.DrawJunglerTracker = Menu.Parent->CheckBox("Track Enemy Jungler:", true);
+	Menu.ShowPredictedMovementCircle	= Menu.Parent->CheckBox("Enable Minimap Awareness:", true);
+	Menu.ShowMovementCircle = Menu.Parent->CheckBox("Minimap Predicted Movement Circle:", true);
+	Menu.LastSeen = Menu.Parent->CheckBox("Minimap MIA Timer:", false);
+	Menu.IconDuration = Menu.Parent->AddInteger("Minimap MIA Duration (sec):", 1, 200, 10);
+	Menu.DrawJunglerTracker = Menu.Parent->CheckBox("Enemy Jungler MIA Box:", true);
 	//Menu.DrawEnemyRadar					= Menu.Parent->CheckBox("Show Radar", false);
 	Menu.ShowClicks						= Menu.Parent->CheckBox("Draw Enemy Clicks:", false);
 	Menu.RenderGankDetectionCircle		= Menu.Parent->CheckBox("Draw Gank Detection Radius:", false);
-	Menu.GankPingDistance				= Menu.Parent->AddFloat("Gank Detection Radius", 500, 5000, 3000);
+	Menu.GankPingDistance				= Menu.Parent->AddFloat("Gank Detection Radius:", 500, 5000, 3000);
+	Menu.DrawGankLine					= Menu.Parent->CheckBox("Draw Gank Detection Line:", true);
+	Menu.DrawGankIcon					= Menu.Parent->CheckBox("Draw Ganker Icon:", true);
 	//Menu.GankWaitTime					= Menu.Parent->AddFloat("Gank Ping Wait Time (s)", 5, 15, 5);
 	Menu.EnemyTowerRangeEnabled			= Menu.Parent->CheckBox("Draw Enemy Tower Ranges:", true);
 	Menu.FriendlyTowerRangeEnabled		= Menu.Parent->CheckBox("Draw Friendly Tower Ranges:", true);
+
+
+	IMenu* pFoWJungleTrackerMenu = Parent->AddMenu("FoW Jungle Tracker");
+	Menu.TrackJungler = pFoWJungleTrackerMenu->CheckBox("Enabled:", true);
+	Menu.DrawJunglerTrackerPingLocal = pFoWJungleTrackerMenu->CheckBox("Ping Local (only you see):", true);
+	//Menu.DrawJunglerTrackerPingGlobal = pFoWJungleTrackerMenu->CheckBox("Ping Global (everyone sees):", false);
+	Menu.DrawJunglerTrackerPingType = pFoWJungleTrackerMenu->AddInteger("Ping Type:", 1, 3, 1);
+	Menu.PingInterval = pFoWJungleTrackerMenu->AddInteger("Minimum Time Between Pings:", 0, 20, 5);
 
 	//auto pHeroes = Menu.Parent->AddMenu("Ping on Gank (Champions)");
 
@@ -60,6 +85,13 @@ GankDetection::~GankDetection()
 
 }
 
+void GankDetection::OnJungleNotify(JungleNotifyData* Args)
+{
+	FoWUpdated = true;
+	JGDisplayPos = Args->Position;
+	JGDelay = GGame->Time() + 5;
+}
+
 void GankDetection::OnGameUpdate()
 {
 	UpdateChampions();
@@ -84,7 +116,7 @@ void GankDetection::OnGameUpdate()
 			float flTimeSinceVisible	= GGame->Time() - unit.LastHiddenTime;
 			float flDistance			= (GEntityList->Player()->GetPosition() - unit.Position).Length2D();
 
-			if (flTimeSinceVisible > 0.1f && flTimeSinceVisible < 2.f && flDistance < Menu.GankPingDistance->GetFloat())
+			if (unit.TotalTimeHidden > 0.1f && unit.TotalTimeHidden < 2.f && flDistance < Menu.GankPingDistance->GetFloat())
 			{
 				GGame->ShowPing(kPingFallback, GEntityList->Player(), true);
 
@@ -96,13 +128,97 @@ void GankDetection::OnGameUpdate()
 			}
 		}
 	}
+
+	//clear junglenotifications vector if too much time has passed
+	if (GGame->Time() - LastPingTimeTracker > 5)
+		JungleNotifications.clear();
+
+
+	if (FoWUpdated) //try to push notification position and time to vector
+	{
+		if (Menu.TrackJungler->Enabled())
+		{
+			bool FalseAlarm = false;
+
+			for (auto pUnit : GEntityList->GetAllUnits())
+			{
+				float flDistance = (pUnit->GetPosition() - JGDisplayPos).Length();
+				if (flDistance < 500)
+				{
+					//GRender->Notification(Vec4(255, 255, 255, 255), 5, "%s distance %f to ping", pUnit->GetObjectName(), flDistance);
+					FalseAlarm = true;
+					break;
+				}
+			}
+
+			if (!FalseAlarm && GGame->Time() - LastPingTimeTracker >= 1)
+			{
+				JungleNotification o;
+
+				GGame->WorldToMinimap(JGDisplayPos, o.MinimapPosition);
+				o.WorldPosition = JGDisplayPos;
+				o.TriggerTime = JGDelay;
+
+				JungleNotifications.push_back(o);
+				JGNUpdated = true;
+				//GRender->Notification(Vec4(255, 255, 255, 255), 5, "Size: %i", JungleNotifications.size());
+				LastPingTimeTracker = GGame->Time();
+
+				if (GGame->Time() - LastPingTime2 >= Menu.PingInterval->GetInteger())
+				{
+					if (Menu.DrawJunglerTrackerPingLocal->Enabled())
+					{
+						GGame->ShowPing(kPingNormal, o.WorldPosition, true);
+					}
+					LastPingTime2 = GGame->Time();
+				}
+			}
+			FoWUpdated = false;
+		}
+	}
 }
 
 void GankDetection::UpdateChampions()
 {
 	IUnit* pLocal = GEntityList->Player();
 	Vec3 vecLocalPosition = pLocal->GetPosition();
+	int NumVisible = 0;
 
+	for (auto& unit : Heros)
+	{
+		if (unit.Player->IsVisible() || unit.Player->IsDead())
+		{
+			unit.Position = unit.Player->GetPosition();
+			unit.LastVisibleTime = GGame->Time();
+			NumVisible++;
+		}
+		else
+		{
+			unit.TotalTimeHidden = GGame->Time() - unit.LastVisibleTime;
+		}
+		if (GGame->Time() - unit.LastHiddenTime > 10)
+			unit.Position = unit.Player->GetPosition();
+
+		unit.Distance = (unit.Position - vecLocalPosition).Length();
+		unit.IsVisible = unit.Player->IsVisible();
+
+	}
+
+	if (NumVisible == 4 && JGNUpdated)
+	{
+		for (auto& unit : Heros)
+		{
+			if (!unit.IsVisible)
+			{
+				unit.LastHiddenTime = GGame->Time();
+				unit.LastVisibleTime = GGame->Time();
+				unit.Position = JGDisplayPos;
+				JGNUpdated = false;
+				break;
+			}
+		}
+	}
+	/*
 	for (auto& unit : Heros)
 	{
 		if (!unit.IsVisible && unit.Player->IsVisible())
@@ -110,14 +226,16 @@ void GankDetection::UpdateChampions()
 			unit.TotalTimeHidden = GGame->Time() - unit.LastVisibleTime;
 			unit.LastHiddenTime = GGame->Time();
 		}
-
 		unit.Position = unit.Player->GetPosition();
 		unit.Distance = (unit.Position - vecLocalPosition).Length();
 		unit.IsVisible = unit.Player->IsVisible();
 
 		if (unit.IsVisible)
+		{
 			unit.LastVisibleTime = GGame->Time();
-	}
+		}
+			
+	}*/
 }
 
 void GankDetection::OnRender()
@@ -129,6 +247,18 @@ void GankDetection::OnRender()
 
 	Vec2 vecScreen;
 
+	//Draw FoW Jungle Tracker
+	if (Menu.TrackJungler->Enabled())
+	{
+		for (auto obj : JungleNotifications)
+		{
+			if (obj.TriggerTime - GGame->Time() > 0)
+			{
+				GRender->DrawOutlinedCircle(obj.WorldPosition, Vec4(255, 0, 0, 255), 20.f); // draw a small circle around notification
+				RC_On->Draw(obj.MinimapPosition.x - 15, obj.MinimapPosition.y - 15);
+			}
+		}
+	}
 	
 	
 	if (Menu.EnemyTowerRangeEnabled->Enabled() || Menu.FriendlyTowerRangeEnabled->Enabled())
@@ -138,7 +268,7 @@ void GankDetection::OnRender()
 			if (turret == nullptr || turret->IsDead() || turret->GetHealth() < 1.f || strstr(turret->GetObjectName(), "Shrine"))
 				continue;
 
-			float range = turret->BoundingRadius() + 775.f; //trstr(turret->GetObjectName(), "Chaos") ? turret->BoundingRadius() + 1100.f : 
+			float range = turret->BoundingRadius() + 775.f; //strstr(turret->GetObjectName(), "Chaos") ? turret->BoundingRadius() + 1100.f : 
 
 			if (turret->IsEnemy(pLocal))
 				GRender->DrawOutlinedCircle(turret->GetPosition(), Vec4(255, 0, 0, 140), range);
@@ -156,7 +286,10 @@ void GankDetection::OnRender()
 
 
 		if (!GGame->Projection(vecExtendedPosition, &vecScreen))
-			continue;
+		{
+			//continue;
+		}
+			
 
 		vecScreen.y += 15.f;
 
@@ -191,6 +324,7 @@ void GankDetection::OnRender()
 
 		if (unit.IsVisible)
 		{
+			//GRender->Notification(Vec4(255, 255, 255, 255), 0, "%s is visible", unit.Player->ChampionName());
 			// Draw Path
 			if (Menu.ShowClicks->Enabled())
 			{
@@ -234,6 +368,7 @@ void GankDetection::OnRender()
 		}
 		else
 		{
+			//GRender->Notification(Vec4(255, 255, 255, 255), 0, "%s is NOT visible", unit.Player->ChampionName());
 			// Draw Name [MIA]
 			/*if (Menu.DrawEnemyRadar->Enabled())
 			{
@@ -251,12 +386,13 @@ void GankDetection::OnRender()
 			}
 			
 			// Draw FoW Circle
-
+			
 			if (Menu.ShowPredictedMovementCircle->Enabled())
 			{
-				if (GGame->Time() - unit.LastVisibleTime < 10.f)
+				if (GGame->Time() - unit.LastVisibleTime < Menu.IconDuration->GetInteger())
 				{
 					Vec2 vecMinimap;
+					
 					if (GGame->WorldToMinimap(unit.Position, vecMinimap))
 					{
 						float flMaxDistance = unit.Player->MovementSpeed() * (GGame->Time() - unit.LastVisibleTime);
@@ -267,15 +403,17 @@ void GankDetection::OnRender()
 						{
 							float flRadius = (vecMinimapNew - vecMinimap).Length();
 							
-							/*if (unit.IsJungle)
-								Tahoma13Bold->Render(vecMinimap.x, vecMinimap.y, "[%i]", static_cast<int>(GGame->Time() - unit.LastVisibleTime));
-							else
-								Tahoma13->Render(vecMinimap.x, vecMinimap.y, "[%i]", static_cast<int>(GGame->Time() - unit.LastVisibleTime));*/
-
-							GRender->DrawOutlinedCircle(vecMinimap, Vec4(255, 255, 0, 255), flRadius);
-							ChampIcons[i]->SetColor(Vec4(100, 100, 100, 255));
-							ChampIcons[i]->DrawCircle(vecMinimap.x, vecMinimap.y, 13);
 							
+							unit.ChampIcon->SetColor(Vec4(200, 200, 200, 255));
+							unit.ChampIcon->DrawCircle(vecMinimap.x, vecMinimap.y, 12);
+							
+							if (Menu.ShowMovementCircle->Enabled())
+								GRender->DrawOutlinedCircle(vecMinimap, Vec4(255, 255, 0, 255), flRadius + 22);
+							else
+								GRender->DrawOutlinedCircle(vecMinimap, Vec4(255, 255, 0, 255), 22);
+							
+							if (Menu.LastSeen->Enabled())
+								Tahoma13->Render(vecMinimap.x + 2, vecMinimap.y + 4, "[%i]", static_cast<int>(GGame->Time() - unit.LastVisibleTime));
 						}
 					}
 				}
@@ -284,7 +422,7 @@ void GankDetection::OnRender()
 
 		flExtension += 100.f;
 	}
-
+	
 	if (Menu.RenderGankDetectionCircle->Enabled())
 	{
 		Vec2 vecMyPosition;
@@ -304,7 +442,8 @@ void GankDetection::OnRender()
 		if (GGame->Projection(pLocal->GetPosition(), &vecMyPosition))
 		{
 			GGame->Projection(IncomingGankUnit->GetPosition(), &vecEnemyPosition);
-			//GRender->DrawLine(vecMyPosition, vecEnemyPosition, Vec4(255, 0, 0, 255));
+			if (Menu.DrawGankLine->Enabled())
+				GRender->DrawLine(vecMyPosition, vecEnemyPosition, Vec4(255, 0, 0, 255));
 			
 			Vec3 vecLocal		= pLocal->GetPosition();
 			Vec3 vecEnemy		= IncomingGankUnit->GetPosition();
@@ -316,9 +455,17 @@ void GankDetection::OnRender()
 			GGame->Projection(vecHalf, &vecCenterLine);
 
 			//Tahoma13Bold->Render(vecCenterLine.x, vecCenterLine.y, IncomingGankUnit->ChampionName());
-			
-			ChampIcons[i]->SetColor(Vec4(255, 255, 255, 255));
-			ChampIcons[i]->DrawCircle(vecCenterLine.x, vecCenterLine.y, 30);
+			if (Menu.DrawGankIcon->Enabled())
+			{
+				for (auto hero : Heros)
+				{
+					if (hero.Player->ChampionName() == IncomingGankUnit->ChampionName())
+					{
+						hero.ChampIcon->DrawCircle(vecCenterLine.x, vecCenterLine.y, 30);
+						break;
+					}
+				}
+			}
 		}
 	}
 }

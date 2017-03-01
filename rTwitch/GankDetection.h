@@ -21,12 +21,23 @@ struct GankHero
 	float	TotalTimeHidden;
 	bool	IsVisible;
 	bool	IsJungle;
+	ITexture* ChampIcon;
+};
+
+struct JungleNotification
+{
+	Vec3				WorldPosition;
+	Vec2				MinimapPosition;
+	float				TriggerTime;
 };
 
 struct GankMenu
 {
 	IMenu*			Parent;
 	IMenuOption*	ShowPredictedMovementCircle;
+	IMenuOption*	ShowMovementCircle;
+	IMenuOption*	LastSeen;
+	IMenuOption*	IconDuration;
 	IMenuOption*	DrawEnemyRadar;
 	IMenuOption*	ShowClicks;
 	IMenuOption*	GankPingDistance;
@@ -34,7 +45,15 @@ struct GankMenu
 	IMenuOption*	RenderGankDetectionCircle;
 	IMenuOption*	EnemyTowerRangeEnabled;
 	IMenuOption*	FriendlyTowerRangeEnabled;
+	IMenuOption*	DrawGankLine;
+	IMenuOption*	DrawGankIcon;
 	IMenuOption*	DrawJunglerTracker;
+	//fow tracker
+	IMenuOption* TrackJungler;
+	IMenuOption* DrawJunglerTrackerPingLocal;
+	IMenuOption* DrawJunglerTrackerPingGlobal;
+	IMenuOption* DrawJunglerTrackerPingType;
+	IMenuOption* PingInterval;
 
 	std::map<int, IMenuOption*> ChampionsToPingOnGank;
 };
@@ -48,6 +67,7 @@ public:
 
 	void OnGameUpdate();
 	void OnRender();
+	void OnJungleNotify(JungleNotifyData* Args);
 
 private:
 	void UpdateChampions();
@@ -59,8 +79,15 @@ private:
 	IFont*					Tahoma13Bold;
 	IFont*					Font1;
 	std::vector<GankHero>	Heros;
+	std::vector<JungleNotification>	JungleNotifications;
 	float					LastPingTime;
 	IUnit*					IncomingGankUnit;
 	float					ShowGankEndTime;
 	ITexture*				ChampIcons[4];
+	Vec3						JGDisplayPos;
+	float						JGDelay;
+	float						LastPingTimeTracker;
+	float						LastPingTime2;
+	bool						FoWUpdated;
+	bool						JGNUpdated;
 };

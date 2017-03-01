@@ -26,10 +26,7 @@ struct TrackerJungleMenu
 	IMenuOption* TrackKrugs;
 	IMenuOption* TrackDrag;
 	IMenuOption* TrackCrabs;
-	IMenuOption* TrackJungler;
-	IMenuOption* DrawJunglerTrackerPingLocal;
-	IMenuOption* DrawJunglerTrackerPingGlobal;
-	IMenuOption* DrawJunglerTrackerPingType;
+	
 };
 
 struct TrackerMenu
@@ -62,12 +59,6 @@ struct HiddenObject
 	bool				IsValid;
 };
 
-struct JungleNotification
-{
-	Vec3				WorldPosition;
-	Vec2				MinimapPosition;
-	float				TriggerTime;
-};
 
 struct ClonedUnit
 {
@@ -122,7 +113,6 @@ public:
 	void OnUnitDeath(IUnit* Args);
 	void OnProcessSpell(CastedSpell const& Args);
 	void StrTimeFormat(int Seconds);
-	void OnJungleNotify(JungleNotifyData* Args);
 
 private:
 	void LoadMenu(IMenu* Parent);
@@ -137,7 +127,6 @@ private:
 	TrackerMenu					Menu;
 	std::vector<JungleCamp>		Camps;
 	std::vector<HiddenObject>	HiddenObjects;
-	std::vector<JungleNotification>	JungleNotifications;
 	std::vector<ClonedUnit>		Clones;
 	std::string					formattedTime;
 	size_t						BaronIdx;
@@ -146,9 +135,4 @@ private:
 	int							DragonStacks;
 	IFont*						TrackerFont;
 	IFont*						MinimapText;
-	Vec3						JGDisplayPos;
-	float						JGDelay;
-	float						LastPingTime;
-	float						LastPingTime2;
-	bool						FoWUpdated;
 };

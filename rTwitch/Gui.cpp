@@ -29,12 +29,10 @@ void Gui::OnRender()
 {
 	Resolution = GRender->ScreenSize();
 
-	UpdateChampions();
-
 	if (Menu.Enabled->Enabled())
 	{
+		UpdateChampions();
 		RenderTeammates();
-		
 		RenderEnemies();
 	}
 	ReSizeNeeded = false;
@@ -527,14 +525,46 @@ void Gui::UpdateChampions()
 			continue;
 
 
+
 		auto pPlayer = pGui->Player;
 		
-		if (pPlayer->IsEnemy(GEntityList->Player()) && Menu.NotifyOnUltimate->Enabled() && pPlayer->GetSpellLevel(kSlotR) != 0 && pPlayer->GetSpellTotalCooldown(kSlotR) > 30.f &&
+		if (pPlayer->ChampionName() == GEntityList->Player()->ChampionName() && Menu.TestNotifyOnUltimate->Enabled()) //test notification
+		{
+			Vec2 UN_bgWidth = Textures->UN_bg->GetSize();
+			Vec2 UN_pos = Vec2(0, 75 + Menu.UltimateYOffset->GetFloat());
+			UN_pos.x = (Resolution.x / 2 - UN_bgWidth.x / 2) + Menu.UltimateXOffset->GetFloat();
+			auto rTexture = pGui->SpellIcons[3];
+			auto rChamp = pGui->ChampionIcon;
+			float flCooldown = 0;
+			float Opacity = 255;
+
+
+			rTexture->SetColor(Vec4(255, 255, 255, Opacity));
+			rChamp->SetColor(Vec4(255, 255, 255, Opacity));
+			Textures->UN_bg->SetColor(Vec4(255, 255, 255, Opacity));
+			Textures->UN_r->SetColor(Vec4(255, 255, 255, Opacity));
+
+			if (Resolution.y < 1080.f)
+			{
+				rTexture->Scale(Resolution.y / 1080.f);
+				rChamp->Scale(Resolution.y / 1080.f);
+				Textures->UN_bg->Scale(Resolution.y / 1080.f);
+				Textures->UN_r->Scale(Resolution.y / 1080.f);
+			}
+
+			Textures->UN_bg->Draw(UN_pos.x, UN_pos.y - flCooldown * 15);
+			rTexture->Draw(UN_pos.x + 4, UN_pos.y + 3 - flCooldown * 15);
+			rChamp->Draw(UN_pos.x + 156, UN_pos.y - flCooldown * 15);
+			Textures->UN_r->Draw(UN_pos.x, UN_pos.y - flCooldown * 15);
+		}
+
+
+		if (pPlayer->IsEnemy(GEntityList->Player()) && Menu.NotifyOnUltimate->Enabled() && pPlayer->GetSpellLevel(kSlotR) != 0 && Menu.ChampionsToNotifyOnR[pPlayer->GetNetworkId()]->Enabled() &&
 			pPlayer->GetSpellRemainingCooldown(kSlotR) > 0 && pPlayer->GetSpellRemainingCooldown(kSlotR) < 4)
 		{
 			Vec2 UN_bgWidth = Textures->UN_bg->GetSize();
-			Vec2 UN_pos = Vec2(0, 75);
-			UN_pos.x = Resolution.x / 2 - UN_bgWidth.x / 2;
+			Vec2 UN_pos = Vec2(0, 75 + Menu.UltimateYOffset->GetFloat());
+			UN_pos.x = (Resolution.x / 2 - UN_bgWidth.x / 2) + Menu.UltimateXOffset->GetFloat();
 			auto rTexture = pGui->SpellIcons[3];
 			auto rChamp = pGui->ChampionIcon;
 			float flCooldown = pPlayer->GetSpellRemainingCooldown(kSlotR);
@@ -628,6 +658,8 @@ void Gui::UpdateChampions()
 
 void Gui::LoadMenu()
 {
+	Menu.Enabled = Menu.Owner->CheckBox("Enable/Disable all HUD:", true);
+
 	Menu.GUI2D = Menu.Owner->AddMenu("2D GUI Options");
 	Menu.Show2DHud = Menu.GUI2D->CheckBox("Draw 2D HUD:", true);
 	Menu.MinimalisticHud = Menu.GUI2D->CheckBox("Old Style UI", false);
@@ -646,12 +678,25 @@ void Gui::LoadMenu()
 	Menu.ShowTeam3D = Menu.GUI3D->CheckBox("Draw Team UI:", true);
 	Menu.ShowEnemies3D = Menu.GUI3D->CheckBox("Draw Enemy UI:", true);
 	
+	auto pHeroes = Menu.Owner->AddMenu("Ultimate Cooldown Notifications");
+	Menu.NotifyOnUltimate = pHeroes->CheckBox("Enable:", true);
+	Menu.TestNotifyOnUltimate = pHeroes->CheckBox("Test/Sample Notification:", false);
+	Menu.UltimateXOffset = pHeroes->AddFloat("X offset:", -4000, 4000, 0);
+	Menu.UltimateYOffset = pHeroes->AddFloat("Y offset:", -4000, 4000, 0);
 
-	Menu.Enabled = Menu.Owner->CheckBox("Enable/Disable All GUI:", true);
-	Menu.NotifyOnUltimate = Menu.Owner->CheckBox("Notify on Ultimate CD:", true);
+	for (auto pHero : GEntityList->GetAllHeros(false, true))
+	{
+		std::string szMenuName = std::string(pHero->ChampionName()) + ":";
 
+		if (pHero->GetSpellTotalCooldown(kSlotR) > 30.f)
+			Menu.ChampionsToNotifyOnR[pHero->GetNetworkId()] = pHeroes->CheckBox(szMenuName.c_str(), true);
+		else
+			Menu.ChampionsToNotifyOnR[pHero->GetNetworkId()] = pHeroes->CheckBox(szMenuName.c_str(), false);
+	}
+
+	
 	//Menu.NotifyOnRespawn = Menu.Owner->CheckBox("Notify on Respawn", false);
-	Menu.XOffset = Menu.Owner->AddFloat("X offset:", -200, 200, 0);
+	//Menu.XOffset = Menu.Owner->AddFloat("X offset:", -200, 200, 0);
 	/*Menu.YOffset = Menu.Owner->AddFloat("Y offset:", -200, 200, 0);
 	Menu.RadiusOffset = Menu.Owner->AddFloat("Radius:", -200, 200, 40);
 	Menu.Resize = Menu.Owner->AddFloat("Resize bonus:", 0, 200, 75);*/
