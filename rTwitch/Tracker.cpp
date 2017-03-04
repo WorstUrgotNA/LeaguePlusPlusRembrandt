@@ -4,6 +4,7 @@
 #include <Shlwapi.h>
 #include <algorithm>
 #include <stdlib.h>
+#include <curl/curl.h>
 
 ITexture*	TrapDot;
 ITexture*	PinkWard;
@@ -23,9 +24,9 @@ Tracker::Tracker(IMenu* Parent)
 	TrackerFont->SetOutline(true);
 
 
-	TrapDot = GRender->CreateTextureFromFile("UtilityPRO/trapdot.png"); //load texture
-	PinkWard = GRender->CreateTextureFromFile("UtilityPRO/True_Sight_icon.png"); //load texture
-	EnemyWard = GRender->CreateTextureFromFile("UtilityPRO/EnemyWard.png"); //load texture
+	TrapDot = CreateTextureEx("trapdot"); //load texture
+	PinkWard = CreateTextureEx("True_Sight_icon"); //load texture
+	EnemyWard = CreateTextureEx("EnemyWard"); //load texture
 	
 
 	LoadMenu(Parent);
@@ -537,8 +538,6 @@ bool Tracker::AddHiddenObject(CastedSpell const& Args)
 		eHiddenObjectType Type;
 	};
 
-	//GRender->Notification(Vec4(255, 255, 0, 255), 10, "Spell name: %s", Args.Name_);
-
 	static std::vector<HiddenObjectDefinition> Definitions =
 	{
 		{"trinketorblvl3",FLT_MAX, kHiddenBlueWard},
@@ -594,6 +593,60 @@ bool Tracker::IsCampDead(JungleCamp const& Camp)
 	}
 
 	return true;
+}
+
+bool Tracker::DoesTextureExist(std::string const& Filename, std::string& FullPath)
+{
+	std::string szFinalPath;
+	GPluginSDK->GetBaseDirectory(szFinalPath);
+
+	szFinalPath += "\\Textures\\" + Filename + ".png";
+	FullPath = szFinalPath;
+
+	HANDLE hFile = CreateFileA(szFinalPath.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+
+	if (hFile != INVALID_HANDLE_VALUE)
+{	
+		CloseHandle(hFile);
+		return true;
+	}
+
+	return false;
+}
+
+ITexture* Tracker::CreateTextureEx(std::string const& Filename)
+{
+
+
+	std::string szFullPath;
+	if (DoesTextureExist(Filename, szFullPath))
+		return GRender->CreateTextureFromFile((Filename + ".png").c_str());
+	/*
+	std::string szImage;
+	if (GPluginSDK->ReadFileFromURL(DownloadUrl, szImage))
+	return GRender->CreateTextureFromMemory((uint8_t*)szImage.data(), szImage.length(), Filename.c_str());*/
+	//GUtility->LogConsole("Could not find %s.png", Filename);
+
+	CURL *curl;
+	FILE *fp;
+	CURLcode res;
+	auto url = "https://raw.githubusercontent.com/Harmenszoon/LeaguePlusPlusRembrandt/master/Resources/" + Filename + ".png";
+	curl = curl_easy_init();
+	if (curl)
+	{
+		fp = fopen((szFullPath).c_str(), "wb");
+		curl_easy_setopt(curl, CURLOPT_URL, url);
+		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, NULL);
+		curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
+		res = curl_easy_perform(curl);
+		curl_easy_cleanup(curl);
+		fclose(fp);
+	}
+
+	if (DoesTextureExist(Filename, szFullPath))
+		return GRender->CreateTextureFromFile((Filename + ".png").c_str());
+
+	return nullptr;
 }
 
 void Tracker::LoadJungleCamps()

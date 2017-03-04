@@ -1,8 +1,10 @@
 #include <string>
-
 #include "Gui.h"
+#include <curl/curl.h>
+
 
 int LocalVersion = 0;
+
 
 Gui::Gui(IMenu* Parent)
 {
@@ -14,6 +16,7 @@ Gui::Gui(IMenu* Parent)
 	LoadFonts();
 	LoadTextureIcons();
 	LoadMenu();
+
 }
 
 Gui::~Gui()
@@ -27,15 +30,21 @@ void Gui::OnD3DPostReset()
 
 void Gui::OnRender()
 {
+	GUtility->LogConsole("Begin Gui OnRender");
 	Resolution = GRender->ScreenSize();
+	GUtility->LogConsole("Resize");
 
 	if (Menu.Enabled->Enabled())
 	{
 		UpdateChampions();
+		GUtility->LogConsole("UpdateChampions");
 		RenderTeammates();
+		GUtility->LogConsole("UpdateTeammates");
 		RenderEnemies();
+		GUtility->LogConsole("UpdateEnemies");
 	}
 	ReSizeNeeded = false;
+	GUtility->LogConsole("Gui OnRender Complete");
 }
 
 void Gui::OnCreateObject(IUnit* Args)
@@ -78,9 +87,9 @@ void Gui::RenderPlayer2DElementBig(HeroUI* Ui, Vec2 const& Position, bool Left)
 	Vec2 vecChampionSize	= Ui->ChampionIcon->GetSize();
 	Vec2 vecLevelPosition	= Position + vecChampionOffset;
 	Vec2 HPScaledOffset = Vec2(Position.x - 150, Position.y);
-
+	
 	Vec2 LeftOffsetBase = Left ? Vec2(0, 0) : Vec2(150 * ScreenRatio, 0);
-
+	GUtility->LogConsole("Init Variable Set 1");
 	HPScaledOffset.x -= 150;
 
 	auto pEmptyIcon		= Left ? Textures->EmptyLeft : Textures->EmptyRight;
@@ -93,7 +102,7 @@ void Gui::RenderPlayer2DElementBig(HeroUI* Ui, Vec2 const& Position, bool Left)
 	auto pHUD1_mp = Textures->HUD1_mp;
 	auto Sum1 = Ui->SummonerSpellIconsCircle[0];
 	auto Sum2 = Ui->SummonerSpellIconsCircle[1];
-
+	GUtility->LogConsole("Init Textures");
 	//RESIZE TO FIT SCREEN
 	
 	pHUD1_bar->Scale(ScreenRatio);
@@ -104,7 +113,7 @@ void Gui::RenderPlayer2DElementBig(HeroUI* Ui, Vec2 const& Position, bool Left)
 	Sum1->Scale(ScreenRatio);
 	Sum2->Scale(ScreenRatio);
 	
-
+	GUtility->LogConsole("Resize Textures");
 	if (Left)
 		vecLevelPosition += vecChampionSize - Vec2(8, 5) - Vec2(26, 26);
 	else
@@ -118,25 +127,40 @@ void Gui::RenderPlayer2DElementBig(HeroUI* Ui, Vec2 const& Position, bool Left)
 		//Vec2 barSize = pHUD1_bar->Scale;
 		//float ScaledSizeAroo = (2 * barSize.x + 2 * barSize.y) * ScreenRatio;
 		
-
+		GUtility->LogConsole("Drawing Right Side Bar");
 		pHUD1_bar->Draw(Position.x - LeftOffsetBase.x, Position.y);
 		{
 			//draw hp bars
+			GUtility->LogConsole("Drawing HP Bars");
 			pHUD1_hp->Draw(Position.x - LeftOffsetBase.x, Position.y);
+			GUtility->LogConsole("1");
 			GRender->DrawFilledBox(Vec2(HPScaledOffset.x + 295, HPScaledOffset.y + 50 * ScreenRatio), Vec2(-(133.f * ((100.f - Ui->Player->HealthPercent()) / 100)) * ScreenRatio, 16.f * ScreenRatio), Vec4(0, 0, 0, 225));
+			GUtility->LogConsole("2");
 			if (Ui->Player->GetMaxMana() > 200 && !Ui->Player->IsDead())
+			{
 				pHUD1_mp->Draw(Position.x - LeftOffsetBase.x, Position.y);
-			GRender->DrawFilledBox(Vec2(HPScaledOffset.x + 295, HPScaledOffset.y + 67 * ScreenRatio), Vec2(-(133.f * ((100.f - Ui->Player->ManaPercent()) / 100)) * ScreenRatio, 11 * ScreenRatio), Vec4(0, 0, 0, 200));
+				try
+				{
+					GRender->DrawFilledBox(Vec2(HPScaledOffset.x + 295, HPScaledOffset.y + 67 * ScreenRatio), Vec2(-(133.f * ((100.f - Ui->Player->ManaPercent()) / 100)) * ScreenRatio, 11 * ScreenRatio), Vec4(0, 0, 0, 200));
+				}
+				catch (const std::exception&)
+				{
+					GUtility->LogConsole("couldnt draw mana bar");
+				}
+			}
 			//draw champ icon
+			GUtility->LogConsole("Drawing Champ Icon");
 			pHUD1_champ->Draw(Position.x - LeftOffsetBase.x, Position.y );
 			Ui->ChampionIcon->DrawCircle(Position.x + 33 * ScreenRatio, Position.y + 63 * ScreenRatio, 37 * ScreenRatio);
 			//draw icons
+			GUtility->LogConsole("Drawing Summoner Icons");
 			Sum1->Draw(Position.x + 62 * ScreenRatio, Position.y + 43 * ScreenRatio);
 			Sum2->Draw(Position.x + 48 * ScreenRatio, Position.y + 77 * ScreenRatio);
 			Ui->SpellIcons[kSlotR]->DrawCircle(Position.x + 68 * ScreenRatio, Position.y + 29 * ScreenRatio, 17 * ScreenRatio);
 			pHUD1_icons->Draw(Position.x - LeftOffsetBase.x, Position.y);
 
 			//HP BAR TEXT
+			GUtility->LogConsole("Setting HP bar text");
 			if (Menu.DrawHPBarText->Enabled())
 			{
 				switch (Menu.HPBarTextStyle->GetInteger())
@@ -153,6 +177,7 @@ void Gui::RenderPlayer2DElementBig(HeroUI* Ui, Vec2 const& Position, bool Left)
 				}
 			}
 			//MP BAR TEXT
+			GUtility->LogConsole("Setting MP Bar Text");
 			if (Menu.DrawManaBarText->Enabled() && Ui->Player->GetMaxMana() > 200)
 			{
 				switch (Menu.ManaBarTextStyle->GetInteger())
@@ -168,7 +193,7 @@ void Gui::RenderPlayer2DElementBig(HeroUI* Ui, Vec2 const& Position, bool Left)
 					break;
 				}
 			}
-
+			GUtility->LogConsole("Init Vars again");
 			float flCooldown1 = Ui->Player->GetSpellRemainingCooldown(kSummonerSlot1);
 			float flCooldown2 = Ui->Player->GetSpellRemainingCooldown(kSummonerSlot2);
 			float flCooldown3 = Ui->Player->GetSpellLevel(kSlotR) > 0 ? Ui->Player->GetSpellRemainingCooldown(kSlotR) : 0.f;
@@ -199,20 +224,31 @@ void Gui::RenderPlayer2DElementBig(HeroUI* Ui, Vec2 const& Position, bool Left)
 				Vec2 vecChampionCenter = Position + vecChampionOffset + vecChampionSize / 2;
 				Fonts->HudFont->Render(Position.x + (vecChampionOffset.x + vecChampionSize.x / 2 - 14) * ScreenRatio, Position.y + (vecChampionOffset.y + vecChampionSize.y / 2 + 19) * ScreenRatio, "%i", static_cast<int>(Ui->RespawnTime - GGame->Time()));
 			}
-
+			GUtility->LogConsole("RIGHT SIDE COMPLETE");
 			//Fonts->HudFont->Render(vecLevelPosition.x + 13, vecLevelPosition.y + 13, "%i", Ui->Player->GetLevel());
 		}
 	}
 	else
 	{
+		GUtility->LogConsole("Drawing Left Side Bar");
 		pHUD1_bar->Draw(Position.x - LeftOffsetBase.x, Position.y);
 		{
 			//draw hp bars
 			pHUD1_hp->Draw((Position.x + 102) * ScreenRatio, Position.y);
 			GRender->DrawFilledBox(Vec2((HPScaledOffset.x + 546) * ScreenRatio, HPScaledOffset.y + 50 * ScreenRatio), Vec2((-(133.f * ((100.f - Ui->Player->HealthPercent()) / 100))) * ScreenRatio, 16.f * ScreenRatio), Vec4(0, 0, 0, 225));
 			if (Ui->Player->GetMaxMana() > 200 && !Ui->Player->IsDead())
+			{
 				pHUD1_mp->Draw((Position.x + 102) * ScreenRatio, (Position.y));
-			GRender->DrawFilledBox(Vec2((HPScaledOffset.x + 546) * ScreenRatio, HPScaledOffset.y + 67 * ScreenRatio), Vec2((-(133.f * ((100.f - Ui->Player->ManaPercent()) / 100))) * ScreenRatio, 11 * ScreenRatio), Vec4(0, 0, 0, 200));
+				try
+				{
+					GRender->DrawFilledBox(Vec2((HPScaledOffset.x + 546) * ScreenRatio, HPScaledOffset.y + 67 * ScreenRatio), Vec2((-(133.f * ((100.f - Ui->Player->ManaPercent()) / 100))) * ScreenRatio, 11 * ScreenRatio), Vec4(0, 0, 0, 200));
+				}
+				catch (const std::exception&)
+				{
+					
+				}
+			}
+			
 			//draw champ icon
 			pHUD1_champ->Draw((Position.x) * ScreenRatio, Position.y);
 			Ui->ChampionIcon->DrawCircle((Position.x + 75) * ScreenRatio, Position.y + 63 * ScreenRatio, 37 * ScreenRatio);
@@ -410,29 +446,31 @@ void Gui::RenderPlayer3DElement(HeroUI* Ui)
 
 void Gui::RenderTeammates()
 {
+	GUtility->LogConsole("Rendering Teamates");
 	if (Teammates.size() == 0)
 		return;
 
 	bool bLeftSide = Menu.TeamOnLeft->Enabled() ? true : false;
 	Vec2 vecSize = bLeftSide ? Textures->OutlineLeft->GetSize() : Textures->OutlineRight->GetSize();
-
+	GUtility->LogConsole("First Initialization Sequence Complete");
 	if (Menu.MinimalisticHud->Enabled())
 		vecSize = Textures->SmallOutline->GetSize();
 	else
 		vecSize *= (Resolution.y / 1440);
-
+	GUtility->LogConsole("Second Initialization Sequence Complete");
 	float flPadding = 5 * (Resolution.y / 1440);
 	float flLeft = bLeftSide ? 0 : Resolution.x - vecSize.x;
 	float flTop = Menu.MinimalisticHud->Enabled() ? 125.f : 140.f;
 	Vec2 vecPosition = Vec2(flLeft, flTop);
-
+	GUtility->LogConsole("Third Initialization Sequence Complete");
 	for (auto pGui : Teammates)
 	{
 		if (!pGui->Valid)
 			continue;
-
+		
 		if (Menu.Show2DHud->Enabled())
 		{
+			GUtility->LogConsole("Building 2D HUD in Loop");
 			if (pGui->Player == GEntityList->Player()) // pGui is player
 			{
 				if (Menu.ShowSelf->Enabled())
@@ -440,7 +478,11 @@ void Gui::RenderTeammates()
 					if (Menu.MinimalisticHud->Enabled())
 						RenderPlayer2DElementSmall(pGui, vecPosition);
 					else
+					{
+						GUtility->LogConsole("RenderPlayer2DElementBig for SELF");
 						RenderPlayer2DElementBig(pGui, vecPosition, bLeftSide);
+					}
+						
 				}
 			}
 			else //pGui is teamate
@@ -450,14 +492,19 @@ void Gui::RenderTeammates()
 					if (Menu.MinimalisticHud->Enabled())
 						RenderPlayer2DElementSmall(pGui, vecPosition);
 					else
+					{
+						GUtility->LogConsole("RenderPlayer2DElementBig for TEAMATE");
 						RenderPlayer2DElementBig(pGui, vecPosition, bLeftSide);
+					}
+						
 				}
 			}			
 		}
-
+		
 
 		if (Menu.Show3DHud->Enabled())
 		{
+			GUtility->LogConsole("Building 3D HUD in Loop");
 			if (pGui->Player == GEntityList->Player()) // pGui is player
 			{
 				if (Menu.ShowSelf3D->Enabled())
@@ -732,34 +779,34 @@ void Gui::LoadTextureIcons()
 	Textures = new UiTextures;
 
 	// 2D Hud
-	Textures->OutlineLeft	= GRender->CreateTextureFromFile("UtilityPRO/LeftHUD.png");
-	Textures->OutlineRight	= GRender->CreateTextureFromFile("UtilityPRO/RightHUD.png");
-	Textures->EmptyLeft		= GRender->CreateTextureFromFile("UtilityPRO/LeftEmpty.png");
-	Textures->EmptyRight	= GRender->CreateTextureFromFile("UtilityPRO/RightEmpty.png");
-	Textures->Health		= GRender->CreateTextureFromFile("UtilityPRO/HP.png");
-	Textures->Mana			= GRender->CreateTextureFromFile("UtilityPRO/MP.png");
-	Textures->HUD1_bar		= GRender->CreateTextureFromFile("UtilityPRO/HUD1_bar.png");
-	Textures->HUD1_champ		= GRender->CreateTextureFromFile("UtilityPRO/HUD1_champ.png");
-	Textures->HUD1_icons		= GRender->CreateTextureFromFile("UtilityPRO/HUD1_icons.png");
-	Textures->HUD1_barleft = GRender->CreateTextureFromFile("UtilityPRO/HUD1_barleft.png");
-	Textures->HUD1_champleft = GRender->CreateTextureFromFile("UtilityPRO/HUD1_champleft.png");
-	Textures->HUD1_iconsleft = GRender->CreateTextureFromFile("UtilityPRO/HUD1_iconsleft.png");
-	Textures->HUD1_hp = GRender->CreateTextureFromFile("UtilityPRO/HUD1_hp.png");
-	Textures->HUD1_mp = GRender->CreateTextureFromFile("UtilityPRO/HUD1_mp.png");
-	Textures->OKTW_circle = GRender->CreateTextureFromFile("UtilityPRO/OKTW_circle.png");
-	Textures->OKTW_bar = GRender->CreateTextureFromFile("UtilityPRO/OKTW_bar.png");
+	Textures->OutlineLeft	= CreateTextureEx("LeftHud");
+	Textures->OutlineRight	= CreateTextureEx("RightHUD");
+	Textures->EmptyLeft		= CreateTextureEx("LeftEmpty");
+	Textures->EmptyRight	= CreateTextureEx("RightEmpty");
+	Textures->Health		= CreateTextureEx("HP");
+	Textures->Mana			= CreateTextureEx("MP");
+	Textures->HUD1_bar		= CreateTextureEx("HUD1_bar");
+	Textures->HUD1_champ		= CreateTextureEx("HUD1_champ");
+	Textures->HUD1_icons		= CreateTextureEx("HUD1_icons");
+	Textures->HUD1_barleft = CreateTextureEx("HUD1_barleft");
+	Textures->HUD1_champleft = CreateTextureEx("HUD1_champleft");
+	Textures->HUD1_iconsleft = CreateTextureEx("HUD1_iconsleft");
+	Textures->HUD1_hp = CreateTextureEx("HUD1_hp");
+	Textures->HUD1_mp = CreateTextureEx("HUD1_mp");
+	Textures->OKTW_circle = CreateTextureEx("OKTW_circle");
+	Textures->OKTW_bar = CreateTextureEx("OKTW_bar");
 
 	//Ult Notification
-	Textures->UN_bg = GRender->CreateTextureFromFile("UtilityPRO/UN_bg.png");
-	Textures->UN_r = GRender->CreateTextureFromFile("UtilityPRO/UN_r.png");
+	Textures->UN_bg = CreateTextureEx("UN_bg");
+	Textures->UN_r = CreateTextureEx("UN_r");
 
 	// 2D Hud Small
-	Textures->SmallOutline	= GRender->CreateTextureFromFile("UtilityPRO/SB_Hud.png");
-	Textures->UltimateReady = GRender->CreateTextureFromFile("UtilityPRO/SB_Ultimate.png");
+	Textures->SmallOutline	= CreateTextureEx("SB_HUD");
+	Textures->UltimateReady = CreateTextureEx("SB_Ultimate");
 	
 	// 3D Hud
-	Textures->CDHud			= GRender->CreateTextureFromFile("UtilityPRO/CD_Hud.png");
-	Textures->CDHudSelf		= GRender->CreateTextureFromFile("UtilityPRO/CD_HudSelf.png");
+	Textures->CDHud			= CreateTextureEx("CD_Hud");
+	Textures->CDHudSelf		= CreateTextureEx("CD_HudSelf");
 
 	for (auto pPlayer : GEntityList->GetAllHeros(true, true))
 	{
@@ -789,7 +836,7 @@ void Gui::LoadTextureIcons()
 void Gui::LoadHeroIcon(HeroUI* Ui)
 {
 	//Ui->ChampionIcon = CreateTextureEx(Ui->Player->ChampionName(), "ddragon.leagueoflegends.com/cdn/" + VersionNo + "/img/champion/" + Ui->Player->ChampionName() + ".png");
-	Ui->ChampionIcon = CreateTextureEx(Ui->Player->ChampionName(), "ddragon.leagueoflegends.com/cdn/" + VersionNo + "/img/champion/" + Ui->Player->ChampionName() + ".png");
+	Ui->ChampionIcon = CreateTextureEx(Ui->Player->ChampionName());
 
 	if (Ui->ChampionIcon)
 		Ui->ChampionIcon->Resize(69);
@@ -809,7 +856,7 @@ void Gui::LoadSpellIcons(HeroUI* Ui)
 		}
 		Ui->SpellIcons[i] = nullptr;
 		if (i == kSlotR)
-			Ui->SpellIcons[i] = CreateTextureEx(pszSpellName, "ddragon.leagueoflegends.com/cdn/" + VersionNo + "/img/spell/" + pszSpellName + ".png");
+			Ui->SpellIcons[i] = CreateTextureEx(pszSpellName);
 			
 
 		//if (Ui->SpellIcons[i])
@@ -828,9 +875,9 @@ void Gui::LoadSpellIcons(HeroUI* Ui)
 		pszSpellNameSS += pszSpellName;
 		pszSpellNameSS += "SS";
 
-		Ui->SummonerSpellIcons[i]		= CreateTextureEx(pszSpellName, "ddragon.leagueoflegends.com/cdn/" + VersionNo + "/img/spell/" + pszSpellName + ".png");
-		Ui->SummonerSpellIconsSmall[i]	= CreateTextureEx(pszSpellNameSS, "ddragon.leagueoflegends.com/cdn/" + VersionNo + "/img/spell/" + pszSpellName + ".png");
-		Ui->SummonerSpellIconsCircle[i] = CreateTextureEx(pszSpellNameSmall, "ddragon.leagueoflegends.com/cdn/" + VersionNo + "/img/spell/" + pszSpellName + ".png");
+		Ui->SummonerSpellIcons[i]		= CreateTextureEx(pszSpellName);
+		Ui->SummonerSpellIconsSmall[i]	= CreateTextureEx(pszSpellNameSS);
+		Ui->SummonerSpellIconsCircle[i] = CreateTextureEx(pszSpellNameSmall);
 
 	}
 }
@@ -840,7 +887,7 @@ bool Gui::DoesTextureExist(std::string const& Filename, std::string& FullPath)
 	std::string szFinalPath;
 	GPluginSDK->GetBaseDirectory(szFinalPath);
 
-	szFinalPath		+= "\\Textures\\UtilityPRO\\" + Filename + ".png";
+	szFinalPath		+= "\\Textures\\" + Filename + ".png";
 	FullPath		= szFinalPath;
 
 	HANDLE hFile = CreateFileA(szFinalPath.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
@@ -850,30 +897,49 @@ bool Gui::DoesTextureExist(std::string const& Filename, std::string& FullPath)
 		CloseHandle(hFile);
 		return true;
 	}
-
+	
 	return false;
 }
 
-ITexture* Gui::CreateTextureEx(std::string const& Filename, std::string const& DownloadUrl)
+ITexture* Gui::CreateTextureEx(std::string const& Filename)
 {
+	
 
 	std::string szFullPath;
 	if (DoesTextureExist(Filename, szFullPath))
-		return GRender->CreateTextureFromFile(("UtilityPRO/" + Filename + ".png").c_str());
+		return GRender->CreateTextureFromFile((Filename + ".png").c_str());
 	/*
 	std::string szImage;
 	if (GPluginSDK->ReadFileFromURL(DownloadUrl, szImage))
 		return GRender->CreateTextureFromMemory((uint8_t*)szImage.data(), szImage.length(), Filename.c_str());*/
-	GUtility->LogConsole("Could not find %s.png", Filename);
+	//GUtility->LogConsole("Could not find %s.png", Filename);
 
+	CURL *curl;
+	FILE *fp;
+	CURLcode res;
+	auto url = "https://raw.githubusercontent.com/Harmenszoon/LeaguePlusPlusRembrandt/master/Resources/" + Filename + ".png";
+	curl = curl_easy_init();
+	if (curl)
+	{
+		fp = fopen((szFullPath).c_str(), "wb");
+		curl_easy_setopt(curl, CURLOPT_URL, url);
+		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, NULL);
+		curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
+		res = curl_easy_perform(curl);
+		curl_easy_cleanup(curl);
+		fclose(fp);
+	}
+
+	if (DoesTextureExist(Filename, szFullPath))
+		return GRender->CreateTextureFromFile((Filename + ".png").c_str());
 
 	return nullptr;
 }
 
 void Gui::GetLatestVersionNo()
 {
-	VersionNo = "7.3.3";
-
+	VersionNo = "";
+	/*
 	std::string szJson;
 	if (GPluginSDK->ReadFileFromURL("ddragon.leagueoflegends.com/api/versions.json", szJson))
 	{
@@ -887,7 +953,7 @@ void Gui::GetLatestVersionNo()
 
 		if (n != szJson.npos)
 			VersionNo = szJson.substr(0, n);
-	}
+	}*/
 	GGame->PrintChat("<b><font color=\"#f8a101\">Utility PRO<b><font color=\"#FFFFFF\">++</font></b> Loaded</font></b>");
 	GGame->PrintChat("<font color=\"#f8a101\">checking for updates...");
 

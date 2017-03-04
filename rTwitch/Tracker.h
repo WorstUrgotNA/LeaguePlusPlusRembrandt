@@ -122,6 +122,8 @@ private:
 	bool IsCampDead(JungleCamp const& Camp);
 	void UpdateDragonAndBaron();
 	void UpdateHiddenObjects(IUnit* Args);
+	bool DoesTextureExist(std::string const& Filename, std::string& FullPath);
+	ITexture* CreateTextureEx(std::string const& Filename);
 
 private:
 	TrackerMenu					Menu;

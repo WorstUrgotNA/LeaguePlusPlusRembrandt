@@ -110,7 +110,7 @@ private:
 	void LoadHeroIcon(HeroUI* Ui);
 	void LoadSpellIcons(HeroUI* Ui);
 	bool DoesTextureExist(std::string const& Filename, std::string& FullPath);
-	ITexture* CreateTextureEx(std::string const& Filename, std::string const& DownloadUrl);
+	ITexture* CreateTextureEx(std::string const& Filename);
 
 	void RenderTeammates();
 	void RenderEnemies();

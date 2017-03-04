@@ -1,4 +1,5 @@
 #include "GankDetection.h"
+#include <curl/curl.h>
 
 ITexture*	RC_On;
 
@@ -9,15 +10,15 @@ GankDetection::GankDetection(IMenu* Parent)
 	for (auto pUnit : GEntityList->GetAllHeros(false, true))
 	{
 		std::string const& Filename = pUnit->ChampionName();
-		ChampIcons[i] = GRender->CreateTextureFromFile(("UtilityPRO/" + Filename + ".png").c_str());
+		ChampIcons[i] = CreateTextureEx(Filename);
 		ChampIcons[i]->SetColor(Vec4(100, 100, 100, 255));
 		
 		Heros.emplace_back(pUnit);
-		Heros.back().ChampIcon = GRender->CreateTextureFromFile(("UtilityPRO/" + Filename + ".png").c_str());
+		Heros.back().ChampIcon = CreateTextureEx(Filename);
 		i++;
 	}
 		// init jung fow trackr
-	RC_On = GRender->CreateTextureFromFile("UtilityPRO/RC_On.png");
+	RC_On = CreateTextureEx("RC_On");
 	RC_On->SetColor(Vec4(255, 150, 150, 150));
 	RC_On->Scale(GRender->ScreenSize().y / 1440.f);
 
@@ -41,7 +42,7 @@ GankDetection::GankDetection(IMenu* Parent)
 	Menu.DrawGankIcon					= Menu.Parent->CheckBox("Draw Ganker Icon:", true);
 	//Menu.GankWaitTime					= Menu.Parent->AddFloat("Gank Ping Wait Time (s)", 5, 15, 5);
 	Menu.EnemyTowerRangeEnabled			= Menu.Parent->CheckBox("Draw Enemy Tower Ranges:", true);
-	Menu.FriendlyTowerRangeEnabled		= Menu.Parent->CheckBox("Draw Friendly Tower Ranges:", true);
+	Menu.FriendlyTowerRangeEnabled		= Menu.Parent->CheckBox("Draw Friendly Tower Ranges:", false);
 
 
 	IMenu* pFoWJungleTrackerMenu = Parent->AddMenu("FoW Jungle Tracker");
@@ -113,10 +114,10 @@ void GankDetection::OnGameUpdate()
 			if (!Menu.ChampionsToPingOnGank[unit.Player->GetNetworkId()]->Enabled())
 				continue;
 
-			float flTimeSinceVisible	= GGame->Time() - unit.LastHiddenTime;
+			float flTimeSinceVisible	= GGame->Time() - unit.LastHiddenTimeGank;
 			float flDistance			= (GEntityList->Player()->GetPosition() - unit.Position).Length2D();
 
-			if (unit.TotalTimeHidden > 0.1f && unit.TotalTimeHidden < 2.f && flDistance < Menu.GankPingDistance->GetFloat())
+			if (flTimeSinceVisible > 0.1f && flTimeSinceVisible < 2.f && flDistance < Menu.GankPingDistance->GetFloat())
 			{
 				GGame->ShowPing(kPingFallback, GEntityList->Player(), true);
 
@@ -143,7 +144,7 @@ void GankDetection::OnGameUpdate()
 			for (auto pUnit : GEntityList->GetAllUnits())
 			{
 				float flDistance = (pUnit->GetPosition() - JGDisplayPos).Length();
-				if (flDistance < 500)
+				if (flDistance < 500 || !GGame->WithinFogOfWar(JGDisplayPos))
 				{
 					//GRender->Notification(Vec4(255, 255, 255, 255), 5, "%s distance %f to ping", pUnit->GetObjectName(), flDistance);
 					FalseAlarm = true;
@@ -186,6 +187,11 @@ void GankDetection::UpdateChampions()
 
 	for (auto& unit : Heros)
 	{
+		if (!unit.IsVisible && unit.Player->IsVisible())
+		{
+			unit.LastHiddenTimeGank = GGame->Time();
+		}
+
 		if (unit.Player->IsVisible() || unit.Player->IsDead())
 		{
 			unit.Position = unit.Player->GetPosition();
@@ -407,10 +413,10 @@ void GankDetection::OnRender()
 							unit.ChampIcon->SetColor(Vec4(200, 200, 200, 255));
 							unit.ChampIcon->DrawCircle(vecMinimap.x, vecMinimap.y, 12);
 							
-							if (Menu.ShowMovementCircle->Enabled())
-								GRender->DrawOutlinedCircle(vecMinimap, Vec4(255, 255, 0, 255), flRadius + 22);
-							else
-								GRender->DrawOutlinedCircle(vecMinimap, Vec4(255, 255, 0, 255), 22);
+							//if (Menu.ShowMovementCircle->Enabled())
+								//GRender->DrawOutlinedCircle(vecMinimap, Vec4(255, 255, 0, 255), flRadius + 22);
+							//else
+								//GRender->DrawOutlinedCircle(vecMinimap, Vec4(255, 255, 0, 255), 22);
 							
 							if (Menu.LastSeen->Enabled())
 								Tahoma13->Render(vecMinimap.x + 2, vecMinimap.y + 4, "[%i]", static_cast<int>(GGame->Time() - unit.LastVisibleTime));
@@ -431,6 +437,7 @@ void GankDetection::OnRender()
 		Vec2 vecMyPositionEnd;
 		GGame->WorldToMinimap(pLocal->GetPosition() + Vec3(1.f, 0.f, 0.f) * Menu.GankPingDistance->GetFloat(), vecMyPositionEnd);
 
+		//GRender->DrawCircle(pLocal->GetPosition(), (vecMyPositionEnd - vecMyPosition).Length(), Vec4(255, 0, 50, 255), 1.f, false, false);
 		GRender->DrawOutlinedCircle(vecMyPosition, Vec4(255, 0, 50, 255), (vecMyPositionEnd - vecMyPosition).Length());
 	}
 
@@ -468,6 +475,60 @@ void GankDetection::OnRender()
 			}
 		}
 	}
+}
+
+bool GankDetection::DoesTextureExist(std::string const& Filename, std::string& FullPath)
+{
+	std::string szFinalPath;
+	GPluginSDK->GetBaseDirectory(szFinalPath);
+
+	szFinalPath += "\\Textures\\" + Filename + ".png";
+	FullPath = szFinalPath;
+
+	HANDLE hFile = CreateFileA(szFinalPath.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+
+	if (hFile != INVALID_HANDLE_VALUE)
+	{
+		CloseHandle(hFile);
+		return true;
+	}
+
+	return false;
+}
+
+ITexture* GankDetection::CreateTextureEx(std::string const& Filename)
+{
+
+
+	std::string szFullPath;
+	if (DoesTextureExist(Filename, szFullPath))
+		return GRender->CreateTextureFromFile((Filename + ".png").c_str());
+	/*
+	std::string szImage;
+	if (GPluginSDK->ReadFileFromURL(DownloadUrl, szImage))
+	return GRender->CreateTextureFromMemory((uint8_t*)szImage.data(), szImage.length(), Filename.c_str());*/
+	//GUtility->LogConsole("Could not find %s.png", Filename);
+
+	CURL *curl;
+	FILE *fp;
+	CURLcode res;
+	auto url = "https://raw.githubusercontent.com/Harmenszoon/LeaguePlusPlusRembrandt/master/Resources/" + Filename + ".png";
+	curl = curl_easy_init();
+	if (curl)
+	{
+		fp = fopen((szFullPath).c_str(), "wb");
+		curl_easy_setopt(curl, CURLOPT_URL, url);
+		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, NULL);
+		curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
+		res = curl_easy_perform(curl);
+		curl_easy_cleanup(curl);
+		fclose(fp);
+	}
+
+	if (DoesTextureExist(Filename, szFullPath))
+		return GRender->CreateTextureFromFile((Filename + ".png").c_str());
+
+	return nullptr;
 }
 
 void GankDetection::GetHealthColor(GankHero* Hero, Vec4& Out)

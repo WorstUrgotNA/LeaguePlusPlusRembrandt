@@ -21,6 +21,7 @@ struct GankHero
 	float	TotalTimeHidden;
 	bool	IsVisible;
 	bool	IsJungle;
+	float	LastHiddenTimeGank;
 	ITexture* ChampIcon;
 };
 
@@ -72,6 +73,8 @@ public:
 private:
 	void UpdateChampions();
 	void GetHealthColor(GankHero* Hero, Vec4& Out);
+	bool DoesTextureExist(std::string const& Filename, std::string& FullPath);
+	ITexture* CreateTextureEx(std::string const& Filename);
 
 private:
 	GankMenu				Menu;

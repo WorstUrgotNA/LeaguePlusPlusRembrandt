@@ -2,10 +2,12 @@
 #include "Color.h"
 #include "SkinHack.h"
 #include "string"
-#include <sstream>
 #include "windows.h"
 #include "Gui.h"
 #include "Awareness.h"
+#include "AutoLevel.h"
+#include "ObjectTracker.h"
+
 
 PluginSetup("Utility PRO++ by Rembrandt");
 
@@ -16,7 +18,6 @@ IMenu* SummonerHealMenu;
 IMenu* SummonerBarrierMenu;
 IMenu* SummonerIgniteMenu;
 IMenu* CleanseMenu;
-IMenu* AutoLevelUp;
 IMenu* Potions;
 IMenu* DefensiveItems;
 IMenu* FaceOfTheMountainMenu;
@@ -41,6 +42,7 @@ IMenuOption* SummonerTellerEnabled;
 IMenuOption* SmiteActive;
 IMenuOption* SmiteKey;
 IMenuOption* SmiteEnemies;
+IMenuOption* SmiteEnemies2Stacks;
 IMenuOption* HealActive;
 IMenuOption* HealPercent;
 IMenuOption* HealTeamateActive;
@@ -50,12 +52,6 @@ IMenuOption* BarrierPercent;
 IMenuOption* CleanseActive;
 IMenuOption* IgniteKSEnable;
 IMenuOption* IgniteInCombo;
-IMenuOption* EnableAutoLevelUp;
-IMenuOption* ALUQ;
-IMenuOption* ALUW;
-IMenuOption* ALUE;
-IMenuOption* ALUR;
-IMenuOption* ALUStartLevel;
 IMenuOption* PotionsEnabled;
 IMenuOption* PotionsPercent;
 IMenuOption* FaceOfTheMountainEnabled;
@@ -135,6 +131,7 @@ IInventoryItem* WardTrinket;
 Vec3 JungleNotification;
 
 Awareness* GPluginInstance = nullptr;
+ObjectTracker* GPluginInstance2 = nullptr;
 
 IFont* UtilityFont;
 
@@ -142,6 +139,7 @@ std::string	formattedTime;
 
 int DelayedSpellIndex = 0;
 int HumanizeDelayCleanse;
+int LogoDuration = 5;
 
 short keystate;
 short keystate2;
@@ -180,7 +178,7 @@ if (Menu.TrackClones->Enabled())
 		}
 	}
 }*/
-
+#pragma comment(lib, "urlmon.lib")
 #pragma region Events
 void LoadSpells()
 {
@@ -236,6 +234,7 @@ void LoadSpells()
 	Youmuus = GPluginSDK->CreateItemForId(3142, 0);
 	GLP800 = GPluginSDK->CreateItemForId(3030, 800);
 	WardTrinket = GPluginSDK->CreateItemForId(3340, 525);
+	
 }
 
 void DrawHpBarDamage(IRender *renderer, IUnit *hero, float damage, Vec4 &color)
@@ -506,7 +505,7 @@ void CheckKeyPresses()
 		}
 	}
 
-	if (SummonerTellerEnabled->Enabled())
+	/*if (SummonerTellerEnabled->Enabled())
 	{
 		keystate2 = GetAsyncKeyState(SummonerTellerKey->GetInteger()); // summoner teller key
 
@@ -518,57 +517,49 @@ void CheckKeyPresses()
 				if (SummonerTellerKeyWasDown == false)
 				{
 					//print sums
-					auto Enemies = GEntityList->GetAllHeros(false, true);
-					const char* PlayerRawSum1;
-					const char* PlayerRawSum2;
-					const char* PlayerActualSum1;
-					const char* PlayerActualSum2;
-					const char* Sum1Timer;
-					const char* Sum2Timer;
-
+					auto Enemies = GEntityList->GetAllHeros(true, true);
+					
 
 					for (auto Enemy : Enemies)
 					{
 						if (Enemy->GetSpellRemainingCooldown(kSummonerSlot1) > 0 || Enemy->GetSpellRemainingCooldown(kSummonerSlot2) > 0)
 						{
-							PlayerRawSum1 = Enemy->GetSpellName(kSummonerSlot1);
-							PlayerRawSum2 = Enemy->GetSpellName(kSummonerSlot2);
-
-							if (strstr(PlayerRawSum1, "SummonerSmite")) { PlayerActualSum1 = "Smite"; }
-							else if (strcmp(PlayerRawSum1, "SummonerHeal") == 0) { PlayerActualSum1 = "Heal"; }
-							else if (strcmp(PlayerRawSum1, "SummonerBarrier") == 0) { PlayerActualSum1 = "Barrier"; }
-							else if (strcmp(PlayerRawSum1, "SummonerExhaust") == 0) { PlayerActualSum1 = "Exhaust"; }
-							else if (strcmp(PlayerRawSum1, "SummonerBoost") == 0) { PlayerActualSum1 = "Cleanse"; }
-							else if (strcmp(PlayerRawSum1, "SummonerDot") == 0) { PlayerActualSum1 = "Ignite"; }
-							else if (strcmp(PlayerRawSum1, "SummonerFlash") == 0) { PlayerActualSum1 = "Flash"; }
-							else if (strcmp(PlayerRawSum1, "SummonerHaste") == 0) { PlayerActualSum1 = "Ghost"; }
-							else if (strcmp(PlayerRawSum1, "SummonerTeleport") == 0) { PlayerActualSum1 = "Teleport"; }
-							else PlayerActualSum1 = "";
-
-							if (strstr(PlayerRawSum2, "SummonerSmite")) { PlayerActualSum2 = "Smite"; }
-							else if (strcmp(PlayerRawSum2, "SummonerHeal") == 0) { PlayerActualSum2 = "Heal"; }
-							else if (strcmp(PlayerRawSum2, "SummonerBarrier") == 0) { PlayerActualSum2 = "Barrier"; }
-							else if (strcmp(PlayerRawSum2, "SummonerExhaust") == 0) { PlayerActualSum2 = "Exhaust"; }
-							else if (strcmp(PlayerRawSum2, "SummonerBoost") == 0) { PlayerActualSum2 = "Cleanse"; }
-							else if (strcmp(PlayerRawSum2, "SummonerDot") == 0) { PlayerActualSum2 = "Ignite"; }
-							else if (strcmp(PlayerRawSum2, "SummonerFlash") == 0) { PlayerActualSum2 = "Flash"; }
-							else if (strcmp(PlayerRawSum2, "SummonerHaste") == 0) { PlayerActualSum2 = "Ghost"; }
-							else if (strcmp(PlayerRawSum2, "SummonerTeleport") == 0) { PlayerActualSum2 = "Teleport"; }
-							else PlayerActualSum2 = "";
-
-							std::stringstream parser;
-
-							parser << Enemy->ChampionName();
-							parser << ": ";
-
+							std::string parser;
+							
+							parser += Enemy->ChampionName();
+							parser += " ";
 							if (Enemy->GetSpellRemainingCooldown(kSummonerSlot1) > 0)
-								parser << PlayerActualSum1 << " " << static_cast<int>(Enemy->GetSpellRemainingCooldown(kSummonerSlot1)) << " ";
+							{
+								if (strstr(Enemy->GetSpellName(kSummonerSlot1), "SummonerSmite")) { parser += "Smite "; }
+								else if (strcmp(Enemy->GetSpellName(kSummonerSlot1), "SummonerHeal") == 0) { parser += "Heal "; }
+								else if (strcmp(Enemy->GetSpellName(kSummonerSlot1), "SummonerBarrier") == 0) { parser += "Barrier "; }
+								else if (strcmp(Enemy->GetSpellName(kSummonerSlot1), "SummonerExhaust") == 0) { parser += "Exhaust "; }
+								else if (strcmp(Enemy->GetSpellName(kSummonerSlot1), "SummonerBoost") == 0) { parser += "Cleanse "; }
+								else if (strcmp(Enemy->GetSpellName(kSummonerSlot1), "SummonerDot") == 0) { parser += "Ignite "; }
+								else if (strcmp(Enemy->GetSpellName(kSummonerSlot1), "SummonerFlash") == 0) { parser += "Flash "; }
+								else if (strcmp(Enemy->GetSpellName(kSummonerSlot1), "SummonerHaste") == 0) { parser += "Ghost "; }
+								else if (strcmp(Enemy->GetSpellName(kSummonerSlot1), "SummonerTeleport") == 0) { parser += "Teleport "; }
+
+								//parser += static_cast<int>(Enemy->GetSpellRemainingCooldown(kSummonerSlot1));
+								//parser += " ";
+							}
+								
 							if (Enemy->GetSpellRemainingCooldown(kSummonerSlot2) > 0)
-								parser << PlayerActualSum2 << " " << static_cast<int>(Enemy->GetSpellRemainingCooldown(kSummonerSlot2)) << " ";
+							{
+								if (strstr(Enemy->GetSpellName(kSummonerSlot2), "SummonerSmite")) { parser += "Smite "; }
+								else if (strcmp(Enemy->GetSpellName(kSummonerSlot2), "SummonerHeal") == 0) { parser += "Heal "; }
+								else if (strcmp(Enemy->GetSpellName(kSummonerSlot2), "SummonerBarrier") == 0) { parser += "Barrier "; }
+								else if (strcmp(Enemy->GetSpellName(kSummonerSlot2), "SummonerExhaust") == 0) { parser += "Exhaust "; }
+								else if (strcmp(Enemy->GetSpellName(kSummonerSlot2), "SummonerBoost") == 0) { parser += "Cleanse "; }
+								else if (strcmp(Enemy->GetSpellName(kSummonerSlot2), "SummonerDot") == 0) { parser += "Ignite "; }
+								else if (strcmp(Enemy->GetSpellName(kSummonerSlot2), "SummonerFlash") == 0) { parser += "Flash "; }
+								else if (strcmp(Enemy->GetSpellName(kSummonerSlot2), "SummonerHaste") == 0) { parser += "Ghost "; }
+								else if (strcmp(Enemy->GetSpellName(kSummonerSlot2), "SummonerTeleport") == 0) { parser += "Teleport "; }
 
-
-							std::string formattedText = parser.str();
-							GGame->Say("%s", formattedText);
+								//parser += static_cast<int>(Enemy->GetSpellRemainingCooldown(kSummonerSlot2));
+							}
+							
+							GGame->Say("%s", parser);
 						}
 					}
 
@@ -581,7 +572,7 @@ void CheckKeyPresses()
 				SummonerTellerKeyWasDown = false;
 			}
 		}
-	}
+	}*/
 	
 }
 
@@ -678,28 +669,22 @@ void Combo()
 {
 	auto Hero = GEntityList->Player();
 	
-
-	/*int dad = Hero->GetSpellBook()->GetAmmo(4);
-	GGame->Say("%i", dad);
+	//GRender->Notification(Vec4(255, 255, 255, 255), 0, "Smite Charges: %i", static_cast<int>(Hero->GetSpellTotalCooldown(kSummonerSlot1)));
 	//Smite Enemies
-	if (SMITE != nullptr && SMITE->IsReady())
+	if (SMITE != nullptr && SMITE->IsReady() && SmiteEnemies->Enabled())
 	{
-		if (strstr(Hero->GetSpellName(SMITE->GetSpellSlot()), "SummonerSmiteDuel")) // RED SMITE
+		if ((SmiteEnemies2Stacks->Enabled() && Hero->GetSpellTotalCooldown(SMITE->GetSlot()) == 0) || !SmiteEnemies2Stacks->Enabled())
 		{
-			if (GTargetSelector->GetFocusedTarget() != nullptr && GTargetSelector->GetFocusedTarget()->IsValidTarget() && !(GTargetSelector->GetFocusedTarget()->IsDead()) && (GTargetSelector->GetFocusedTarget()->GetPosition() - Hero->GetPosition()).Length() < 500)
+			if (GTargetSelector->GetFocusedTarget() != nullptr && GTargetSelector->GetFocusedTarget()->IsValidTarget() && !(GTargetSelector->GetFocusedTarget()->IsDead()) && (Hero->GetPosition() - GTargetSelector->GetFocusedTarget()->GetPosition()).Length() < 500)
 			{
 				SMITE->CastOnTarget(GTargetSelector->GetFocusedTarget());
 			}
 			else
 			{
-				Botrk->CastOnTarget(GTargetSelector->FindTarget(QuickestKill, SpellDamage, 550));
+				SMITE->CastOnTarget(GTargetSelector->FindTarget(QuickestKill, TrueDamage, 500));
 			}
 		}
-		else if (strstr(Hero->GetSpellName(SMITE->GetSpellSlot()), "SummonerSmitePlayerGanker")) // BLUE SMITE
-		{
- 
-		}
-	}*/
+	}
 	
 
 	//RANDUINS
@@ -799,12 +784,12 @@ void AutoTrinket()
 	}
 }
 
-PLUGIN_EVENT(void) OnJungleNotify(JungleNotifyData* Args)
+/*PLUGIN_EVENT(void) OnJungleNotify(JungleNotifyData* Args)
 {
 	
-}
+}*/
 
-PLUGIN_EVENT(void) OnOrbwalkBeforeAttack(IUnit* Target)
+/*PLUGIN_EVENT(void) OnOrbwalkBeforeAttack(IUnit* Target)
 {
 
 }
@@ -817,23 +802,23 @@ PLUGIN_EVENT(void) OnOrbwalkAttack(IUnit* Source, IUnit* Target)
 PLUGIN_EVENT(void) OnOrbwalkAfterAttack(IUnit* Source, IUnit* Target)
 {
 
-}
+}*/
 
 // Return an IUnit object here to force the orbwalker to select it for this tick
-PLUGIN_EVENT(IUnit*) OnOrbwalkingFindTarget()
+/*PLUGIN_EVENT(IUnit*) OnOrbwalkingFindTarget()
 {
 	return nullptr;
-}
+}*/
 
-PLUGIN_EVENT(void) OnOrbwalkTargetChange(IUnit* OldTarget, IUnit* NewTarget)
+/*PLUGIN_EVENT(void) OnOrbwalkTargetChange(IUnit* OldTarget, IUnit* NewTarget)
 {
 
-}
+}*/
 
-PLUGIN_EVENT(void) OnOrbwalkNonKillableMinion(IUnit* NonKillableMinion)
+/*PLUGIN_EVENT(void) OnOrbwalkNonKillableMinion(IUnit* NonKillableMinion)
 {
 
-}
+}*/
 
 PLUGIN_EVENT(void) OnGameUpdate()
 {
@@ -868,49 +853,49 @@ PLUGIN_EVENT(void) OnRender()
 		}
 	}
 
-	
+	GUtility->LogConsole("MAIN OnRender Complete");
 }
 
-PLUGIN_EVENT(void) OnSpellCast(CastedSpell const& Args)
+/*PLUGIN_EVENT(void) OnSpellCast(CastedSpell const& Args)
 {
 
-}
+}*/
 
-PLUGIN_EVENT(void) OnUnitDeath(IUnit* Source)
+/*PLUGIN_EVENT(void) OnUnitDeath(IUnit* Source)
 {
 
-}
+}*/
 
-PLUGIN_EVENT(void) OnCreateObject(IUnit* Source)
+/*PLUGIN_EVENT(void) OnCreateObject(IUnit* Source)
 {
 
-}
+}*/
 
-PLUGIN_EVENT(void) OnDestroyObject(IUnit* Source)
+/*PLUGIN_EVENT(void) OnDestroyObject(IUnit* Source)
 {
 
-}
+}*/
 
-PLUGIN_EVENT(void) OnDoCast(CastedSpell const& Args)
+/*PLUGIN_EVENT(void) OnDoCast(CastedSpell const& Args)
 {
-}
+}*/
 
-PLUGIN_EVENT(void) OnInterruptible(InterruptibleSpell const& Args)
-{
-
-}
-
-PLUGIN_EVENT(void) OnGapCloser(GapCloserSpell const& Args)
+/*PLUGIN_EVENT(void) OnInterruptible(InterruptibleSpell const& Args)
 {
 
-}
+}*/
+
+/*PLUGIN_EVENT(void) OnGapCloser(GapCloserSpell const& Args)
+{
+
+}*/
 
 // Called when issuing an order (e.g move, attack, etc.)
 // Return false to stop order from executing
-PLUGIN_EVENT(bool) OnIssueOrder(IUnit* Source, DWORD OrderIdx, Vec3* Position, IUnit* Target)
+/*PLUGIN_EVENT(bool) OnIssueOrder(IUnit* Source, DWORD OrderIdx, Vec3* Position, IUnit* Target)
 {
 	return true;
-}
+}*/
 
 PLUGIN_EVENT(void) OnBuffAdd(IUnit* Source, void* BuffData)
 {
@@ -1189,53 +1174,35 @@ PLUGIN_EVENT(void) OnBuffAdd(IUnit* Source, void* BuffData)
 	}
 }
 
-PLUGIN_EVENT(void) OnBuffRemove(IUnit* Source, void* BuffData)
+/*PLUGIN_EVENT(void) OnBuffRemove(IUnit* Source, void* BuffData)
 {
 
-}
+}*/
 
-PLUGIN_EVENT(void) OnGameEnd()
+/*PLUGIN_EVENT(void) OnGameEnd()
 {
 
-}
+}*/
 
 PLUGIN_EVENT(void) OnLevelUp(IUnit* Source, int NewLevel)
 {
-	if (EnableAutoLevelUp->Enabled() && Source == GEntityList->Player() && NewLevel >= ALUStartLevel->GetInteger()) //auto level
-	{
-		for (int i = 1; i <= 4; i++)
-		{
-			if (ALUR->GetInteger() == i) {
-				Source->LevelUpSpell(kSlotR); 
-			}
-			if (ALUQ->GetInteger() == i) {
-				Source->LevelUpSpell(kSlotQ);
-			}
-			if (ALUW->GetInteger() == i) {
-				Source->LevelUpSpell(kSlotW);
-			}
-			if (ALUE->GetInteger() == i) {
-				Source->LevelUpSpell(kSlotE);
-			}
-			
-		}
-	}
+	AutoLevel().LevelUp(Source, NewLevel);
 }
 
 // Only called for local player, before the spell packet is sent
-PLUGIN_EVENT(void) OnPreCast(int Slot, IUnit* Target, Vec3* StartPosition, Vec3* EndPosition)
+/*PLUGIN_EVENT(void) OnPreCast(int Slot, IUnit* Target, Vec3* StartPosition, Vec3* EndPosition)
 {
-}
+}*/
 
-PLUGIN_EVENT(void) OnDash(UnitDash* Args)
-{
-
-}
-
-PLUGIN_EVENT(void) OnD3DPresent(void* Direct3D9DevicePtr)
+/*PLUGIN_EVENT(void) OnDash(UnitDash* Args)
 {
 
-}
+}*/
+
+/*PLUGIN_EVENT(void) OnD3DPresent(void* Direct3D9DevicePtr)
+{
+
+}*/
 
 /*PLUGIN_EVENT(void) OnD3DPreReset(void* Direct3D9DevicePtr)
 {
@@ -1247,25 +1214,25 @@ PLUGIN_EVENT(void) OnD3DPresent(void* Direct3D9DevicePtr)
 
 }*/
 
-PLUGIN_EVENT(void) OnRenderBehindHUD()
+/*PLUGIN_EVENT(void) OnRenderBehindHUD()
 {
 
-}
+}*/
 
 // Return false to set this message as handled
-PLUGIN_EVENT(bool) OnWndProc(HWND Wnd, UINT Message, WPARAM wParam, LPARAM lParam)
+/*PLUGIN_EVENT(bool) OnWndProc(HWND Wnd, UINT Message, WPARAM wParam, LPARAM lParam)
 {
 	return true;
-}
+}*/
 
-PLUGIN_EVENT(void) OnEnterVisible(IUnit* Source)
+/*PLUGIN_EVENT(void) OnEnterVisible(IUnit* Source)
 {
 
-}
+}*/
 
 PLUGIN_EVENT(void) OnExitVisible(IUnit* Source)
 {
-	if (GOrbwalking->GetOrbwalkingMode() == kModeCombo && Source == GTargetSelector->GetFocusedTarget())
+	/*if (GOrbwalking->GetOrbwalkingMode() == kModeCombo && Source == GTargetSelector->GetFocusedTarget())
 	{
 		float flDistance = (Source->GetPosition() - GEntityList->Player()->GetPosition()).Length();
 		GGame->PrintChat(Source->ChampionName());
@@ -1273,7 +1240,7 @@ PLUGIN_EVENT(void) OnExitVisible(IUnit* Source)
 		{
 			WardTrinket->CastOnPosition(Source->GetPosition());
 		}
-	}
+	}*/
 }
 #pragma endregion
 
@@ -1293,6 +1260,10 @@ PLUGIN_API void OnLoad(IPluginSDK* PluginSDK)
 		GUtility->LogConsole("Debug before awareness active");
 
 		GPluginInstance = new Awareness(MainMenu);
+		
+		GUtility->LogConsole("Awareness active");
+
+		GPluginInstance2 = new ObjectTracker(MainMenu);
 		
 		CleanseMenu = Defensives->AddMenu("Cleanse / QSS / Mikaels");
 		CleanseActive = CleanseMenu->CheckBox("Enabled: ", true);
@@ -1364,7 +1335,8 @@ PLUGIN_API void OnLoad(IPluginSDK* PluginSDK)
 		SmiteActive = AutoSmiteMenu->CheckBox("Smite Buffs/Epic Monsters: ", true);
 		SmiteKey = AutoSmiteMenu->AddKey("Toggle Key:", 77);
 		DrawSmiteEnabled = AutoSmiteMenu->CheckBox("Draw Auto Smite Enabled:", true);
-		SmiteEnemies = AutoSmiteMenu->CheckBox("Smite Enemies when 2 Charges:", true);
+		SmiteEnemies = AutoSmiteMenu->CheckBox("Smite Enemy Champions in Combo:", true);
+		SmiteEnemies2Stacks = AutoSmiteMenu->CheckBox("Only Smite Champions at 2 Stacks:", true);
 
 		SummonerIgniteMenu = Defensives->AddMenu("Summoner: Ignite");
 		IgniteKSEnable = SummonerIgniteMenu->CheckBox("Enable Ignite KS:", true);
@@ -1373,24 +1345,17 @@ PLUGIN_API void OnLoad(IPluginSDK* PluginSDK)
 		Potions = Defensives->AddMenu("Potions");
 		PotionsEnabled = Potions->CheckBox("Use Potions: ", true);
 		PotionsPercent = Potions->AddFloat("Drink at Health %: ", 1, 99, 60);
-
-		AutoLevelUp = MainMenu->AddMenu("Auto Level");
-		EnableAutoLevelUp = AutoLevelUp->CheckBox("Enable: ", false);
-		ALUR = AutoLevelUp->AddInteger("R: ", 1, 4, 1);
-		ALUQ = AutoLevelUp->AddInteger("Q: ", 1, 4, 2);
-		ALUW = AutoLevelUp->AddInteger("W: ", 1, 4, 3);
-		ALUE = AutoLevelUp->AddInteger("E: ", 1, 4, 4);
-		ALUStartLevel = AutoLevelUp->AddInteger("Start at level: ", 1, 16, 4);
-
+		
 		AutoTrinketMenu = MainMenu->AddMenu("Auto Trinket");
 		AutoUpgradeTrinket = AutoTrinketMenu->AddInteger("Auto Buy [0] None [1] Red [2] Blue:", 0, 2, 0);
-
+		/*
 		SummonerTeller = MainMenu->AddMenu("Summoner Chat-Logger");
 		SummonerTellerEnabled = SummonerTeller->CheckBox("Enabled:", false);
 		SummonerTellerKey = SummonerTeller->AddKey("Press to Post Sums to Chat:", 76);
-
+		*/
 		GUtility->LogConsole("Menus Loaded");
 
+		AutoLevel().InitMenu(MainMenu);
 		SkinHack().InitMenu(MainMenu);
 		SkinHack().UpdateSkin();
 		GUtility->LogConsole("SkinHack Loaded");
@@ -1407,34 +1372,34 @@ PLUGIN_API void OnLoad(IPluginSDK* PluginSDK)
 		GEventManager->AddEventHandler(kEventOrbwalkNonKillableMinion, OnOrbwalkNonKillableMinion);*/
 		GEventManager->AddEventHandler(kEventOnGameUpdate, OnGameUpdate);
 		GUtility->LogConsole("Events Section 1");
-		GEventManager->AddEventHandler(kEventOnJungleNotification, OnJungleNotify);
+		//GEventManager->AddEventHandler(kEventOnJungleNotification, OnJungleNotify);
 		GUtility->LogConsole("Events Section 2");
 		GEventManager->AddEventHandler(kEventOnRender, OnRender);
-		GEventManager->AddEventHandler(kEventOnSpellCast, OnSpellCast);
-		GEventManager->AddEventHandler(kEventOnUnitDeath, OnUnitDeath);
-		GEventManager->AddEventHandler(kEventOnCreateObject, OnCreateObject);
-		GEventManager->AddEventHandler(kEventOnDestroyObject, OnDestroyObject);
-		GEventManager->AddEventHandler(kEventOnDoCast, OnDoCast);
-		GEventManager->AddEventHandler(kEventOnInterruptible, OnInterruptible);
-		GEventManager->AddEventHandler(kEventOnGapCloser, OnGapCloser);
-		GEventManager->AddEventHandler(kEventOnIssueOrder, OnIssueOrder);
-		GEventManager->AddEventHandler(kEventOnBuffAdd, OnBuffAdd);
-		GEventManager->AddEventHandler(kEventOnBuffRemove, OnBuffRemove);
-		GEventManager->AddEventHandler(kEventOnGameEnd, OnGameEnd);
+		//GEventManager->AddEventHandler(kEventOnSpellCast, OnSpellCast);
+		//GEventManager->AddEventHandler(kEventOnUnitDeath, OnUnitDeath);
+		//GEventManager->AddEventHandler(kEventOnCreateObject, OnCreateObject);
+		//GEventManager->AddEventHandler(kEventOnDestroyObject, OnDestroyObject);
+		//GEventManager->AddEventHandler(kEventOnDoCast, OnDoCast);
+		//GEventManager->AddEventHandler(kEventOnInterruptible, OnInterruptible);
+		//GEventManager->AddEventHandler(kEventOnGapCloser, OnGapCloser);
+		//GEventManager->AddEventHandler(kEventOnIssueOrder, OnIssueOrder);
+		//GEventManager->AddEventHandler(kEventOnBuffAdd, OnBuffAdd);
+		//GEventManager->AddEventHandler(kEventOnBuffRemove, OnBuffRemove);
+		//GEventManager->AddEventHandler(kEventOnGameEnd, OnGameEnd);
 		GEventManager->AddEventHandler(kEventOnLevelUp, OnLevelUp);
-		GEventManager->AddEventHandler(kEventOnPreCast, OnPreCast);
+		//GEventManager->AddEventHandler(kEventOnPreCast, OnPreCast);
 		GUtility->LogConsole("Events Section 3");
-		GEventManager->AddEventHandler(kEventOnDash, OnDash);
+		//GEventManager->AddEventHandler(kEventOnDash, OnDash);
 		GUtility->LogConsole("OnDash Loaded");
-		GEventManager->AddEventHandler(kEventOnD3DPresent, OnD3DPresent);
+		//GEventManager->AddEventHandler(kEventOnD3DPresent, OnD3DPresent);
 		GUtility->LogConsole("OnD3DPresent Loaded");
 		//GEventManager->AddEventHandler(kEventOnD3DPreReset, OnD3DPreReset);
 		//GUtility->LogConsole("OnD3DPostReset Loaded");
 		//GEventManager->AddEventHandler(kEventOnD3DPostReset, OnD3DPostReset);
 		GUtility->LogConsole("Events Section 4");
-		GEventManager->AddEventHandler(kEventOnRenderBehindHud, OnRenderBehindHUD);
-		GEventManager->AddEventHandler(kEventOnWndProc, OnWndProc);
-		GEventManager->AddEventHandler(kEventOnEnterVisible, OnEnterVisible);
+		//GEventManager->AddEventHandler(kEventOnRenderBehindHud, OnRenderBehindHUD);
+		//GEventManager->AddEventHandler(kEventOnWndProc, OnWndProc);
+		//GEventManager->AddEventHandler(kEventOnEnterVisible, OnEnterVisible);
 		GEventManager->AddEventHandler(kEventOnExitVisible, OnExitVisible);
 
 		GUtility->LogConsole("Events Created");
@@ -1454,30 +1419,31 @@ PLUGIN_API void OnUnload()
 	GEventManager->RemoveEventHandler(kEventOrbwalkFindTarget, OnOrbwalkingFindTarget);
 	GEventManager->RemoveEventHandler(kEventOrbwalkTargetChange, OnOrbwalkTargetChange);
 	GEventManager->RemoveEventHandler(kEventOrbwalkNonKillableMinion, OnOrbwalkNonKillableMinion);*/
-	GEventManager->RemoveEventHandler(kEventOnJungleNotification, OnJungleNotify);
+	//GEventManager->RemoveEventHandler(kEventOnJungleNotification, OnJungleNotify);
 	GEventManager->RemoveEventHandler(kEventOnGameUpdate, OnGameUpdate);
 	GEventManager->RemoveEventHandler(kEventOnRender, OnRender);
-	GEventManager->RemoveEventHandler(kEventOnSpellCast, OnSpellCast);
-	GEventManager->RemoveEventHandler(kEventOnUnitDeath, OnUnitDeath);
-	GEventManager->RemoveEventHandler(kEventOnCreateObject, OnCreateObject);
-	GEventManager->RemoveEventHandler(kEventOnDestroyObject, OnDestroyObject);
-	GEventManager->RemoveEventHandler(kEventOnDoCast, OnDoCast);
-	GEventManager->RemoveEventHandler(kEventOnInterruptible, OnInterruptible);
-	GEventManager->RemoveEventHandler(kEventOnGapCloser, OnGapCloser);
-	GEventManager->RemoveEventHandler(kEventOnIssueOrder, OnIssueOrder);
+	//GEventManager->RemoveEventHandler(kEventOnSpellCast, OnSpellCast);
+	//GEventManager->RemoveEventHandler(kEventOnUnitDeath, OnUnitDeath);
+	//GEventManager->RemoveEventHandler(kEventOnCreateObject, OnCreateObject);
+	//GEventManager->RemoveEventHandler(kEventOnDestroyObject, OnDestroyObject);
+	//GEventManager->RemoveEventHandler(kEventOnDoCast, OnDoCast);
+	//GEventManager->RemoveEventHandler(kEventOnInterruptible, OnInterruptible);
+	//GEventManager->RemoveEventHandler(kEventOnGapCloser, OnGapCloser);
+	//GEventManager->RemoveEventHandler(kEventOnIssueOrder, OnIssueOrder);
 	GEventManager->RemoveEventHandler(kEventOnBuffAdd, OnBuffAdd);
-	GEventManager->RemoveEventHandler(kEventOnBuffRemove, OnBuffRemove);
-	GEventManager->RemoveEventHandler(kEventOnGameEnd, OnGameEnd);
+	//GEventManager->RemoveEventHandler(kEventOnBuffRemove, OnBuffRemove);
+	//GEventManager->RemoveEventHandler(kEventOnGameEnd, OnGameEnd);
 	GEventManager->RemoveEventHandler(kEventOnLevelUp, OnLevelUp);
-	GEventManager->RemoveEventHandler(kEventOnPreCast, OnPreCast);
-	GEventManager->RemoveEventHandler(kEventOnDash, OnDash);
-	GEventManager->RemoveEventHandler(kEventOnD3DPresent, OnD3DPresent);
+	//GEventManager->RemoveEventHandler(kEventOnPreCast, OnPreCast);
+	//GEventManager->RemoveEventHandler(kEventOnDash, OnDash);
+	//GEventManager->RemoveEventHandler(kEventOnD3DPresent, OnD3DPresent);
 	//GEventManager->RemoveEventHandler(kEventOnD3DPreReset, OnD3DPreReset);
 	//GEventManager->RemoveEventHandler(kEventOnD3DPostReset, OnD3DPostReset);
-	GEventManager->RemoveEventHandler(kEventOnRenderBehindHud, OnRenderBehindHUD);
-	GEventManager->RemoveEventHandler(kEventOnWndProc, OnWndProc);
-	GEventManager->RemoveEventHandler(kEventOnEnterVisible, OnEnterVisible);
+	//GEventManager->RemoveEventHandler(kEventOnRenderBehindHud, OnRenderBehindHUD);
+	//GEventManager->RemoveEventHandler(kEventOnWndProc, OnWndProc);
+	//GEventManager->RemoveEventHandler(kEventOnEnterVisible, OnEnterVisible);
 	GEventManager->RemoveEventHandler(kEventOnExitVisible, OnExitVisible);
 
 	delete GPluginInstance;
+	delete GPluginInstance2;
 }

@@ -36,9 +36,13 @@ void Awareness::_OnJungleNotify(JungleNotifyData* Args)
 
 void Awareness::_OnRender()
 {
+	GUtility->LogConsole("Attempting Awareness OnRender...");
 	Ui->OnRender();
+	GUtility->LogConsole("Ui OnRender Complete");
 	Tracking->OnRender();
+	GUtility->LogConsole("Tracker OnRender Complete");
 	Ganks->OnRender();
+	GUtility->LogConsole("GankDetection OnRender Complete");
 }
 
 void Awareness::_OnCreateObject(IUnit* Args)
