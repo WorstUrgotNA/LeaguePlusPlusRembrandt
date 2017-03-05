@@ -413,11 +413,11 @@ void GankDetection::OnRender()
 							unit.ChampIcon->SetColor(Vec4(200, 200, 200, 255));
 							unit.ChampIcon->DrawCircle(vecMinimap.x, vecMinimap.y, 12);
 							
-							//if (Menu.ShowMovementCircle->Enabled())
-								//GRender->DrawOutlinedCircle(vecMinimap, Vec4(255, 255, 0, 255), flRadius + 22);
-							//else
-								//GRender->DrawOutlinedCircle(vecMinimap, Vec4(255, 255, 0, 255), 22);
-							
+							/*if (Menu.ShowMovementCircle->Enabled())
+								GRender->DrawOutlinedCircle(vecMinimap, Vec4(255, 255, 0, 255), flRadius + 22);
+							else
+								GRender->DrawOutlinedCircle(vecMinimap, Vec4(255, 255, 0, 255), 22);
+							*/
 							if (Menu.LastSeen->Enabled())
 								Tahoma13->Render(vecMinimap.x + 2, vecMinimap.y + 4, "[%i]", static_cast<int>(GGame->Time() - unit.LastVisibleTime));
 						}

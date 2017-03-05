@@ -55,6 +55,8 @@ struct UiTextures
 
 	ITexture* OKTW_circle;
 	ITexture* OKTW_bar;
+	
+	ITexture* UHud;
 };
 
 struct UiMenu

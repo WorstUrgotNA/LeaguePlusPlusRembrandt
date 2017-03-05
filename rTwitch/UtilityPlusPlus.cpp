@@ -139,7 +139,6 @@ std::string	formattedTime;
 
 int DelayedSpellIndex = 0;
 int HumanizeDelayCleanse;
-int LogoDuration = 5;
 
 short keystate;
 short keystate2;
@@ -1362,7 +1361,6 @@ PLUGIN_API void OnLoad(IPluginSDK* PluginSDK)
 		LoadSpells();
 		GUtility->LogConsole("Spells Created");
 
-		
 
 		/*GEventManager->AddEventHandler(kEventOrbwalkBeforeAttack, OnOrbwalkBeforeAttack);
 		GEventManager->AddEventHandler(kEventOrbwalkOnAttack, OnOrbwalkAttack);

@@ -3,8 +3,8 @@
 #include <curl/curl.h>
 
 
-int LocalVersion = 0;
-
+int LocalVersion = 1;
+float LogoDuration;
 
 Gui::Gui(IMenu* Parent)
 {
@@ -16,6 +16,7 @@ Gui::Gui(IMenu* Parent)
 	LoadFonts();
 	LoadTextureIcons();
 	LoadMenu();
+	LogoDuration = GGame->Time() + 5;
 
 }
 
@@ -33,6 +34,12 @@ void Gui::OnRender()
 	GUtility->LogConsole("Begin Gui OnRender");
 	Resolution = GRender->ScreenSize();
 	GUtility->LogConsole("Resize");
+	
+	
+	Textures->UHud->Scale(Resolution.y / 1440.f);
+	Vec2 LogoSpot = Vec2(Resolution.x / 2 - Textures->UHud->GetSize().x / 2, Resolution.y / 2 - Textures->UHud->GetSize().y / 2);
+		if (LogoDuration - GGame->Time() > 0)
+			Textures->UHud->Draw(LogoSpot.x, LogoSpot.y);
 
 	if (Menu.Enabled->Enabled())
 	{
@@ -777,6 +784,10 @@ void Gui::LoadFonts()
 void Gui::LoadTextureIcons()
 {
 	Textures = new UiTextures;
+
+	//Logo
+	Textures->UHud = CreateTextureEx("UHud");
+	Textures->UHud->SetColor(Vec4(255, 255, 255, 150));
 
 	// 2D Hud
 	Textures->OutlineLeft	= CreateTextureEx("LeftHud");
