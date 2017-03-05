@@ -75,8 +75,8 @@ void ObjectTracker::_OnProcessSpell(CastedSpell const& Args)
 		float Duration;
 		bool IsMoving;
 	};
-	
-	
+	//if (!strstr(Args.Name_, "BasicAttack"))
+		//GRender->Notification(Vec4(255, 255, 255, 255), 0, "%s", Args.Name_);
 	static std::vector<TimedObjectsDefinition> Definitions =
 	{
 		{ "JudicatorIntervention", 0, true },

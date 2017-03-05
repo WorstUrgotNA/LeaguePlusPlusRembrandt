@@ -614,7 +614,7 @@ void Gui::UpdateChampions()
 
 
 		if (pPlayer->IsEnemy(GEntityList->Player()) && Menu.NotifyOnUltimate->Enabled() && pPlayer->GetSpellLevel(kSlotR) != 0 && Menu.ChampionsToNotifyOnR[pPlayer->GetNetworkId()]->Enabled() &&
-			pPlayer->GetSpellRemainingCooldown(kSlotR) > 0 && pPlayer->GetSpellRemainingCooldown(kSlotR) < 4)
+			pPlayer->GetSpellRemainingCooldown(kSlotR) > 0 && pPlayer->GetSpellRemainingCooldown(kSlotR) < 4 && pPlayer->GetSpellTotalCooldown(kSlotR) > 30.f)
 		{
 			Vec2 UN_bgWidth = Textures->UN_bg->GetSize();
 			Vec2 UN_pos = Vec2(0, 75 + Menu.UltimateYOffset->GetFloat());
@@ -741,11 +741,7 @@ void Gui::LoadMenu()
 	for (auto pHero : GEntityList->GetAllHeros(false, true))
 	{
 		std::string szMenuName = std::string(pHero->ChampionName()) + ":";
-
-		if (pHero->GetSpellTotalCooldown(kSlotR) > 30.f)
-			Menu.ChampionsToNotifyOnR[pHero->GetNetworkId()] = pHeroes->CheckBox(szMenuName.c_str(), true);
-		else
-			Menu.ChampionsToNotifyOnR[pHero->GetNetworkId()] = pHeroes->CheckBox(szMenuName.c_str(), false);
+		Menu.ChampionsToNotifyOnR[pHero->GetNetworkId()] = pHeroes->CheckBox(szMenuName.c_str(), true);
 	}
 
 	
