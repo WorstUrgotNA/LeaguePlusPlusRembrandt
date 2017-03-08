@@ -2,7 +2,7 @@
 #include "Gui.h"
 
 
-int LocalVersion = 1;
+int LocalVersion = 2;
 float LogoDuration;
 
 Gui::Gui(IMenu* Parent)
