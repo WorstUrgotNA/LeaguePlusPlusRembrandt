@@ -86,7 +86,7 @@ float Graves::CalcRDamage(IUnit* Target)
 	auto Multiplier = Armor > 0 ? (100/(100+Armor)) : 2 - (100/(100-Armor));
 	auto FinalDamage = InitDamage * Multiplier;
 
-	//GRender->Notification(Vec4(255, 255, 255, 255), 0, "%i", static_cast<int>(FinalDamage)); //
+	GRender->Notification(Vec4(255, 255, 255, 255), 0, "R Damage: %i", static_cast<int>(GDamage->CalcPhysicalDamage(Hero, Target, InitDamage))); //
 	return FinalDamage;
 }
 

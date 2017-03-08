@@ -22,13 +22,13 @@ ChampionHandler::~ChampionHandler()
 void ChampionHandler::_OnGameUpdate()
 {
 	//if (strstr(GEntityList->Player()->ChampionName(), "Graves"))
-		//GravesHandler->OnGameUpdate();
+	//	GravesHandler->OnGameUpdate();
 }
 
 void ChampionHandler::_OnSpellCast(CastedSpell const& Args)
 {
 	//if (strstr(GEntityList->Player()->ChampionName(), "Graves"))
-		//GravesHandler->OnSpellCast(Args);
+	//	GravesHandler->OnSpellCast(Args);
 }
 
 void ChampionHandler::LoadEvents()
