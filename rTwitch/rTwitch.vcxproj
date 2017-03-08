@@ -154,9 +154,11 @@
   <ItemGroup>
     <ClInclude Include="AutoLevel.h" />
     <ClInclude Include="Awareness.h" />
+    <ClInclude Include="ChampionHandler.h" />
     <ClInclude Include="Color.h" />
     <ClInclude Include="DrawTowerRange.h" />
     <ClInclude Include="GankDetection.h" />
+    <ClInclude Include="Graves.h" />
     <ClInclude Include="Gui.h" />
     <ClInclude Include="LPPConstants.h" />
     <ClInclude Include="ObjectTracker.h" />
@@ -170,7 +172,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Awareness.cpp" />
+    <ClCompile Include="ChampionHandler.cpp" />
     <ClCompile Include="GankDetection.cpp" />
+    <ClCompile Include="Graves.cpp" />
     <ClCompile Include="Gui.cpp" />
     <ClCompile Include="ObjectTracker.cpp" />
     <ClCompile Include="PluginSDK.cpp" />

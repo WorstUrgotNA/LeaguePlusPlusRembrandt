@@ -22,7 +22,7 @@ ObjectTracker::~ObjectTracker()
 
 void ObjectTracker::_OnBuffAdd(IUnit* Source, void* BuffData)
 {
-	/*if (Source->UnitFlags() == FL_CREEP)
+	/*if (Source == GEntityList->Player())
 	{
 		for (int i = 0; i < Source->GetNumberOfBuffs(); i++)
 		{

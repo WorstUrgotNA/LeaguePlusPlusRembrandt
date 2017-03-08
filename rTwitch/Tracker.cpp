@@ -4,7 +4,6 @@
 #include <Shlwapi.h>
 #include <algorithm>
 #include <stdlib.h>
-#include <curl/curl.h>
 
 ITexture*	TrapDot;
 ITexture*	PinkWard;
@@ -627,24 +626,13 @@ ITexture* Tracker::CreateTextureEx(std::string const& Filename)
 	return GRender->CreateTextureFromMemory((uint8_t*)szImage.data(), szImage.length(), Filename.c_str());*/
 	//GUtility->LogConsole("Could not find %s.png", Filename);
 
-	CURL *curl;
-	FILE *fp;
-	CURLcode res;
-	auto url = "https://raw.githubusercontent.com/Harmenszoon/LeaguePlusPlusRembrandt/master/Resources/" + Filename + ".png";
-	curl = curl_easy_init();
-	if (curl)
-	{
-		fp = fopen((szFullPath).c_str(), "wb");
-		curl_easy_setopt(curl, CURLOPT_URL, url);
-		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, NULL);
-		curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
-		res = curl_easy_perform(curl);
-		curl_easy_cleanup(curl);
-		fclose(fp);
-	}
+	auto DownloadUrl = "https://raw.githubusercontent.com/Harmenszoon/LeaguePlusPlusRembrandt/master/Resources/" + Filename + ".png";
+	std::string szImage;
+	if (GPluginSDK->ReadFileFromURL(DownloadUrl, szImage))
+		return GRender->CreateTextureFromMemory((uint8_t*)szImage.data(), szImage.length(), Filename.c_str());
 
-	if (DoesTextureExist(Filename, szFullPath))
-		return GRender->CreateTextureFromFile((Filename + ".png").c_str());
+	//if (DoesTextureExist(Filename, szFullPath))
+		//return GRender->CreateTextureFromFile((Filename + ".png").c_str());
 
 	return nullptr;
 }

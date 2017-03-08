@@ -88,6 +88,7 @@ struct UiMenu
 	IMenuOption* HPBarTextStyle;
 	IMenuOption* ManaBarTextStyle;
 	IMenuOption* TestNotifyOnUltimate;
+	IMenuOption* HUDType;
 
 	std::map<int, IMenuOption*> ChampionsToNotifyOnR;
 };
@@ -116,6 +117,7 @@ private:
 
 	void RenderTeammates();
 	void RenderEnemies();
+	void RenderPlayer2DElementNostalgic(HeroUI* Ui, Vec2 StartingTestPos);
 	void RenderPlayer2DElementBig(HeroUI* Ui, Vec2 const& Position, bool Left);
 	void RenderPlayer2DElementSmall(HeroUI* Ui, Vec2 const& Position);
 	void RenderPlayer3DElement(HeroUI* Ui);
@@ -128,6 +130,7 @@ private:
 	std::vector<HeroUI*>	Teammates;
 	std::vector<HeroUI*>	Enemies;
 	std::vector<HeroUI*>	UiPool;
+	std::vector<std::string> HUDTypesVector;
 	UiFonts*				Fonts;
 	UiTextures*				Textures;
 	std::string				VersionNo;

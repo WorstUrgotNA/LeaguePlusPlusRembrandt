@@ -27,5 +27,9 @@ public:
 			int SkinNum = SkinID->GetInteger();
 			GEntityList->Player()->SetSkinId(SkinNum);
 		}
+		else
+		{
+			GEntityList->Player()->SetSkinId(GEntityList->Player()->GetSkinId());
+		}
 	}
 };

@@ -7,6 +7,7 @@
 #include "Awareness.h"
 #include "AutoLevel.h"
 #include "ObjectTracker.h"
+#include "ChampionHandler.h"
 
 
 PluginSetup("Utility PRO++ by Rembrandt");
@@ -36,7 +37,9 @@ IMenu* AutoTrinketMenu;
 IMenu* MikaelsMenu;
 IMenu* CCFilter;
 IMenu* SummonerTeller;
+IMenu* MiscMenu;
 
+IMenuOption* MinionHpKillableDraw;
 IMenuOption* SummonerTellerKey;
 IMenuOption* SummonerTellerEnabled;
 IMenuOption* SmiteActive;
@@ -132,6 +135,7 @@ Vec3 JungleNotification;
 
 Awareness* GPluginInstance = nullptr;
 ObjectTracker* GPluginInstance2 = nullptr;
+ChampionHandler* GPluginInstance3 = nullptr;
 
 IFont* UtilityFont;
 
@@ -456,11 +460,11 @@ void UseDefensives()
 	}
 
 	//Potions
-	if (!(GEntityList->Player()->IsDead()) && PotionsEnabled->Enabled() && GEntityList->Player()->HealthPercent() <= PotionsPercent->GetFloat() && 
+	if (!(GEntityList->Player()->IsDead()) && PotionsEnabled->Enabled() && GEntityList->Player()->HealthPercent() <= PotionsPercent->GetFloat() && !GUtility->IsPositionInFountain(Hero->GetPosition()) &&
 		!(GEntityList->Player()->HasBuff("RegenerationPotion") || GEntityList->Player()->HasBuff("ItemMiniRegenPotion") || GEntityList->Player()->HasBuff("ItemCrystalFlaskJungle") ||
 			GEntityList->Player()->HasBuff("ItemCrystalFlask") || GEntityList->Player()->HasBuff("ItemDarkCrystalFlask")) )
 	{
-		if (HealthPotion->IsOwned() && HealthPotion->IsReady() && !GUtility->IsPositionInFountain(Hero->GetPosition())) {
+		if (HealthPotion->IsOwned() && HealthPotion->IsReady()) {
 			HealthPotion->CastOnPlayer();
 		}
 		if (RefillablePotion->IsOwned() && RefillablePotion->IsReady()) {
@@ -852,6 +856,25 @@ PLUGIN_EVENT(void) OnRender()
 		}
 	}
 
+	if (MinionHpKillableDraw->Enabled())
+	{
+		for (auto minion : GEntityList->GetAllUnits())
+		{
+			if (minion->UnitFlags() == FL_CREEP)
+			{
+				Vec2 vecScreen;
+				if (minion->GetHPBarPosition(vecScreen))
+				{
+					
+					vecScreen.x += 1;
+					vecScreen.y += 5;
+					UtilityFont->Render(vecScreen.x, vecScreen.y - 15, "%i", static_cast<int>(GDamage->GetAutoAttackDamage(GEntityList->Player(), minion, true)));
+				}
+			}
+		}
+	}
+
+	
 	GUtility->LogConsole("MAIN OnRender Complete");
 }
 
@@ -898,6 +921,8 @@ PLUGIN_EVENT(void) OnRender()
 
 PLUGIN_EVENT(void) OnBuffAdd(IUnit* Source, void* BuffData)
 {
+	//GRender->Notification(Vec4(255, 255, 255, 255), 0, "%s", GBuffData->GetBuffName(BuffData));
+
 	if (GBuffData->GetEndTime(BuffData) - GBuffData->GetStartTime(BuffData) >= CleanseDurationMin->GetFloat())
 	{
 		//CLEANSE
@@ -1361,6 +1386,8 @@ PLUGIN_API void OnLoad(IPluginSDK* PluginSDK)
 		LoadSpells();
 		GUtility->LogConsole("Spells Created");
 
+		MiscMenu = MainMenu->AddMenu("Misc Settings");
+		MinionHpKillableDraw = MiscMenu->CheckBox("Draw AA Damage on Minions:", false);
 
 		/*GEventManager->AddEventHandler(kEventOrbwalkBeforeAttack, OnOrbwalkBeforeAttack);
 		GEventManager->AddEventHandler(kEventOrbwalkOnAttack, OnOrbwalkAttack);
@@ -1381,7 +1408,7 @@ PLUGIN_API void OnLoad(IPluginSDK* PluginSDK)
 		//GEventManager->AddEventHandler(kEventOnInterruptible, OnInterruptible);
 		//GEventManager->AddEventHandler(kEventOnGapCloser, OnGapCloser);
 		//GEventManager->AddEventHandler(kEventOnIssueOrder, OnIssueOrder);
-		//GEventManager->AddEventHandler(kEventOnBuffAdd, OnBuffAdd);
+		GEventManager->AddEventHandler(kEventOnBuffAdd, OnBuffAdd);
 		//GEventManager->AddEventHandler(kEventOnBuffRemove, OnBuffRemove);
 		//GEventManager->AddEventHandler(kEventOnGameEnd, OnGameEnd);
 		GEventManager->AddEventHandler(kEventOnLevelUp, OnLevelUp);
@@ -1402,7 +1429,7 @@ PLUGIN_API void OnLoad(IPluginSDK* PluginSDK)
 
 		GUtility->LogConsole("Events Created");
 
-		
+		GPluginInstance3 = new ChampionHandler();
 }
 
 // Called when plugin is unloaded
@@ -1444,4 +1471,5 @@ PLUGIN_API void OnUnload()
 
 	delete GPluginInstance;
 	delete GPluginInstance2;
+	delete GPluginInstance3;
 }

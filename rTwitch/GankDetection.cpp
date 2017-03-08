@@ -1,5 +1,4 @@
 #include "GankDetection.h"
-#include <curl/curl.h>
 
 ITexture*	RC_On;
 
@@ -169,7 +168,12 @@ void GankDetection::OnGameUpdate()
 				{
 					if (Menu.DrawJunglerTrackerPingLocal->Enabled())
 					{
-						GGame->ShowPing(kPingNormal, o.WorldPosition, true);
+						if (Menu.DrawJunglerTrackerPingType->GetInteger() == 1)
+							GGame->ShowPing(kPingNormal, o.WorldPosition, true);
+						else if(Menu.DrawJunglerTrackerPingType->GetInteger() == 2)
+							GGame->ShowPing(kPingDanger, o.WorldPosition, true);
+						else
+							GGame->ShowPing(kPingEnemyMissing, o.WorldPosition, true);
 					}
 					LastPingTime2 = GGame->Time();
 				}
@@ -503,30 +507,14 @@ ITexture* GankDetection::CreateTextureEx(std::string const& Filename)
 	std::string szFullPath;
 	if (DoesTextureExist(Filename, szFullPath))
 		return GRender->CreateTextureFromFile((Filename + ".png").c_str());
-	/*
+	
+	auto DownloadUrl = "https://raw.githubusercontent.com/Harmenszoon/LeaguePlusPlusRembrandt/master/Resources/" + Filename + ".png";
 	std::string szImage;
 	if (GPluginSDK->ReadFileFromURL(DownloadUrl, szImage))
-	return GRender->CreateTextureFromMemory((uint8_t*)szImage.data(), szImage.length(), Filename.c_str());*/
-	//GUtility->LogConsole("Could not find %s.png", Filename);
+		return GRender->CreateTextureFromMemory((uint8_t*)szImage.data(), szImage.length(), Filename.c_str());
 
-	CURL *curl;
-	FILE *fp;
-	CURLcode res;
-	auto url = "https://raw.githubusercontent.com/Harmenszoon/LeaguePlusPlusRembrandt/master/Resources/" + Filename + ".png";
-	curl = curl_easy_init();
-	if (curl)
-	{
-		fp = fopen((szFullPath).c_str(), "wb");
-		curl_easy_setopt(curl, CURLOPT_URL, url);
-		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, NULL);
-		curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
-		res = curl_easy_perform(curl);
-		curl_easy_cleanup(curl);
-		fclose(fp);
-	}
-
-	if (DoesTextureExist(Filename, szFullPath))
-		return GRender->CreateTextureFromFile((Filename + ".png").c_str());
+	//if (DoesTextureExist(Filename, szFullPath))
+		//return GRender->CreateTextureFromFile((Filename + ".png").c_str());
 
 	return nullptr;
 }
