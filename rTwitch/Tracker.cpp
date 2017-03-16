@@ -27,6 +27,7 @@ Tracker::Tracker(IMenu* Parent)
 	PinkWard = CreateTextureEx("True_Sight_icon"); //load texture
 	EnemyWard = CreateTextureEx("EnemyWard"); //load texture
 	
+	IndicatorsEnabled = false;
 
 	LoadMenu(Parent);
 	LoadJungleCamps();
@@ -46,6 +47,27 @@ void Tracker::OnGameUpdate()
 			obj.IsValid = false;
 	}
 	
+
+	//key press
+	keystate = GetAsyncKeyState(VK_LCONTROL); //toggle key
+
+	if (GUtility->IsLeagueWindowFocused() && !GGame->IsChatOpen())
+	{
+		if (keystate < 0) // If most-significant bit is set...
+		{
+			// key is down . . .
+			if (Menu.ToggleRangeKey->Enabled())
+				IndicatorsEnabled = true;
+		}
+		else
+		{
+			// key is up . . .
+			if (Menu.ToggleRangeKey->Enabled())
+				IndicatorsEnabled = false;
+			else
+				IndicatorsEnabled = true;
+		}
+	}
 }
 
 void Tracker::OnProcessSpell(CastedSpell const& Args)
@@ -76,6 +98,25 @@ void Tracker::StrTimeFormat(int Seconds) //convert seconds to 0:00 format
 
 void Tracker::OnRender()
 {
+	for (auto pUnit : GEntityList->GetAllHeros(true, true))
+	{
+		Vec3 vecPosition;
+
+		if (std::find_if(Clones.begin(), Clones.end(), [&](ClonedUnit& Clone)
+		{
+			vecPosition = Clone.ClonedPlayer->GetPosition();
+			return (Clone.IsValid && Clone.RealPlayer == pUnit);
+		}) != Clones.end())
+		{
+
+			Vec2 vecScreen;
+			if (GGame->Projection(vecPosition, &vecScreen))
+			{
+				GRender->DrawTextW(Vec2(vecScreen.x - 10, vecScreen.y + 10), Vec4(255, 0, 0, 255), "CLONE");
+			}
+		}
+	}
+
 	if (Menu.TrackWards->Enabled() && Menu.Enabled->Enabled())
 	{
 		for (auto obj : HiddenObjects)
@@ -99,23 +140,20 @@ void Tracker::OnRender()
 			if (obj.Type == kHiddenBlueWard)
 				vecColor = Vec4(0, 150, 255, 255);
 			
-			TrackerFont->SetColor(vecColor);
+			//TrackerFont->SetColor(vecColor);
 
 			if (obj.Type == kHiddenPinkWard) // CURRENT DRAW FOR PINK
 			{
-				GRender->DrawOutlinedCircle(obj.WorldPosition, vecColor, 20.f); // draw a small circle around ward
+				GRender->DrawCircle(obj.WorldPosition, 20.f, vecColor, 2);
+				//GRender->DrawOutlinedCircle(obj.WorldPosition, vecColor, 20.f); // draw a small circle around ward
 				PinkWard->Draw(obj.MinimapPosition.x - 10, obj.MinimapPosition.y - 10);
 
-				if (Menu.ShowVisionRange->Enabled()) // draw ward range
+				if (Menu.ShowVisionRange->Enabled() && IndicatorsEnabled) // draw ward range
 				{
-					vecColor.w = (50);
-					GRender->DrawOutlinedCircle(obj.WorldPosition, vecColor, 900.f); // draw a circle around ward range
+					vecColor.w = (150);
+					GRender->DrawCircle(obj.WorldPosition, 900.f, vecColor, 5);
+					//GRender->DrawOutlinedCircle(obj.WorldPosition, vecColor, 900.f); // draw a circle around ward range
 				}
-			}
-			else if (obj.Type == kWardCorpse)
-			{
-				vecColor = Vec4(255, 0, 0, 255);
-				GRender->DrawOutlinedCircle(obj.WorldPosition, vecColor, 100.f); // draw a small circle around ward
 			}
 			else
 			{
@@ -124,41 +162,47 @@ void Tracker::OnRender()
 
 				if (GGame->Projection(vecPosition, &vecScreen) && obj.Type != kHiddenBlueWard)
 				{
-					TrackerFont->Render(vecScreen.x, vecScreen.y, "%i", static_cast<int>(obj.DespawnTime - GGame->Time())); // draw ward or trap timer on minimap
+					//TrackerFont->Render(vecScreen.x, vecScreen.y, "%i", static_cast<int>(obj.DespawnTime - GGame->Time())); // draw ward or trap timer on minimap
+					GRender->DrawTextW(vecScreen - Vec2(5,6), vecColor, "%i", static_cast<int>(obj.DespawnTime - GGame->Time()));
 				}
 				
 				if (obj.Type == kHiddenWard)
 				{
-					GRender->DrawOutlinedCircle(obj.WorldPosition, vecColor, 20.f); // draw a small circle around ward
+					GRender->DrawCircle(obj.WorldPosition, 20.f, vecColor, 2);
+					//GRender->DrawOutlinedCircle(obj.WorldPosition, vecColor, 20.f); // draw a small circle around ward
 					EnemyWard->Draw(obj.MinimapPosition.x - 5, obj.MinimapPosition.y - 5);
-					if (Menu.ShowVisionRange->Enabled()) // draw ward range
+					if (Menu.ShowVisionRange->Enabled() && IndicatorsEnabled) // draw ward range
 					{
-						vecColor.w = (50);
-						GRender->DrawOutlinedCircle(obj.WorldPosition, vecColor, 900.f); // draw a circle around ward range
+						vecColor.w = (150);
+						GRender->DrawCircle(obj.WorldPosition, 900.f, vecColor, 5);
+						//GRender->DrawOutlinedCircle(obj.WorldPosition, vecColor, 900.f); // draw a circle around ward range
 					}
 				}
 				else if (obj.Type == kHiddenBlueWard)
 				{
-					GRender->DrawOutlinedCircle(obj.WorldPosition, vecColor, 20.f); // draw a small circle around ward
+					GRender->DrawCircle(obj.WorldPosition, 20.f, vecColor, 2);
+					//GRender->DrawOutlinedCircle(obj.WorldPosition, vecColor, 20.f); // draw a small circle around ward
 					EnemyWard->Draw(obj.MinimapPosition.x - 5, obj.MinimapPosition.y - 5);
-					if (Menu.ShowVisionRange->Enabled()) // draw ward range
+					if (Menu.ShowVisionRange->Enabled() && IndicatorsEnabled) // draw ward range
 					{
-						vecColor.w = (50);
-						GRender->DrawOutlinedCircle(obj.WorldPosition, vecColor, 500.f); // draw a circle around ward range
+						vecColor.w = (150);
+						GRender->DrawCircle(obj.WorldPosition, 500.f, vecColor, 5);
+						//GRender->DrawOutlinedCircle(obj.WorldPosition, vecColor, 500.f); // draw a circle around ward range
 					}
 				}
 				else if (obj.Type == kHiddenTrap)
 				{
-					GRender->DrawOutlinedCircle(obj.WorldPosition, vecColor, 125.f); // draw a small circle around ward
+					GRender->DrawCircle(obj.WorldPosition, 125.f, vecColor, 2);
+					//GRender->DrawOutlinedCircle(obj.WorldPosition, vecColor, 125.f); // draw a small circle around ward
 					TrapDot->Draw(obj.MinimapPosition.x - 2, obj.MinimapPosition.y - 2);
-					if (Menu.ShowVisionRange->Enabled()) // draw ward range
+					if (Menu.ShowVisionRange->Enabled() && IndicatorsEnabled) // draw ward range
 					{
-						vecColor.w = (50);
-						GRender->DrawOutlinedCircle(obj.WorldPosition, vecColor, 450.f); // draw a circle around ward range
+						vecColor.w = (150);
+						GRender->DrawCircle(obj.WorldPosition, 450, vecColor, 5);
+						//GRender->DrawOutlinedCircle(obj.WorldPosition, vecColor, 450.f); // draw a circle around ward range
 					}
 				}
 			}
-			TrackerFont->SetColor(Vec4(255, 255, 255, 255));
 		}
 	}
 
@@ -212,14 +256,16 @@ void Tracker::OnRender()
 		{
 			Vec2 vecScreen;
 			if (GGame->Projection(camp.Position, &vecScreen))
-				TrackerFont->Render(vecScreen.x, vecScreen.y, cstr); //"%s: %s", camp.Name.c_str(),
+				GRender->DrawTextW(vecScreen, Vec4(255, 255, 255, 255), cstr);
+				//TrackerFont->Render(vecScreen.x, vecScreen.y, cstr); //"%s: %s", camp.Name.c_str(),
 		}
 
 		if (Menu.Jungle.ShowMinimapTimer->Enabled())
 		{
 			Vec2 vecMinimap;
 			if (GGame->WorldToMinimap(camp.Position, vecMinimap))
-				TrackerFont->Render(vecMinimap.x, vecMinimap.y, cstr); // "%i", static_cast<int>(camp.NextSpawnTime - GGame->Time()));
+				GRender->DrawTextW(vecMinimap, Vec4(255, 255, 255, 255), cstr);
+				//TrackerFont->Render(vecMinimap.x, vecMinimap.y, cstr); // "%i", static_cast<int>(camp.NextSpawnTime - GGame->Time()));
 		}
 		delete[] cstr;
 	}
@@ -233,11 +279,17 @@ void Tracker::OnCreateObject(IUnit* Args)
 	if (strstr(Args->GetObjectName(), "Minion"))
 		return;
 
+	if (strstr(Args->GetObjectName(), "WardCorpse"))
+		UpdateHiddenObjects(Args);
+
 	if (!Args->IsEnemy(GEntityList->Player()))
 		return;
 
-	if (strstr(Args->GetObjectName(), "WardCorpse"))
-		UpdateHiddenObjects(Args);
+	// Check for clones
+	auto pClone = Args->GetClone();
+
+	if (pClone != nullptr)
+		Clones.emplace_back(pClone, Args);
 
 	// Check for wards
 	if (Args->GetObjectName() != nullptr)
@@ -395,6 +447,15 @@ void Tracker::OnCreateObject(IUnit* Args)
 
 void Tracker::OnDestroyObject(IUnit* Args)
 {
+	// Invalidate all destroyed clones
+	if (!strstr(Args->GetObjectName(), "missile") || !strstr(Args->GetObjectName(), "SRU"))
+	{
+		for (auto& clone : Clones)
+		{
+			if (clone.IsValid && clone.ClonedPlayer == Args)
+				clone.IsValid = false;
+		}
+	}
 	
 }
 
@@ -411,7 +472,7 @@ void Tracker::OnUnitDeath(IUnit* Args)
 		return;
 
 	// Invalidate all destroyed wards
-	if (strstr(Args->GetObjectName(), "Noxious"))
+	if (strstr(Args->GetObjectName(), "Noxious") || strstr(Args->GetObjectName(), "Jack") || strstr(Args->GetObjectName(), "Bushwhack"))
 		UpdateHiddenObjects(Args);
 
 	if (!Args->IsJungleCreep())
@@ -502,6 +563,7 @@ void Tracker::LoadMenu(IMenu* Parent)
 	Menu.Enabled = Menu.Owner->CheckBox("Enabled:", true);
 	Menu.TrackWards = Menu.Owner->CheckBox("Draw Wards:", true);
 	Menu.ShowVisionRange = Menu.Owner->CheckBox("Draw Vision Indicators:", true);
+	Menu.ToggleRangeKey = Menu.Owner->CheckBox("Left CTRL Toggle Indicators:", true);
 
 	IMenu* pJungleMenu = Parent->AddMenu("Jungle");
 
@@ -526,7 +588,7 @@ bool Tracker::AddHiddenObject(CastedSpell const& Args)
 	if (Args.Target_ != nullptr || Args.Caster_ == nullptr)
 		return false;
 
-
+	//GRender->Notification(Vec4(255, 255, 0, 255), 10, "flDistance: %s", Args.Name_);
 	if (!Args.Caster_->IsEnemy(GEntityList->Player()))
 		return false;
 

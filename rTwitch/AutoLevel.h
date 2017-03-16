@@ -20,6 +20,7 @@ public:
 	{
 		auto pHero = GEntityList->Player();
 		std::string szMenuName = std::string(pHero->ChampionName());
+		szMenuName += " Level Builder";
 
 		AutoLevelMainMenu = MenuSpot->AddMenu("Auto Level PRO");
 		ChampNameMenu = AutoLevelMainMenu->AddMenu(szMenuName.c_str());

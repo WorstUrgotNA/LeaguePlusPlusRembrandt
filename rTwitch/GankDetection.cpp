@@ -52,7 +52,7 @@ GankDetection::GankDetection(IMenu* Parent)
 	Menu.PingInterval = pFoWJungleTrackerMenu->AddInteger("Minimum Time Between Pings:", 0, 20, 5);
 
 	//auto pHeroes = Menu.Parent->AddMenu("Ping on Gank (Champions)");
-
+	Menu.PingOnAll = Menu.Parent->CheckBox("Ping All Ganking Champs:", false);
 	for (auto pHero : GEntityList->GetAllHeros(false, true))
 	{
 		std::string szMenuName = std::string(pHero->ChampionName()) + ": Ping on Gank";
@@ -110,7 +110,7 @@ void GankDetection::OnGameUpdate()
 				continue;
 
 			// Make sure this champion is setup for ping notifications
-			if (!Menu.ChampionsToPingOnGank[unit.Player->GetNetworkId()]->Enabled())
+			if (!Menu.ChampionsToPingOnGank[unit.Player->GetNetworkId()]->Enabled() && !Menu.PingOnAll->Enabled())
 				continue;
 
 			float flTimeSinceVisible	= GGame->Time() - unit.LastHiddenTimeGank;
@@ -143,13 +143,14 @@ void GankDetection::OnGameUpdate()
 			for (auto pUnit : GEntityList->GetAllUnits())
 			{
 				float flDistance = (pUnit->GetPosition() - JGDisplayPos).Length();
-				if (flDistance < 500 || !GGame->WithinFogOfWar(JGDisplayPos))
+				if (flDistance < 20 || !GGame->WithinFogOfWar(JGDisplayPos))
 				{
 					//GRender->Notification(Vec4(255, 255, 255, 255), 5, "%s distance %f to ping", pUnit->GetObjectName(), flDistance);
 					FalseAlarm = true;
 					break;
 				}
 			}
+
 
 			if (!FalseAlarm && GGame->Time() - LastPingTimeTracker >= 1)
 			{
@@ -257,6 +258,8 @@ void GankDetection::OnRender()
 
 	Vec2 vecScreen;
 
+	
+
 	//Draw FoW Jungle Tracker
 	if (Menu.TrackJungler->Enabled())
 	{
@@ -264,7 +267,7 @@ void GankDetection::OnRender()
 		{
 			if (obj.TriggerTime - GGame->Time() > 0)
 			{
-				GRender->DrawOutlinedCircle(obj.WorldPosition, Vec4(255, 0, 0, 255), 20.f); // draw a small circle around notification
+				GRender->DrawCircle(obj.WorldPosition, 20.f, Vec4(255, 0, 0, 255), 2.f); // draw a small circle around notification
 				RC_On->Draw(obj.MinimapPosition.x - 15, obj.MinimapPosition.y - 15);
 			}
 		}
@@ -278,12 +281,15 @@ void GankDetection::OnRender()
 			if (turret == nullptr || turret->IsDead() || turret->GetHealth() < 1.f || strstr(turret->GetObjectName(), "Shrine"))
 				continue;
 
+			if ((pLocal->GetPosition() - turret->GetPosition()).Length() > 1500)
+				continue;
+
 			float range = turret->BoundingRadius() + 775.f; //strstr(turret->GetObjectName(), "Chaos") ? turret->BoundingRadius() + 1100.f : 
 
 			if (turret->IsEnemy(pLocal))
-				GRender->DrawOutlinedCircle(turret->GetPosition(), Vec4(255, 0, 0, 140), range);
+				GRender->DrawCircle(turret->GetPosition(), range, Vec4(255, 0, 0, 140), 3);
 			else
-				GRender->DrawOutlinedCircle(turret->GetPosition(), Vec4(0, 255, 0, 140), range);
+				GRender->DrawCircle(turret->GetPosition(), range, Vec4(0, 255, 0, 140), 3);
 		}
 	}
 
@@ -309,28 +315,12 @@ void GankDetection::OnRender()
 			{
 				GRender->DrawFilledBox(Vec2(vecScreen.x, vecScreen.y + 125), Vec2(120.f, 15.f), Vec4(0, 117, 0, 255));
 				GRender->DrawOutinedBox(Vec2(vecScreen.x, vecScreen.y + 125), Vec2(120.f, 15.f), 1, Vec4(0, 0, 0, 255));
-				Font1->Render(vecScreen.x + 60, vecScreen.y + 127, "Jungler Dead");
+				vecScreen.x += 20;
+				vecScreen.y += 127;
+				GRender->DrawTextW(vecScreen, Vec4(255,255,255,255), "Jungler Dead");
 			}
 			continue;
 		}
-			
-
-		
-
-		
-
-		//Vec4 vecColor;
-		//GetHealthColor(&unit, vecColor);
-
-		//Vec2 vecHealthBarSize(50.f, 8.f);
-
-		// Draw Health Bar
-		/*if (Menu.DrawEnemyRadar->Enabled())
-		{
-			GRender->DrawFilledBox(vecScreen, vecHealthBarSize, Vec4(255, 255, 255, 255));
-			GRender->DrawFilledBox(vecScreen, Vec2(vecHealthBarSize.x * (unit.Player->HealthPercent() / 100.f), vecHealthBarSize.y), vecColor);
-			GRender->DrawOutinedBox(vecScreen, vecHealthBarSize, 1.f, Vec4(0, 0, 0, 255));
-		}*/
 
 		if (unit.IsVisible)
 		{
@@ -357,42 +347,29 @@ void GankDetection::OnRender()
 				{
 					GRender->DrawFilledBox(Vec2(vecScreen.x, vecScreen.y + 125), Vec2(120.f, 15.f), Vec4(200, 0, 0, 255));
 					GRender->DrawOutinedBox(Vec2(vecScreen.x, vecScreen.y + 125), Vec2(120.f, 15.f), 1, Vec4(0, 0, 0, 255));
-					Font1->Render(vecScreen.x + 60, vecScreen.y + 127, "Jungler Near!");
+					vecScreen.x += 20;
+					vecScreen.y += 127;
+					GRender->DrawTextW(vecScreen, Vec4(255, 255, 255, 255), "Jungler Near!");
 				}
 				else
 				{
 					GRender->DrawFilledBox(Vec2(vecScreen.x, vecScreen.y + 125), Vec2(120.f, 15.f), Vec4(0, 117, 0, 255));
 					GRender->DrawOutinedBox(Vec2(vecScreen.x, vecScreen.y + 125), Vec2(120.f, 15.f), 1, Vec4(0, 0, 0, 255));
-					Font1->Render(vecScreen.x + 60, vecScreen.y + 127, "Jungler Visible");
+					vecScreen.x += 20;
+					vecScreen.y += 127;
+					GRender->DrawTextW(vecScreen, Vec4(255, 255, 255, 255), "Jungler Visible");
 				}
-				// 
 			}
-			// Draw Name
-			/*if (Menu.DrawEnemyRadar->Enabled())
-			{
-				if (unit.IsJungle)
-					Tahoma13Bold->Render(vecScreen.x + vecHealthBarSize.x / 2, vecScreen.y - 15.f, unit.Player->ChampionName());
-				else
-					Tahoma13->Render(vecScreen.x + vecHealthBarSize.x / 2, vecScreen.y - 15.f, unit.Player->ChampionName());
-			}*/
 		}
 		else
 		{
-			//GRender->Notification(Vec4(255, 255, 255, 255), 0, "%s is NOT visible", unit.Player->ChampionName());
-			// Draw Name [MIA]
-			/*if (Menu.DrawEnemyRadar->Enabled())
-			{
-				if (unit.IsJungle)
-					Tahoma13Bold->Render(vecScreen.x + vecHealthBarSize.x / 2, vecScreen.y - 15.f, "MIA %s %i", unit.Player->ChampionName(), static_cast<int>(GGame->Time() - unit.LastVisibleTime));
-				else
-					Tahoma13->Render(vecScreen.x + vecHealthBarSize.x / 2, vecScreen.y - 15.f, "MIA %s %i", unit.Player->ChampionName(), static_cast<int>(GGame->Time() - unit.LastVisibleTime));
-			}*/
-
 			if (unit.IsJungle && Menu.DrawJunglerTracker->Enabled() && GGame->Projection(vecPosition, &vecScreen))
 			{
 				GRender->DrawFilledBox(Vec2(vecScreen.x, vecScreen.y + 125), Vec2(120.f, 15.f), Vec4(255, 168, 0, 255));
 				GRender->DrawOutinedBox(Vec2(vecScreen.x, vecScreen.y + 125), Vec2(120.f, 15.f), 1, Vec4(0, 0, 0, 255));
-				Font1->Render(vecScreen.x + 60, vecScreen.y + 127, "Jungler MIA: %i", static_cast<int>(GGame->Time() - unit.LastVisibleTime));
+				vecScreen.x += 20;
+				vecScreen.y += 127;
+				GRender->DrawTextW(vecScreen, Vec4(255, 255, 255, 255), "Jungler MIA: %i", static_cast<int>(GGame->Time() - unit.LastVisibleTime));
 			}
 			
 			// Draw FoW Circle
@@ -423,7 +400,11 @@ void GankDetection::OnRender()
 								GRender->DrawOutlinedCircle(vecMinimap, Vec4(255, 255, 0, 255), 22);
 							*/
 							if (Menu.LastSeen->Enabled())
-								Tahoma13->Render(vecMinimap.x + 2, vecMinimap.y + 4, "[%i]", static_cast<int>(GGame->Time() - unit.LastVisibleTime));
+							{
+								vecMinimap.x += 2;
+								vecMinimap.y += 4;
+								GRender->DrawTextW(vecMinimap, Vec4(255, 255, 255, 255), "[%i]", static_cast<int>(GGame->Time() - unit.LastVisibleTime));
+							}
 						}
 					}
 				}

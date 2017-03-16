@@ -10,7 +10,7 @@
 #include "ChampionHandler.h"
 
 
-PluginSetup("Utility PRO++ by Rembrandt");
+PluginSetup("Rembrandt [AIO]");
 
 IMenu* MainMenu;
 IMenu* AutoSmiteMenu;
@@ -37,14 +37,16 @@ IMenu* AutoTrinketMenu;
 IMenu* MikaelsMenu;
 IMenu* CCFilter;
 IMenu* SummonerTeller;
-IMenu* MiscMenu;
+//IMenu* MiscMenu;
 
-IMenuOption* MinionHpKillableDraw;
+//IMenuOption* MinionHpKillableDraw;
 IMenuOption* SummonerTellerKey;
 IMenuOption* SummonerTellerEnabled;
 IMenuOption* SmiteActive;
 IMenuOption* SmiteKey;
 IMenuOption* SmiteEnemies;
+IMenuOption* SmiteBlue;
+IMenuOption* SmiteRed;
 IMenuOption* SmiteEnemies2Stacks;
 IMenuOption* HealActive;
 IMenuOption* HealPercent;
@@ -92,6 +94,10 @@ IMenuOption* CleanseTeamate5;
 IMenuOption* CleanseHumanizerDelay;
 IMenuOption* DrawSmiteEnabled;
 IMenuOption* CleanseDurationMin;
+IMenuOption* TiamatEnabled;
+IMenuOption* RavenousEnabled;
+IMenuOption* TitanicEnabled;
+IMenu* TiamatMenu;
 
 IUnit* CleanseTeamate01;
 IUnit* CleanseTeamate02;
@@ -130,6 +136,9 @@ IInventoryItem* Cutlass;
 IInventoryItem* Youmuus;
 IInventoryItem* GLP800;
 IInventoryItem* WardTrinket;
+IInventoryItem* Tiamat;
+IInventoryItem* Ravenous;
+IInventoryItem* Titanic;
 
 Vec3 JungleNotification;
 
@@ -141,6 +150,8 @@ IFont* UtilityFont;
 
 std::string	formattedTime;
 
+Vec2 AutoSmiteTextPos;
+
 int DelayedSpellIndex = 0;
 int HumanizeDelayCleanse;
 
@@ -149,42 +160,14 @@ short keystate2;
 bool SummonerTellerKeyWasDown = false;
 bool smiteKeyWasDown = false;
 bool DelayedCleanse = false;
+float AfkTimer;
 
-//  DEBUG CODE
-//std::string SmiteDamage = std::to_string(GDamage->GetSummonerSpellDamage(GEntityList->Player(), minion, kSummonerSpellSmite)); // Converting the smite damage to a string
-//GGame->PrintChat(SmiteDamage.data());
-
-//std::string minionPredHealth = std::to_string(GHealthPrediction->GetPredictedHealth(minion, kLastHitPrediction, 200, 0));
-//GGame->PrintChat(minionPredHealth.data());
-//GGame->PrintChat("Smite cast on:");
-//GGame->PrintChat(minion->GetObjectName());
-
-/*  DISABLE ATTACKING CLONES - TO DO LATER
-if (Menu.TrackClones->Enabled())
-{
-	for (auto pUnit : GEntityList->GetAllHeros(true, true))
-	{
-		if (std::find_if(Clones.begin(), Clones.end(), [&](ClonedUnit& Clone)
-		{
-			return (Clone.IsValid && Clone.RealPlayer == pUnit);
-		}) != Clones.end())
-		{
-			Vec3 vecPosition = pUnit->GetPosition();
-
-			Vec2 vecScreen;
-			if (GGame->Projection(vecPosition, &vecScreen))
-			{
-				TrackerFont->SetColor(Vec4(0, 255, 0, 255));
-				TrackerFont->Render(vecScreen.x, vecScreen.y, "Real Player");
-				TrackerFont->SetColor(Vec4(255, 255, 255, 255));
-			}
-		}
-	}
-}*/
 #pragma comment(lib, "urlmon.lib")
 #pragma region Events
 void LoadSpells()
 {
+	AutoSmiteTextPos = Vec2(0, 0);
+
 	MikaelsTargetToCast = nullptr;
 	auto PlayerSum1  = GPluginSDK->GetEntityList()->Player()->GetSpellName(kSummonerSlot1);
 	auto PlayerSum2 = GPluginSDK->GetEntityList()->Player()->GetSpellName(kSummonerSlot2);
@@ -236,7 +219,9 @@ void LoadSpells()
 	Cutlass = GPluginSDK->CreateItemForId(3144, 550);
 	Youmuus = GPluginSDK->CreateItemForId(3142, 0);
 	GLP800 = GPluginSDK->CreateItemForId(3030, 800);
-	WardTrinket = GPluginSDK->CreateItemForId(3340, 525);
+	Tiamat = GPluginSDK->CreateItemForId(3077, 400);
+	Ravenous = GPluginSDK->CreateItemForId(3074, 400);
+	Titanic = GPluginSDK->CreateItemForId(3748, 400);
 	
 }
 
@@ -360,7 +345,7 @@ int EnemiesInRange(IUnit* Source, float range)
 
 	for (auto target : Targets)
 	{
-		if (target != nullptr && !target->IsDead())
+		if (target != nullptr && !target->IsDead() && target->IsValidTarget())
 		{
 			auto flDistance = (target->GetPosition() - Source->GetPosition()).Length();
 			if (flDistance < range)
@@ -376,30 +361,6 @@ int EnemiesInRange(IUnit* Source, float range)
 
 void UseDefensives()
 {
-	/*auto ActiveMissiles = GPluginSDK->GetEntityList()->GetAllMissiles(false, true);
-	for (IUnit* ActiveMissile : ActiveMissiles)
-	{			
-		auto AttackerUnit = GMissileData->GetCaster(ActiveMissile);
-		if (!(strstr(AttackerUnit->GetObjectName(), "Minion")) && GMissileData->GetTarget(ActiveMissile) == GPluginSDK->GetEntityList()->Player()) {
-			if (strstr(AttackerUnit->GetObjectName(), "Turret"))
-			{
-				if ((GPluginSDK->GetEntityList()->Player()->GetHealth() - GDamage->GetAutoAttackDamage(AttackerUnit, GPluginSDK->GetEntityList()->Player(), false)) <= HealPercent->GetInteger())
-				{
-					if (HEAL != nullptr && HEAL->IsReady() && !(GPluginSDK->GetEntityList()->Player()->IsDead())) { HEAL->CastOnPlayer(); }
-					GGame->PrintChat(GMissileData->GetName(ActiveMissile)); // debug lines
-					GGame->PrintChat(std::to_string(GDamage->GetSpellDamage(AttackerUnit, GPluginSDK->GetEntityList()->Player(), GMissileData->GetSpellSlot(ActiveMissile))).data());
-					GGame->PrintChat(std::to_string(GDamage->GetAutoAttackDamage(AttackerUnit, GPluginSDK->GetEntityList()->Player(), false)).data());
-				}
-				if ((GPluginSDK->GetEntityList()->Player()->GetHealth() - GDamage->GetAutoAttackDamage(AttackerUnit, GPluginSDK->GetEntityList()->Player(), false)) <= BarrierPercent->GetInteger())
-				{
-					if (BARRIER != nullptr && BARRIER->IsReady() && !(GPluginSDK->GetEntityList()->Player()->IsDead())) { BARRIER->CastOnPlayer(); }
-					GGame->PrintChat(GMissileData->GetName(ActiveMissile)); // debug lines
-					GGame->PrintChat(std::to_string(GDamage->GetSpellDamage(AttackerUnit, GPluginSDK->GetEntityList()->Player(), GMissileData->GetSpellSlot(ActiveMissile))).data());
-					GGame->PrintChat(std::to_string(GDamage->GetAutoAttackDamage(AttackerUnit, GPluginSDK->GetEntityList()->Player(), false)).data());
-				}
-			}
-		}
-	}*/
 	auto Hero = GEntityList->Player();
 
 	//ITEMS
@@ -631,7 +592,7 @@ void AutoSmite() // AUTO SMITE PRO BY REMBRANDT
 		{
 			if ((minion->GetPosition() - GEntityList->Player()->GetPosition()).Length() <= 570)
 			{
-				if (strstr(minion->GetObjectName(), "Red") || strstr(minion->GetObjectName(), "Blue") || strstr(minion->GetObjectName(), "Dragon") || strstr(minion->GetObjectName(), "Rift") || strstr(minion->GetObjectName(), "Baron"))
+				if ((strstr(minion->GetObjectName(), "Red") && SmiteRed->Enabled()) || (strstr(minion->GetObjectName(), "Blue") && SmiteBlue->Enabled()) || strstr(minion->GetObjectName(), "Dragon") || strstr(minion->GetObjectName(), "Rift") || strstr(minion->GetObjectName(), "Baron"))
 				{
 					if (minion != nullptr && !minion->IsDead() && minion->GetHealth() <= GetSmiteDamage(GEntityList->Player()->GetLevel()))
 					{
@@ -690,6 +651,17 @@ void Combo()
 	}
 	
 
+	
+	//Ravenous
+	if (RavenousEnabled->Enabled() && Ravenous->IsOwned() && Ravenous->IsReady() && !Hero->IsDead())
+	{
+		if (EnemiesInRange(Hero, 400) > 0) { Ravenous->CastOnPlayer(); }
+	}
+	//Tiamat
+	if (TiamatEnabled->Enabled() && Tiamat->IsOwned() && Tiamat->IsReady() && !Hero->IsDead())
+	{
+		if (EnemiesInRange(Hero, 400) > 0) { Tiamat->CastOnPlayer(); }
+	}
 	//RANDUINS
 	if (Randuins->IsOwned() && Randuins->IsReady() && RanduinsEnabled->Enabled() && !(Hero->IsDead()))
 	{
@@ -801,11 +773,15 @@ PLUGIN_EVENT(void) OnOrbwalkAttack(IUnit* Source, IUnit* Target)
 {
 
 }
-
+*/
 PLUGIN_EVENT(void) OnOrbwalkAfterAttack(IUnit* Source, IUnit* Target)
 {
-
-}*/
+	//Titanic
+	if (TitanicEnabled->Enabled() && Titanic->IsOwned() && Titanic->IsReady() && !GEntityList->Player()->IsDead())
+	{
+		Titanic->CastOnPlayer();
+	}
+}
 
 // Return an IUnit object here to force the orbwalker to select it for this tick
 /*PLUGIN_EVENT(IUnit*) OnOrbwalkingFindTarget()
@@ -833,49 +809,21 @@ PLUGIN_EVENT(void) OnGameUpdate()
 	AutoTrinket();
 
 	if (GOrbwalking->GetOrbwalkingMode() == kModeCombo) { Combo();}
+
+	
 }
 
 PLUGIN_EVENT(void) OnRender()
 {
-
 	if (SMITE != nullptr && DrawSmiteEnabled->Enabled())
 	{
 		Vec3 vecPosition = GEntityList->Player()->GetPosition();
-		Vec2 vecScreen;
-
-		if (GGame->Projection(vecPosition, &vecScreen))
+		if (GGame->Projection(vecPosition, &AutoSmiteTextPos))
 		{
-			if (SmiteActive->Enabled())
-			{
-				UtilityFont->Render(vecScreen.x, vecScreen.y + 100, "AUTOSMITE ON"); // draw ward or trap timer on minimap
-			}
-			else
-			{
-				UtilityFont->Render(vecScreen.x, vecScreen.y + 100, "AUTOSMITE OFF"); // draw ward or trap timer on minimap
-			}
+			AutoSmiteTextPos.y += 100;
+			GRender->DrawTextW(AutoSmiteTextPos, Vec4(255, 255, 255, 255), "%s", SmiteActive->Enabled() ? "AUTOSMITE ON" : "AUTOSMITE OFF");
 		}
 	}
-
-	if (MinionHpKillableDraw->Enabled())
-	{
-		for (auto minion : GEntityList->GetAllUnits())
-		{
-			if (minion->UnitFlags() == FL_CREEP)
-			{
-				Vec2 vecScreen;
-				if (minion->GetHPBarPosition(vecScreen))
-				{
-					
-					vecScreen.x += 1;
-					vecScreen.y += 5;
-					UtilityFont->Render(vecScreen.x, vecScreen.y - 15, "%i", static_cast<int>(GDamage->GetAutoAttackDamage(GEntityList->Player(), minion, true)));
-				}
-			}
-		}
-	}
-
-	
-	GUtility->LogConsole("MAIN OnRender Complete");
 }
 
 /*PLUGIN_EVENT(void) OnSpellCast(CastedSpell const& Args)
@@ -914,10 +862,12 @@ PLUGIN_EVENT(void) OnRender()
 
 // Called when issuing an order (e.g move, attack, etc.)
 // Return false to stop order from executing
-/*PLUGIN_EVENT(bool) OnIssueOrder(IUnit* Source, DWORD OrderIdx, Vec3* Position, IUnit* Target)
-{
-	return true;
-}*/
+//PLUGIN_EVENT(bool) OnIssueOrder(IUnit* Source, DWORD OrderIdx, Vec3* Position, IUnit* Target)
+//{
+//	AfkTimer = GGame->Time();
+
+	//return true;
+//}
 
 PLUGIN_EVENT(void) OnBuffAdd(IUnit* Source, void* BuffData)
 {
@@ -1214,9 +1164,11 @@ PLUGIN_EVENT(void) OnLevelUp(IUnit* Source, int NewLevel)
 }
 
 // Only called for local player, before the spell packet is sent
-/*PLUGIN_EVENT(void) OnPreCast(int Slot, IUnit* Target, Vec3* StartPosition, Vec3* EndPosition)
-{
-}*/
+//PLUGIN_EVENT(void) OnPreCast(int Slot, IUnit* Target, Vec3* StartPosition, Vec3* EndPosition)
+//{
+	//GGame->PrintChat(std::to_string(Slot).data());
+		
+//}
 
 /*PLUGIN_EVENT(void) OnDash(UnitDash* Args)
 {
@@ -1254,8 +1206,8 @@ PLUGIN_EVENT(void) OnLevelUp(IUnit* Source, int NewLevel)
 
 }*/
 
-PLUGIN_EVENT(void) OnExitVisible(IUnit* Source)
-{
+//PLUGIN_EVENT(void) OnExitVisible(IUnit* Source)
+//{
 	/*if (GOrbwalking->GetOrbwalkingMode() == kModeCombo && Source == GTargetSelector->GetFocusedTarget())
 	{
 		float flDistance = (Source->GetPosition() - GEntityList->Player()->GetPosition()).Length();
@@ -1265,7 +1217,7 @@ PLUGIN_EVENT(void) OnExitVisible(IUnit* Source)
 			WardTrinket->CastOnPosition(Source->GetPosition());
 		}
 	}*/
-}
+//}
 #pragma endregion
 
 // Called when plugin is first loaded
@@ -1277,7 +1229,7 @@ PLUGIN_API void OnLoad(IPluginSDK* PluginSDK)
 	//GUtility->CreateDebugConsole();
 
 		//Initialize Menus
-		MainMenu = GPluginSDK->AddMenu("[AIO] Utility Suite PRO++ by Rembrandt");
+		MainMenu = GPluginSDK->AddMenu("[Rembrandt AIO] Utility PRO++");
 		
 		Defensives = MainMenu->AddMenu("Activator PRO");
 
@@ -1333,6 +1285,10 @@ PLUGIN_API void OnLoad(IPluginSDK* PluginSDK)
 
 		OffensiveItems = Defensives->AddMenu("Offensive Items");//OFFENSIVE ITEMS MENU
 
+		TiamatMenu = OffensiveItems->AddMenu("Tiamat/Hydras");
+		TiamatEnabled = TiamatMenu->CheckBox("Use Tiamat:", true);
+		RavenousEnabled = TiamatMenu->CheckBox("Use Ravenous Hydra:", true);
+		TitanicEnabled = TiamatMenu->CheckBox("Use Titanic Hydra:", true);
 		GunbladeMenu = OffensiveItems->AddMenu("Hextech Gunblade");
 		GunbladeEnabled = GunbladeMenu->CheckBox("Enabled in Combo:", true);
 		BotrkMenu = OffensiveItems->AddMenu("Blade of the Ruined King");
@@ -1356,7 +1312,9 @@ PLUGIN_API void OnLoad(IPluginSDK* PluginSDK)
 		BarrierPercent = SummonerBarrierMenu->AddInteger("Use at Health %: ", 1, 99, 30);
 
 		AutoSmiteMenu = Defensives->AddMenu("Summoner: Smite");
-		SmiteActive = AutoSmiteMenu->CheckBox("Smite Buffs/Epic Monsters: ", true);
+		SmiteActive = AutoSmiteMenu->CheckBox("Smite Epic Monsters: ", true);
+		SmiteRed = AutoSmiteMenu->CheckBox("Smite Red Buff:", true);
+		SmiteBlue = AutoSmiteMenu->CheckBox("Smite Blue Buff:", true);
 		SmiteKey = AutoSmiteMenu->AddKey("Toggle Key:", 77);
 		DrawSmiteEnabled = AutoSmiteMenu->CheckBox("Draw Auto Smite Enabled:", true);
 		SmiteEnemies = AutoSmiteMenu->CheckBox("Smite Enemy Champions in Combo:", true);
@@ -1386,13 +1344,13 @@ PLUGIN_API void OnLoad(IPluginSDK* PluginSDK)
 		LoadSpells();
 		GUtility->LogConsole("Spells Created");
 
-		MiscMenu = MainMenu->AddMenu("Misc Settings");
-		MinionHpKillableDraw = MiscMenu->CheckBox("Draw AA Damage on Minions:", false);
+		//MiscMenu = MainMenu->AddMenu("Misc Settings");
+		//MinionHpKillableDraw = MiscMenu->CheckBox("Draw AA Damage on Minions:", false);
 
 		/*GEventManager->AddEventHandler(kEventOrbwalkBeforeAttack, OnOrbwalkBeforeAttack);
-		GEventManager->AddEventHandler(kEventOrbwalkOnAttack, OnOrbwalkAttack);
+		GEventManager->AddEventHandler(kEventOrbwalkOnAttack, OnOrbwalkAttack);*/
 		GEventManager->AddEventHandler(kEventOrbwalkAfterAttack, OnOrbwalkAfterAttack);
-		GEventManager->AddEventHandler(kEventOrbwalkFindTarget, OnOrbwalkingFindTarget);
+		/*GEventManager->AddEventHandler(kEventOrbwalkFindTarget, OnOrbwalkingFindTarget);
 		GEventManager->AddEventHandler(kEventOrbwalkTargetChange, OnOrbwalkTargetChange);
 		GEventManager->AddEventHandler(kEventOrbwalkNonKillableMinion, OnOrbwalkNonKillableMinion);*/
 		GEventManager->AddEventHandler(kEventOnGameUpdate, OnGameUpdate);
@@ -1425,7 +1383,7 @@ PLUGIN_API void OnLoad(IPluginSDK* PluginSDK)
 		//GEventManager->AddEventHandler(kEventOnRenderBehindHud, OnRenderBehindHUD);
 		//GEventManager->AddEventHandler(kEventOnWndProc, OnWndProc);
 		//GEventManager->AddEventHandler(kEventOnEnterVisible, OnEnterVisible);
-		GEventManager->AddEventHandler(kEventOnExitVisible, OnExitVisible);
+		//GEventManager->AddEventHandler(kEventOnExitVisible, OnExitVisible);
 
 		GUtility->LogConsole("Events Created");
 
@@ -1439,9 +1397,9 @@ PLUGIN_API void OnUnload()
 	MainMenu->Remove();
 	/*
 	GEventManager->RemoveEventHandler(kEventOrbwalkBeforeAttack, OnOrbwalkBeforeAttack);
-	GEventManager->RemoveEventHandler(kEventOrbwalkOnAttack, OnOrbwalkAttack);
+	GEventManager->RemoveEventHandler(kEventOrbwalkOnAttack, OnOrbwalkAttack);*/
 	GEventManager->RemoveEventHandler(kEventOrbwalkAfterAttack, OnOrbwalkAfterAttack);
-	GEventManager->RemoveEventHandler(kEventOrbwalkFindTarget, OnOrbwalkingFindTarget);
+	/*GEventManager->RemoveEventHandler(kEventOrbwalkFindTarget, OnOrbwalkingFindTarget);
 	GEventManager->RemoveEventHandler(kEventOrbwalkTargetChange, OnOrbwalkTargetChange);
 	GEventManager->RemoveEventHandler(kEventOrbwalkNonKillableMinion, OnOrbwalkNonKillableMinion);*/
 	//GEventManager->RemoveEventHandler(kEventOnJungleNotification, OnJungleNotify);
@@ -1467,7 +1425,7 @@ PLUGIN_API void OnUnload()
 	//GEventManager->RemoveEventHandler(kEventOnRenderBehindHud, OnRenderBehindHUD);
 	//GEventManager->RemoveEventHandler(kEventOnWndProc, OnWndProc);
 	//GEventManager->RemoveEventHandler(kEventOnEnterVisible, OnEnterVisible);
-	GEventManager->RemoveEventHandler(kEventOnExitVisible, OnExitVisible);
+	//GEventManager->RemoveEventHandler(kEventOnExitVisible, OnExitVisible);
 
 	delete GPluginInstance;
 	delete GPluginInstance2;

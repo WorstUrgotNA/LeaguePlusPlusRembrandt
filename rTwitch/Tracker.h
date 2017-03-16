@@ -34,6 +34,7 @@ struct TrackerMenu
 	IMenu*				Owner;
 	IMenuOption*		Enabled;
 	IMenuOption*		TrackWards;
+	IMenuOption*		ToggleRangeKey;
 	IMenuOption*		ShowVisionRange;
 	TrackerJungleMenu	Jungle;
 };
@@ -137,4 +138,6 @@ private:
 	int							DragonStacks;
 	IFont*						TrackerFont;
 	IFont*						MinimapText;
+	short						keystate;
+	bool						IndicatorsEnabled;
 };

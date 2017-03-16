@@ -3,7 +3,7 @@
 Graves::Graves(IMenu* Parent)
 {
 	//Create Spells
-	Q = GPluginSDK->CreateSpell2(kSlotQ, kLineCast, true, false, kCollidesWithWalls);
+	Q = GPluginSDK->CreateSpell2(kSlotQ, kLineCast, true, false, kCollidesWithNothing);
 	W = GPluginSDK->CreateSpell2(kSlotW, kTargetCast, true, false, kCollidesWithYasuoWall);
 	E = GPluginSDK->CreateSpell2(kSlotE, kTargetCast, false, false, kCollidesWithNothing);
 	R = GPluginSDK->CreateSpell2(kSlotR, kLineCast, true, false, kCollidesWithYasuoWall);
@@ -24,13 +24,29 @@ Graves::Graves(IMenu* Parent)
 	};
 	StackIndex = -1;
 
-	GravesMenu = Parent->AddMenu("Graveytrain");
-	ComboPercent = GravesMenu->AddFloat("R in Combo at HP%:", 0, 100, 30);
+	//Menu
+	GravesMenu = Parent->AddMenu("Graves PRO++");
+	SemiManualMenuKey = GravesMenu->AddKey("Semi-Manual Ult Key:", 84);
+
+	UseQJungle = GravesMenu->CheckBox("Use Q in Jungle Clear:", true);
+	QJungleMana = GravesMenu->AddFloat("Minimum Mana Percent:", 0, 100, 40);
+
+	UseWJungle = GravesMenu->CheckBox("Use W in Jungle Clear:", true);
+	WJungleMana = GravesMenu->AddFloat("Minimum Mana Percent:", 0, 100, 75);
+
+	UseEJungle = GravesMenu->CheckBox("Use E in Jungle Clear:", true);
+	EJungleMana = GravesMenu->AddFloat("Minimum Mana Percent:", 0, 100, 10);
+
+	DrawReady = GravesMenu->CheckBox("Draw Only Ready Spells:", true);
+	DrawQ = GravesMenu->CheckBox("Draw Q Range:", true);
+	DrawW = GravesMenu->CheckBox("Draw W Range:", true);
+	DrawE = GravesMenu->CheckBox("Draw E Range:", true);
+	DrawR = GravesMenu->CheckBox("Draw R Range:", true);
 }
 
 Graves::~Graves()
 {
-	//GravesMenu->Remove();
+	
 }
 
 int Graves::EnemiesInRange(IUnit* Source, float range)
@@ -83,11 +99,11 @@ float Graves::CalcRDamage(IUnit* Target)
 	}
 	//auto FlatArmorPenetration = Hero->ArmorPenetrationFlat ×(0.6 + 0.4 × Target's level ÷ 18)
 
-	auto Multiplier = Armor > 0 ? (100/(100+Armor)) : 2 - (100/(100-Armor));
-	auto FinalDamage = InitDamage * Multiplier;
-
-	GRender->Notification(Vec4(255, 255, 255, 255), 0, "R Damage: %i", static_cast<int>(GDamage->CalcPhysicalDamage(Hero, Target, InitDamage))); //
-	return FinalDamage;
+	//auto Multiplier = Armor > 0 ? (100/(100+Armor)) : 2 - (100/(100-Armor));
+	//auto FinalDamage = InitDamage * Multiplier;
+	//
+	//GRender->Notification(Vec4(255, 255, 255, 255), 0, "R Damage: %i", static_cast<int>(FinalDamage)); //
+	return GDamage->CalcPhysicalDamage(Hero, Target, InitDamage);
 }
 
 void Graves::Combo()
@@ -98,85 +114,175 @@ void Graves::Combo()
 		{
 			for (auto enemy : GEntityList->GetAllHeros(false, true))
 			{
-				if ((enemy->GetPosition() - GEntityList->Player()->GetPosition()).Length() < 1500 && enemy->GetHealth() - CalcRDamage(enemy) < 0)
-					R->CastOnTarget(enemy, kHitChanceHigh);
+				if (!enemy->IsClone() && !enemy->IsDead() && enemy->IsValidTarget() && (enemy->GetPosition() - GEntityList->Player()->GetPosition()).Length() < 1500 && enemy->GetHealth() - CalcRDamage(enemy) < 0)
+					R->CastOnTarget(enemy, kHitChanceMedium);
 			}
-			//auto Target = GTargetSelector->FindTarget(QuickestKill, PhysicalDamage, 1500);
-
-			
 		}
 
 		if (W->IsReady() && EnemiesInRange(GEntityList->Player(), 950) > 0)
 		{
 			W->CastOnTarget(GTargetSelector->FindTarget(QuickestKill, PhysicalDamage, 950));
 		}
+
+		if (Q->IsReady()) //cast if wall to bang
+		{
+			auto pLocal = GEntityList->Player();
+
+			for (auto enemy : GEntityList->GetAllHeros(false, true))
+			{
+				if (!enemy->IsClone() && !enemy->IsDead() && enemy->IsValidTarget() && (enemy->GetPosition() - pLocal->GetPosition()).Length() < 950)
+				{
+					Vec3 EstimatedEnemyPos;
+					GPrediction->GetFutureUnitPosition(enemy, 0.35, true, EstimatedEnemyPos);
+					Vec3 EndPosition = pLocal->GetPosition() + (EstimatedEnemyPos - pLocal->GetPosition()).VectorNormalize() * 900;
+
+					if (GNavMesh->IsPointWall(EndPosition))
+						Q->CastOnTarget(enemy, kHitChanceLow);
+				}
+			}
+		}
 	}
 }
 
 void Graves::OnGameUpdate()
 {
-	if (StackIndex >= 0)
+	try
 	{
-		
-		if (GOrbwalking->GetOrbwalkingMode() == kModeCombo && (StackIndex > 4 || EnemiesInRange(GEntityList->Player(), 1500) == 0))
-			ClearStack();
+		if (StackIndex >= 0)
+		{
 
-		if (Stack[StackIndex] == "GravesQLineSpell")
-		{
-			Q->CastOnTarget(GTargetSelector->FindTarget(QuickestKill, PhysicalDamage, 1000), kHitChanceHigh);
-		}
-		else if (Stack[StackIndex] == "GravesChargeShot")
-		{
-			R->CastOnTarget(GTargetSelector->FindTarget(QuickestKill, PhysicalDamage, 1500), kHitChanceHigh);
-		}
-		else if (Stack[StackIndex] == "GravesMove")
-		{
-			E->CastOnPosition(GGame->CursorPosition());
-			if (GEntityList->Player()->GetSpellRemainingCooldown(kSlotE) > 0.1f)
+			if (GOrbwalking->GetOrbwalkingMode() == kModeCombo && (StackIndex > 4 || EnemiesInRange(GEntityList->Player(), 1500) == 0))
+				ClearStack();
+			else 
 			{
-				GOrbwalking->ResetAA();
-				StackIndex++;
-			}
-		}
-		else //combo done
-		{
-			ClearStack();
-		}
-	}
-
-	if (GOrbwalking->GetOrbwalkingMode() == kModeCombo)
-		Combo();
-
-
-	//key press
-	keystate = GetAsyncKeyState(84); //smite key
-
-	if (GUtility->IsLeagueWindowFocused() && !GGame->IsChatOpen())
-	{
-		if (keystate < 0) // If most-significant bit is set...
-		{
-			// key is down . . .
-			if (SemiManualKey == false)
-			{
-				//toggle smite
-				if (R->IsReady())
+				if (Stack[StackIndex] == "GravesQLineSpell")
+				{
+					Q->CastOnTarget(GTargetSelector->FindTarget(QuickestKill, PhysicalDamage, 1000), kHitChanceLow);
+				}
+				else if (Stack[StackIndex] == "GravesChargeShot")
 				{
 					R->CastOnTarget(GTargetSelector->FindTarget(QuickestKill, PhysicalDamage, 1500), kHitChanceHigh);
 				}
-				SemiManualKey = true;
+				else if (Stack[StackIndex] == "GravesMove")
+				{
+					E->CastOnPosition(GGame->CursorPosition());
+					if (GEntityList->Player()->GetSpellRemainingCooldown(kSlotE) > 0.1f)
+					{
+						GOrbwalking->ResetAA();
+						ClearStack();
+					}
+				}
+				else //combo done
+				{
+					ClearStack();
+				}
 			}
 		}
-		else
+
+		if (GOrbwalking->GetOrbwalkingMode() == kModeCombo)
+			Combo();
+
+		if (GOrbwalking->GetOrbwalkingMode() == kModeLaneClear)
 		{
-			// key is up . . .
-			SemiManualKey = false;
+			for (auto Mob : GEntityList->GetAllMinions(false, false, true))
+			{
+				if (!Mob->IsDead() && Mob->IsValidTarget())
+				{
+					if ((Mob->GetPosition() - GEntityList->Player()->GetPosition()).Length() < 500 && UseQJungle->Enabled() && Q->IsReady() && GEntityList->Player()->ManaPercent() > QJungleMana->GetFloat())
+					{
+						Q->CastOnUnit(Mob);
+					}
+
+					if ((Mob->GetPosition() - GEntityList->Player()->GetPosition()).Length() < W->Range() && UseWJungle->Enabled() && W->IsReady() && GEntityList->Player()->ManaPercent() > WJungleMana->GetFloat())
+						W->CastOnTarget(Mob);
+				}
+			}
 		}
+
+		//key press
+		keystate = GetAsyncKeyState(SemiManualMenuKey->GetInteger()); //smite key
+
+		if (GUtility->IsLeagueWindowFocused() && !GGame->IsChatOpen())
+		{
+			if (keystate < 0) // If most-significant bit is set...
+			{
+				// key is down . . .
+				if (SemiManualKey == false)
+				{
+					//toggle smite
+					if (R->IsReady())
+					{
+						R->CastOnTarget(GTargetSelector->FindTarget(QuickestKill, PhysicalDamage, 1500), kHitChanceMedium);
+					}
+					SemiManualKey = true;
+				}
+			}
+			else
+			{
+				// key is up . . .
+				SemiManualKey = false;
+			}
+		}
+	}
+	catch (const std::exception& e)
+	{
+		GUtility->CreateDebugConsole();
+		GUtility->LogConsole(e.what());
+		GUtility->LogFile("UtilityPlusPlusExceptions", "%s", e.what());
+		throw;
+	}
+}
+
+void Graves::OnRender()
+{
+	/* Collision Drawing 
+	auto pLocal = GEntityList->Player();
+
+	for (auto Enemy : GEntityList->GetAllHeros(false, true))
+	{
+		if ((Enemy->GetPosition() - pLocal->GetPosition()).Length() < 950)
+		{
+			//Vec3 EndPosition = (pLocal->GetPosition()).Extend(Enemy->GetPosition, 950);
+			Vec3 EstimatedEnemyPos;
+			GPrediction->GetFutureUnitPosition(Enemy, 0.35, true, EstimatedEnemyPos);
+			Vec3 EndPosition = pLocal->GetPosition() + (EstimatedEnemyPos - pLocal->GetPosition()).VectorNormalize() * 925;
+
+			Vec2 vecMyPosition;
+			Vec2 vecProjectedPosition;
+
+			if (GGame->Projection(pLocal->GetPosition(), &vecMyPosition))
+			{
+				GGame->Projection(EndPosition, &vecProjectedPosition);
+				if (GNavMesh->IsPointWall(EndPosition))
+					GRender->DrawLine(vecMyPosition, vecProjectedPosition, Vec4(255, 0, 0, 255));
+				else
+					GRender->DrawLine(vecMyPosition, vecProjectedPosition, Vec4(0, 0, 0, 255));
+			}
+		}
+	}*/
+
+	if (DrawReady->Enabled())
+	{
+		if (Q->IsReady() && DrawQ->Enabled()) { GRender->DrawOutlinedCircle(GEntityList->Player()->GetPosition(), Vec4(255, 255, 0, 255), Q->Range()); }
+
+		if (W->IsReady() && DrawW->Enabled()) { GRender->DrawOutlinedCircle(GEntityList->Player()->GetPosition(), Vec4(255, 255, 0, 255), W->Range()); }
+
+		if (R->IsReady() && DrawR->Enabled()) { GRender->DrawOutlinedCircle(GEntityList->Player()->GetPosition(), Vec4(255, 255, 0, 255), R->Range()); }
+	}
+	else
+	{
+		if (DrawQ->Enabled()) { GRender->DrawOutlinedCircle(GEntityList->Player()->GetPosition(), Vec4(255, 255, 0, 255), Q->Range()); }
+
+		if (DrawW->Enabled()) { GRender->DrawOutlinedCircle(GEntityList->Player()->GetPosition(), Vec4(255, 255, 0, 255), W->Range()); }
+
+		if (DrawR->Enabled()) { GRender->DrawOutlinedCircle(GEntityList->Player()->GetPosition(), Vec4(255, 255, 0, 255), R->Range()); }
 	}
 }
 
 void Graves::OnSpellCast(CastedSpell const& Args)
 {
 	auto MyHero = GEntityList->Player();
+	float AttackDamage = GEntityList->Player()->PhysicalDamage() + GEntityList->Player()->BonusDamage();
 		
 	if (GOrbwalking->GetOrbwalkingMode() == kModeCombo)
 	{
@@ -186,22 +292,25 @@ void Graves::OnSpellCast(CastedSpell const& Args)
 			if (StackIndex < 0) // begin a combo
 			{
 				int StackPushIndex = 0;
+				ComboTarget = Args.Target_;
 
-				if (E->IsReady())
+				if (E->IsReady() && R->IsReady() && (ComboTarget->GetHealth() - (GDamage->CalcPhysicalDamage(MyHero, ComboTarget, 2 * AttackDamage) + CalcRDamage(ComboTarget)) < 0))
 				{
-					ComboTarget = Args.Target_;
+					Stack[StackPushIndex] = "GravesChargeShot";
+					StackPushIndex++;
+					Stack[StackPushIndex] = "GravesMove";
+
+					StackIndex = 0; // tell the stack it has items to commense
+				}
+				else if (E->IsReady())
+				{
 					if (Q->IsReady()) // add Q to combo array
 					{
+						//GGame->PrintChat("Pushing Q to Stack");
 						Stack[StackPushIndex] = "GravesQLineSpell";
 						StackPushIndex++;
-					}
-					if (R->IsReady()) // add R to combo array
-					{
-						if ((ComboTarget->GetHealth() - CalcRDamage(ComboTarget)) < ComboTarget->GetMaxHealth() * (ComboPercent->GetFloat() / 100))
-						{
-							Stack[StackPushIndex] = "GravesChargeShot";
-							StackPushIndex++;
-						}
+						//Q->CastOnTarget(GTargetSelector->FindTarget(QuickestKill, PhysicalDamage, 1000), kHitChanceLow);
+						//Q->CastOnTarget(ComboTarget);
 					}
 
 					Stack[StackPushIndex] = "GravesMove";
@@ -219,22 +328,16 @@ void Graves::OnSpellCast(CastedSpell const& Args)
 			StackIndex++;
 		}
 	}
-	if (GOrbwalking->GetOrbwalkingMode() == kModeLaneClear)
+	if (GOrbwalking->GetOrbwalkingMode() == kModeLaneClear && (strstr(Args.Name_, "GravesBasicAttack") || strstr(Args.Name_, "GravesCritAttack")))
 	{
-		for (auto mob : GEntityList->GetAllMinions(false, false, true))
+		if (Args.Target_->IsJungleCreep() && Args.Target_->IsValidTarget() && !Args.Target_->IsDead())
 		{
-			if (!mob->IsDead() && mob->IsValidTarget() && (mob->GetPosition() - MyHero->GetPosition()).Length() < 500)
+			if (UseEJungle->Enabled() && E->IsReady() && MyHero->ManaPercent() > EJungleMana->GetFloat())
 			{
-				if (Q->IsReady())
-					Q->CastOnUnit(mob);
-				if (W->IsReady())
-					W->CastOnUnit(mob);
-				if (E->IsReady())
-				{
-					E->CastOnPosition(GGame->CursorPosition());
-					GOrbwalking->ResetAA();
-				}
+				E->CastOnPosition(GGame->CursorPosition());
+				GOrbwalking->ResetAA();
 			}
 		}
 	}
 }
+

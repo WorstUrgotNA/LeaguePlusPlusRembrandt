@@ -5,10 +5,13 @@
 
 Awareness::Awareness(IMenu* Parent)
 {
-
+	GUtility->LogConsole("Adding Menu");
 	Menu		= Parent->AddMenu("Tracker PRO");
+	GUtility->LogConsole("Adding GUI");
 	Ui			= new Gui(Menu);
+	GUtility->LogConsole("Adding Tracking");
 	Tracking	= new Tracker(Menu);
+	GUtility->LogConsole("Adding Ganks");
 	Ganks		= new GankDetection(Menu);
 
 	LoadEvents();
@@ -67,11 +70,6 @@ void Awareness::_OnProcessSpell(CastedSpell const& Args)
 	Tracking->OnProcessSpell(Args);
 }
 
-void Awareness::_On3DPostReset()
-{
-	Ui->OnD3DPostReset();
-}
-
 
 void Awareness::LoadEvents()
 {
@@ -81,7 +79,6 @@ void Awareness::LoadEvents()
 	GEventManager->AddEventHandler(kEventOnDestroyObject, OnDestroyObject);
 	GEventManager->AddEventHandler(kEventOnUnitDeath, OnUnitDeath);
 	GEventManager->AddEventHandler(kEventOnSpellCast, OnProcessSpell);
-	GEventManager->AddEventHandler(kEventOnD3DPostReset, On3DPostReset);
 	GEventManager->AddEventHandler(kEventOnJungleNotification, OnJungleNotify);
 }
 
@@ -93,7 +90,6 @@ void Awareness::UnloadEvents()
 	GEventManager->RemoveEventHandler(kEventOnDestroyObject, OnDestroyObject);
 	GEventManager->RemoveEventHandler(kEventOnUnitDeath, OnUnitDeath);
 	GEventManager->RemoveEventHandler(kEventOnSpellCast, OnProcessSpell);
-	GEventManager->RemoveEventHandler(kEventOnD3DPostReset, On3DPostReset);
 	GEventManager->RemoveEventHandler(kEventOnJungleNotification, OnJungleNotify);
 }
 
@@ -129,9 +125,4 @@ PLUGIN_EVENTD(void) Awareness::OnUnitDeath(IUnit* Args)
 PLUGIN_EVENTD(void) Awareness::OnProcessSpell(CastedSpell const& Args)
 {
 	GPluginInstance->_OnProcessSpell(Args);
-}
-
-PLUGIN_EVENTD(void) Awareness::On3DPostReset()
-{
-	GPluginInstance->_On3DPostReset();
 }

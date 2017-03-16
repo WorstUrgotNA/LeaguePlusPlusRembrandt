@@ -1,35 +1,39 @@
 #pragma once
 #include "PluginSDK.h"
 
-class Graves
+class Caitlyn
 {
 public:
-	Graves(IMenu* Parent);
-	~Graves();
+	Caitlyn(IMenu* Parent);
+	~Caitlyn();
 
 	int EnemiesInRange(IUnit* Source, float range);
+	int AlliesInRange(IUnit* Source, float range);
 	float CalcRDamage(IUnit* Target);
 
 	void OnGameUpdate();
 	void OnRender();
 	void OnSpellCast(CastedSpell const& Args);
-	void ClearStack();
+	void OnOrbwalkAttack(IUnit* Source, IUnit* Target);
 	void Combo();
+	void LaneClear();
 
 private:
-	IMenu*			GravesMenu;
+	IMenu*			CaitlynMenu;
 	IMenuOption*	SemiManualMenuKey;
-	IMenuOption*	UseQJungle;
-	IMenuOption*	UseWJungle;
-	IMenuOption*	UseEJungle;
-	IMenuOption*	QJungleMana;
-	IMenuOption*	WJungleMana;
-	IMenuOption*	EJungleMana;
 	IMenuOption*	DrawReady;
 	IMenuOption*	DrawQ;
 	IMenuOption*	DrawW;
 	IMenuOption*	DrawE;
 	IMenuOption*	DrawR;
+	IMenuOption*	WDelay;
+	IMenuOption*	TrapEnemyCast;
+	IMenuOption*	UltRange;
+	IMenuOption*	EnemyToBlockR;
+	IMenuOption*	LaneClearMana;
+	IMenuOption*	LaneClearQ;
+	std::vector<std::string> TrapEnemyCastType;
+
 private:
 	ISpell2*		Q;
 	ISpell2*		W;
@@ -37,7 +41,7 @@ private:
 	ISpell2*		R;
 	short			keystate;
 	IUnit*			ComboTarget;
-	int				StackIndex;
 	bool			SemiManualKey;
-	std::vector<std::string> Stack;
+	bool			ComboTrap;
+	float			LastTrapTime;
 };

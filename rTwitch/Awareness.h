@@ -18,7 +18,6 @@ public:
 	void _OnDestroyObject(IUnit*);
 	void _OnUnitDeath(IUnit* Args);
 	void _OnProcessSpell(CastedSpell const&);
-	void _On3DPostReset();
 	void _OnJungleNotify(JungleNotifyData* Args);
 
 private:
@@ -32,7 +31,6 @@ private:
 	PLUGIN_EVENT(void) OnDestroyObject(IUnit*);
 	PLUGIN_EVENT(void) OnUnitDeath(IUnit*);
 	PLUGIN_EVENT(void) OnProcessSpell(CastedSpell const&);
-	PLUGIN_EVENT(void) On3DPostReset();
 	PLUGIN_EVENT(void) OnJungleNotify(JungleNotifyData* Args);
 
 private:

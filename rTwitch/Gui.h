@@ -48,6 +48,7 @@ struct UiTextures
 	ITexture* Health;
 	ITexture* Mana;
 	ITexture* CDHud;
+	ITexture* CDHudBG;
 	ITexture* CDHudSelf;
 
 	ITexture* UN_bg;
@@ -57,6 +58,7 @@ struct UiTextures
 	ITexture* OKTW_bar;
 	
 	ITexture* UHud;
+	ITexture* ChampLogo;
 };
 
 struct UiMenu
@@ -64,6 +66,20 @@ struct UiMenu
 	IMenu* Owner;
 	IMenu* GUI2D;
 	IMenu* GUI3D;
+	IMenu* RembrandtSettings;
+	IMenu* NostalgicSettings;
+	IMenu* BasicSettings;
+	IMenuOption* RembrandtXLeft;
+	IMenuOption* RembrandtYLeft;
+	IMenuOption* RembrandtXRight;
+	IMenuOption* RembrandtYRight;
+	IMenuOption* RembrandtSize;
+	IMenuOption* NostalgicX;
+	IMenuOption* NostalgicY;
+	IMenuOption* NostalgicSize;
+	IMenuOption* BasicX;
+	IMenuOption* BasicY;
+	IMenuOption* BasicSize;
 	IMenuOption* Enabled;
 	IMenuOption* Show2DHud;
 	IMenuOption* Show3DHud;
@@ -73,6 +89,7 @@ struct UiMenu
 	IMenuOption* ShowSelf3D;
 	IMenuOption* ShowTeam3D;
 	IMenuOption* ShowEnemies3D;
+	IMenuOption* YOffset3D;
 	IMenuOption* TeamOnLeft;
 	IMenuOption* NotifyOnRespawn;
 	IMenuOption* NotifyOnUltimate;
@@ -89,6 +106,7 @@ struct UiMenu
 	IMenuOption* ManaBarTextStyle;
 	IMenuOption* TestNotifyOnUltimate;
 	IMenuOption* HUDType;
+	IMenuOption* DisplayLogo;
 
 	std::map<int, IMenuOption*> ChampionsToNotifyOnR;
 };
@@ -102,7 +120,6 @@ public:
 	void OnRender();
 	void OnCreateObject(IUnit* Args);
 	void OnDestroyObject(IUnit* Args);
-	void OnD3DPostReset();
 
 private:
 	void GetLatestVersionNo();
@@ -117,6 +134,7 @@ private:
 
 	void RenderTeammates();
 	void RenderEnemies();
+	void RenderPlayer2DBasic(HeroUI* Ui, Vec2 const& Position);
 	void RenderPlayer2DElementNostalgic(HeroUI* Ui, Vec2 StartingTestPos);
 	void RenderPlayer2DElementBig(HeroUI* Ui, Vec2 const& Position, bool Left);
 	void RenderPlayer2DElementSmall(HeroUI* Ui, Vec2 const& Position);
@@ -138,4 +156,8 @@ private:
 	Vec2					Resolution;
 	bool					DownloadIsComplete;
 	bool					ReSizeNeeded;
+	int LocalVersion = 1;
+	float LogoDuration;
+	float InitLogoDuration;
+	float Opac;
 };

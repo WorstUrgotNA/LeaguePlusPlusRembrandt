@@ -49,6 +49,7 @@ struct GankMenu
 	IMenuOption*	DrawGankLine;
 	IMenuOption*	DrawGankIcon;
 	IMenuOption*	DrawJunglerTracker;
+	IMenuOption*	PingOnAll;
 	//fow tracker
 	IMenuOption* TrackJungler;
 	IMenuOption* DrawJunglerTrackerPingLocal;
