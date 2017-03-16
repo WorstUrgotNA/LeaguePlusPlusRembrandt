@@ -69,7 +69,7 @@ int Caitlyn::EnemiesInRange(IUnit* Source, float range)
 		if (target != nullptr && !target->IsDead())
 		{
 			auto flDistance = (target->GetPosition() - Source->GetPosition()).Length();
-			if (flDistance <= range)
+			if (flDistance < range)
 			{
 				enemiesInRange++;
 			}
@@ -153,8 +153,10 @@ void Caitlyn::Combo()
 			}
 
 			if (flDistance < 300 && E->IsReady())
+			{
 				ComboTarget = Enemy;
-				E->CastOnTarget(Enemy);
+				E->CastOnTarget(Enemy, kHitChanceLow);
+			}
 		}
 	}
 }
