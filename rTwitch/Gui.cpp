@@ -957,8 +957,8 @@ void Gui::LoadMenu()
 
 	
 	//Menu.NotifyOnRespawn = Menu.Owner->CheckBox("Notify on Respawn", false);
-	Menu.XOffset = Menu.Owner->AddFloat("X offset:", -2000, 2000, 0);
-	Menu.YOffset = Menu.Owner->AddFloat("Y offset:", -2000, 2000, 0);
+	//Menu.XOffset = Menu.Owner->AddFloat("X offset:", -2000, 2000, 0);
+	//Menu.YOffset = Menu.Owner->AddFloat("Y offset:", -2000, 2000, 0);
 	//Menu.RadiusOffset = Menu.Owner->AddFloat("Radius:", -200, 200, 0);
 	//Menu.Resize = Menu.Owner->AddFloat("Resize bonus:", 0, 200, 75);
 }
