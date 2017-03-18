@@ -5,23 +5,30 @@ Caitlyn::Caitlyn(IMenu* Parent)
 	TrapEnemyCastType = { "Exact Position", "Vector Extension", "Turn Off" };
 
 	//Create Spells
-	Q = GPluginSDK->CreateSpell2(kSlotQ, kLineCast, true, false, kCollidesWithYasuoWall);
-	W = GPluginSDK->CreateSpell2(kSlotW, kCircleCast, false, false, kCollidesWithNothing);
-	E = GPluginSDK->CreateSpell2(kSlotE, kLineCast, true, false, kCollidesWithMinions);
-	R = GPluginSDK->CreateSpell2(kSlotR, kTargetCast, true, false, kCollidesWithYasuoWall);
+	Q = GPluginSDK->CreateSpell2(kSlotQ, kLineCast, true, false, (kCollidesWithYasuoWall));
+	Q->SetSkillshot(0.625, 90, 2200, 1300);
+	W = GPluginSDK->CreateSpell2(kSlotW, kCircleCast, false, false, (kCollidesWithNothing));
+	W->SetSkillshot(1.1, 100, 3200, 800);
+	E = GPluginSDK->CreateSpell2(kSlotE, kLineCast, true, false, (kCollidesWithYasuoWall, kCollidesWithHeroes, kCollidesWithMinions));
+	E->SetSkillshot(0.25, 90, 1600, 950);
+	R = GPluginSDK->CreateSpell2(kSlotR, kTargetCast, true, false, (kCollidesWithYasuoWall, kCollidesWithHeroes));
+	R->SetOverrideDelay(3.0);
+	R->SetOverrideSpeed(1000);
 
-	Q->SetOverrideRadius(65);
-	E->SetOverrideRadius(70);
+	E->SetTriggerEvents(false);
 
 	//E->SetOverrideRange(750);
 	SemiManualKey = false;
 	ComboTrap = false;
+	UseNet = false;
+	UseNetCombo = false;
 
 	LastTrapTime = GGame->Time();
 
 	//Menu
 	CaitlynMenu = Parent->AddMenu("Caitlyn PRO++");
 	SemiManualMenuKey = CaitlynMenu->AddKey("Semi-Manual Ult Key:", 84);
+	EToMouse = CaitlynMenu->CheckBox("Enable E-to-Cursor:", false);
 	TrapEnemyCast = CaitlynMenu->AddSelection("Trap on Enemy Auto/Spellcast:", 0, TrapEnemyCastType);
 	WDelay = CaitlynMenu->AddFloat("Minimum Delay Between Traps (W):", 0, 15, 2);
 	UltRange = CaitlynMenu->AddFloat("Dont R if Enemies Nearby:", 0, 3000, 900);
@@ -155,6 +162,7 @@ void Caitlyn::Combo()
 			if (flDistance < 300 && E->IsReady())
 			{
 				ComboTarget = Enemy;
+				UseNetCombo = true;
 				E->CastOnTarget(Enemy, kHitChanceLow);
 			}
 		}
@@ -192,6 +200,13 @@ void Caitlyn::OnGameUpdate()
 			// key is up . . .
 			SemiManualKey = false;
 		}
+	}
+
+
+	if (E->IsReady() && UseNet && EToMouse->Enabled() && !UseNetCombo)
+	{
+		Vec3 CastPosition = GEntityList->Player()->ServerPosition() - (GGame->CursorPosition() - GEntityList->Player()->ServerPosition());
+		E->CastOnPosition(CastPosition);
 	}
 }
 
@@ -304,15 +319,43 @@ void Caitlyn::OnSpellCast(CastedSpell const& Args)
 	
 }
 
+bool Caitlyn::OnPreCast(int Slot, IUnit* Target, Vec3* StartPosition, Vec3* EndPosition)
+{
+	if (UseNetCombo)
+	{
+		UseNetCombo = false;
+		return true;
+	}
+		
+
+	if (Slot == kSlotE && EToMouse->Enabled())
+	{
+		if (UseNet)
+		{
+			UseNet = false;
+			return true;
+		}
+		else
+		{
+			UseNet = true;
+
+			return false;
+		}
+	}
+
+	return true;
+}
+
 void Caitlyn::OnOrbwalkAttack(IUnit* Source, IUnit* Target)
 {	
-	if (GOrbwalking->GetOrbwalkingMode() == kModeCombo && E->IsReady())
+	if (GOrbwalking->GetOrbwalkingMode() == kModeCombo && E->IsReady() && Target->IsHero())
 	{
 		AdvPredictionOutput out;
 		E->RunPrediction(Target, false, kCollidesWithMinions, &out);
 
 		if (out.HitChance >= kHitChanceMedium)
 		{
+			UseNetCombo = true;
 			E->CastOnTarget(Target);
 			ComboTarget = Target;
 		}

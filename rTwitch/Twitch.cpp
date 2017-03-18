@@ -56,7 +56,7 @@ float Twitch::CalcEDamage(IUnit* Target)
 
 	if (StackCount == 0) return 0;
 
-	float BonusStackDamage = ((0.25 * Hero->BonusDamage()) + (0.2 * Hero->MagicDamage())) * StackCount;
+	float BonusStackDamage = ((0.25 * Hero->BonusDamage()) + (0.2 * Hero->TotalMagicDamage())) * StackCount;
 
 	if (Hero->GetSpellLevel(kSlotE) == 1)
 		InitDamage += 20 + (15 * StackCount) + BonusStackDamage;

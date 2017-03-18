@@ -70,6 +70,11 @@ void Awareness::_OnProcessSpell(CastedSpell const& Args)
 	Tracking->OnProcessSpell(Args);
 }
 
+void Awareness::_OnTeleport(OnTeleportArgs* Args)
+{
+	Ui->OnTeleport(Args);
+}
+
 
 void Awareness::LoadEvents()
 {
@@ -80,6 +85,7 @@ void Awareness::LoadEvents()
 	GEventManager->AddEventHandler(kEventOnUnitDeath, OnUnitDeath);
 	GEventManager->AddEventHandler(kEventOnSpellCast, OnProcessSpell);
 	GEventManager->AddEventHandler(kEventOnJungleNotification, OnJungleNotify);
+	GEventManager->AddEventHandler(kEventOnTeleport, OnTeleport);
 }
 
 void Awareness::UnloadEvents()
@@ -91,6 +97,12 @@ void Awareness::UnloadEvents()
 	GEventManager->RemoveEventHandler(kEventOnUnitDeath, OnUnitDeath);
 	GEventManager->RemoveEventHandler(kEventOnSpellCast, OnProcessSpell);
 	GEventManager->RemoveEventHandler(kEventOnJungleNotification, OnJungleNotify);
+	GEventManager->RemoveEventHandler(kEventOnTeleport, OnTeleport);
+}
+
+PLUGIN_EVENTD(void) Awareness::OnTeleport(OnTeleportArgs* Args)
+{
+	GPluginInstance->_OnTeleport(Args);
 }
 
 PLUGIN_EVENTD(void) Awareness::OnGameUpdate()

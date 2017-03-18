@@ -19,6 +19,7 @@ public:
 	void _OnUnitDeath(IUnit* Args);
 	void _OnProcessSpell(CastedSpell const&);
 	void _OnJungleNotify(JungleNotifyData* Args);
+	void _OnTeleport(OnTeleportArgs* Args);
 
 private:
 	void LoadEvents();
@@ -32,6 +33,7 @@ private:
 	PLUGIN_EVENT(void) OnUnitDeath(IUnit*);
 	PLUGIN_EVENT(void) OnProcessSpell(CastedSpell const&);
 	PLUGIN_EVENT(void) OnJungleNotify(JungleNotifyData* Args);
+	PLUGIN_EVENT(void) OnTeleport(OnTeleportArgs* Args);
 
 private:
 	IMenu*			Menu;

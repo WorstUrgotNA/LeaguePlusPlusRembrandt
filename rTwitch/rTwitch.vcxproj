@@ -168,8 +168,10 @@
     <ClInclude Include="PluginSDK.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="resource1.h" />
+    <ClInclude Include="Sivir.h" />
     <ClInclude Include="SkinHack.h" />
     <ClInclude Include="Tracker.h" />
+    <ClInclude Include="Tristana.h" />
     <ClInclude Include="Twitch.h" />
     <ClInclude Include="Vector3.h" />
   </ItemGroup>
@@ -182,7 +184,9 @@
     <ClCompile Include="Gui.cpp" />
     <ClCompile Include="ObjectTracker.cpp" />
     <ClCompile Include="PluginSDK.cpp" />
+    <ClCompile Include="Sivir.cpp" />
     <ClCompile Include="Tracker.cpp" />
+    <ClCompile Include="Tristana.cpp" />
     <ClCompile Include="Twitch.cpp" />
     <ClCompile Include="UtilityPlusPlus.cpp">
       <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">UtilityPROplusplus</ObjectFileName>

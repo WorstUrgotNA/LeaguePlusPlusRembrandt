@@ -15,6 +15,7 @@ public:
 	void OnRender();
 	void OnSpellCast(CastedSpell const& Args);
 	void OnOrbwalkAttack(IUnit* Source, IUnit* Target);
+	bool OnPreCast(int Slot, IUnit* Target, Vec3* StartPosition, Vec3* EndPosition);
 	void Combo();
 	void LaneClear();
 
@@ -32,6 +33,7 @@ private:
 	IMenuOption*	EnemyToBlockR;
 	IMenuOption*	LaneClearMana;
 	IMenuOption*	LaneClearQ;
+	IMenuOption*	EToMouse;
 	std::vector<std::string> TrapEnemyCastType;
 
 private:
@@ -43,5 +45,7 @@ private:
 	IUnit*			ComboTarget;
 	bool			SemiManualKey;
 	bool			ComboTrap;
+	bool			UseNet;
+	bool			UseNetCombo;
 	float			LastTrapTime;
 };

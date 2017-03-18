@@ -384,7 +384,7 @@ void UseDefensives()
 
 	if (Seraphs->IsOwned() && Seraphs->IsReady() && SeraphsEnabled->Enabled() && !(Hero->IsDead()))
 	{
-		if (Hero->HealthPercent() <= SeraphsPercent->GetFloat() && EnemiesInRange(Hero, 500) > 0) { Seraphs->CastOnPlayer(); }
+		if (Hero->HealthPercent() <= SeraphsPercent->GetFloat() && EnemiesInRange(Hero, 700) > 0) { Seraphs->CastOnPlayer(); }
 
 	}
 

@@ -28,6 +28,85 @@ Gui::~Gui()
 {
 }
 
+void Gui::OnTeleport(OnTeleportArgs* Args)
+{
+	if (Args->Source->IsEnemy(GEntityList->Player()))
+	{
+		for (auto pPlayer : Enemies)
+		{
+			if (Args->Source == pPlayer->Player)
+			{
+				if (Args->Status == Teleport_Start) //teleport start
+				{
+					pPlayer->IsTeleporting = true;
+
+					pPlayer->TeleportDuration = Args->Duration / 1000;
+					pPlayer->TeleportEndTime = GGame->Time() + pPlayer->TeleportDuration;
+				}
+				else //aborted or finished
+				{
+					pPlayer->IsTeleporting = false;
+
+					pPlayer->TeleportDuration = 0;
+					pPlayer->TeleportEndTime = GGame->Time() + 2;
+				}
+					
+				pPlayer->TeleportStatus = Args->Status;
+				pPlayer->TeleportType = Args->Type;
+
+				break;
+			}
+		}
+	}
+}
+
+void Gui::RenderRecallTracker(HeroUI* Ui, float YPadding)
+{
+	Vec2 DefaultSize = Vec2(400, 15);
+	Vec2 ModifiedSize = Vec2(400 * ((Ui->TeleportEndTime - GGame->Time()) / Ui->TeleportDuration), 15);
+	Vec4 BarColor = Ui->TeleportType == 1 ? Vec4(0, 191, 243, 255) : Vec4(155, 67, 200, 255);
+	Vec2 Position = Vec2(Resolution.x / 2 - DefaultSize.x / 2, YPadding + Resolution.y - Resolution.y / 4.8);
+
+	if (Ui->TeleportType == 1)
+	{
+		if (Ui->TeleportStatus == 0) //teleport start
+		{
+			GRender->DrawFilledBox(Position, DefaultSize, Vec4(63, 81, 107, 255));
+			GRender->DrawFilledBox(Position, ModifiedSize, BarColor);
+			GRender->DrawTextW(Vec2(Position.x + DefaultSize.x + 5, Position.y), Vec4(255, 255, 255, 255), "%s RECALLING - %.1f", Ui->Player->ChampionName(), Ui->TeleportEndTime - GGame->Time());
+		}
+		else if (Ui->TeleportStatus == 1) //teleport abort
+		{
+			GRender->DrawFilledBox(Position, DefaultSize, Vec4(237, 20, 91, 255));
+			GRender->DrawTextW(Vec2(Position.x + DefaultSize.x + 5, Position.y), Vec4(255, 255, 255, 255), "%s RECALL ABORTED", Ui->Player->ChampionName());
+		}
+		else //teleport finish
+		{
+			GRender->DrawFilledBox(Position, DefaultSize, Vec4(255, 245, 104, 255));
+			GRender->DrawTextW(Vec2(Position.x + DefaultSize.x + 5, Position.y), Vec4(255, 255, 255, 255), "%s RECALL COMPLETE", Ui->Player->ChampionName());
+		}
+	}
+	else if (Ui->TeleportType != 1)
+	{
+		if (Ui->TeleportStatus == 0) //teleport start
+		{
+			GRender->DrawFilledBox(Position, DefaultSize, Vec4(63, 81, 107, 255));
+			GRender->DrawFilledBox(Position, ModifiedSize, BarColor);
+			GRender->DrawTextW(Vec2(Position.x + DefaultSize.x + 5, Position.y), Vec4(255, 255, 255, 255), "%s TELEPORTING - %.1f", Ui->Player->ChampionName(), Ui->TeleportEndTime - GGame->Time());
+		}
+		else if (Ui->TeleportStatus == 1) //teleport abort
+		{
+			GRender->DrawFilledBox(Position, DefaultSize, Vec4(237, 20, 91, 255));
+			GRender->DrawTextW(Vec2(Position.x + DefaultSize.x + 5, Position.y), Vec4(255, 255, 255, 255), "%s TELEPORT INTERUPTED", Ui->Player->ChampionName());
+		}
+		else //teleport finish
+		{
+			GRender->DrawFilledBox(Position, DefaultSize, Vec4(255, 245, 104, 255));
+			GRender->DrawTextW(Vec2(Position.x + DefaultSize.x + 5, Position.y), Vec4(255, 255, 255, 255), "%s TELEPORT COMPLETE", Ui->Player->ChampionName());
+		}
+	}
+
+}
 
 void Gui::OnRender()
 {
@@ -721,6 +800,7 @@ void Gui::RenderEnemies()
 	else
 		vecSize *= ((Resolution.y / 1440.f) * (Menu.RembrandtSize->GetFloat() / 100));
 
+	float TrackerPadding = 0;
 	float flPadding		= 5 * (Resolution.y / 1440);
 	float flLeft		= bLeftSide ? 0 : Resolution.x - vecSize.x;
 	float flTop			= Menu.HUDType->GetInteger() == 2 ? 125.f : 140.f;
@@ -733,6 +813,12 @@ void Gui::RenderEnemies()
 	{
 		if (!pGui->Valid)
 			continue;
+
+		if (pGui->TeleportEndTime - GGame->Time() > 0) 
+		{ 
+			RenderRecallTracker(pGui, TrackerPadding);
+			TrackerPadding -= 25;
+		}
 
 		if (Menu.Show2DHud->Enabled() && Menu.ShowEnemies->Enabled())
 		{
@@ -957,8 +1043,8 @@ void Gui::LoadMenu()
 
 	
 	//Menu.NotifyOnRespawn = Menu.Owner->CheckBox("Notify on Respawn", false);
-	//Menu.XOffset = Menu.Owner->AddFloat("X offset:", -2000, 2000, 0);
-	//Menu.YOffset = Menu.Owner->AddFloat("Y offset:", -2000, 2000, 0);
+	Menu.XOffset = Menu.Owner->AddFloat("X offset:", -2000, 2000, 0);
+	Menu.YOffset = Menu.Owner->AddFloat("Y offset:", -2000, 2000, 0);
 	//Menu.RadiusOffset = Menu.Owner->AddFloat("Radius:", -200, 200, 0);
 	//Menu.Resize = Menu.Owner->AddFloat("Resize bonus:", 0, 200, 75);
 }
@@ -1063,7 +1149,15 @@ void Gui::LoadTextureIcons()
 			if (pPlayer->GetTeam() == GEntityList->Player()->GetTeam())
 				Teammates.push_back(lpGui);
 			else
+			{
+				lpGui->TeleportDuration = 0;
+				lpGui->TeleportEndTime = 0;
+				lpGui->TeleportStatus = 0;
+				lpGui->TeleportType = 1;
+				lpGui->IsTeleporting = false;
 				Enemies.push_back(lpGui);
+			}
+				
 
 			UiPool.push_back(lpGui);
 		}

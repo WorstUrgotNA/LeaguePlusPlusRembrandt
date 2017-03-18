@@ -3,16 +3,17 @@
 Graves::Graves(IMenu* Parent)
 {
 	//Create Spells
-	Q = GPluginSDK->CreateSpell2(kSlotQ, kLineCast, true, false, kCollidesWithNothing);
-	W = GPluginSDK->CreateSpell2(kSlotW, kTargetCast, true, false, kCollidesWithYasuoWall);
-	E = GPluginSDK->CreateSpell2(kSlotE, kTargetCast, false, false, kCollidesWithNothing);
-	R = GPluginSDK->CreateSpell2(kSlotR, kLineCast, true, false, kCollidesWithYasuoWall);
+	Q = GPluginSDK->CreateSpell2(kSlotQ, kLineCast, true, false, (kCollidesWithYasuoWall));
+	Q->SetSkillshot(0.25, 60, 3000, 825);
+	W = GPluginSDK->CreateSpell2(kSlotW, kCircleCast, true, false, (kCollidesWithYasuoWall));
+	W->SetSkillshot(0.25, 250, 1000, 950);
+	E = GPluginSDK->CreateSpell2(kSlotE, kCircleCast, false, false, (kCollidesWithNothing));
+	E->SetSkillshot(0.25, 100, 1000, 425);
+	R = GPluginSDK->CreateSpell2(kSlotR, kLineCast, true, false, (kCollidesWithYasuoWall));
+	R->SetSkillshot(0.25, 100, 2100, 1100);
 
 	SemiManualKey = false;
 
-	W->SetOverrideRadius(150);
-	W->SetOverrideSpeed(1650);
-	R->SetOverrideSpeed(500);
 	//Initialize Stack
 	Stack = {
 		"",
@@ -59,7 +60,7 @@ int Graves::EnemiesInRange(IUnit* Source, float range)
 		if (target != nullptr && !target->IsDead())
 		{
 			auto flDistance = (target->GetPosition() - Source->GetPosition()).Length();
-			if (flDistance <= range)
+			if (flDistance < range)
 			{
 				enemiesInRange++;
 			}
@@ -108,17 +109,17 @@ float Graves::CalcRDamage(IUnit* Target)
 
 void Graves::Combo()
 {
+	if (R->IsReady())
+	{
+		for (auto enemy : GEntityList->GetAllHeros(false, true))
+		{
+			if (!enemy->IsClone() && !enemy->IsDead() && enemy->IsValidTarget() && (enemy->GetPosition() - GEntityList->Player()->GetPosition()).Length() < 1500 && enemy->GetHealth() - CalcRDamage(enemy) < 0)
+				R->CastOnTarget(enemy, kHitChanceHigh);
+		}
+	}
+
 	if (StackIndex < 0)
 	{
-		if (R->IsReady())
-		{
-			for (auto enemy : GEntityList->GetAllHeros(false, true))
-			{
-				if (!enemy->IsClone() && !enemy->IsDead() && enemy->IsValidTarget() && (enemy->GetPosition() - GEntityList->Player()->GetPosition()).Length() < 1500 && enemy->GetHealth() - CalcRDamage(enemy) < 0)
-					R->CastOnTarget(enemy, kHitChanceMedium);
-			}
-		}
-
 		if (W->IsReady() && EnemiesInRange(GEntityList->Player(), 950) > 0)
 		{
 			W->CastOnTarget(GTargetSelector->FindTarget(QuickestKill, PhysicalDamage, 950));
@@ -161,6 +162,10 @@ void Graves::OnGameUpdate()
 				}
 				else if (Stack[StackIndex] == "GravesChargeShot")
 				{
+					if (GEntityList->Player()->GetSpellRemainingCooldown(kSlotR) > 0.1f)
+					{
+						StackIndex++;
+					}
 					R->CastOnTarget(GTargetSelector->FindTarget(QuickestKill, PhysicalDamage, 1500), kHitChanceHigh);
 				}
 				else if (Stack[StackIndex] == "GravesMove")
@@ -184,9 +189,9 @@ void Graves::OnGameUpdate()
 
 		if (GOrbwalking->GetOrbwalkingMode() == kModeLaneClear)
 		{
-			for (auto Mob : GEntityList->GetAllMinions(false, false, true))
+			for (auto Mob : GEntityList->GetAllMinions(false, true, true))
 			{
-				if (!Mob->IsDead() && Mob->IsValidTarget())
+				if (!Mob->IsDead() && Mob->IsValidTarget() && (Mob->IsCreep() || Mob->IsJungleCreep()))
 				{
 					if ((Mob->GetPosition() - GEntityList->Player()->GetPosition()).Length() < 500 && UseQJungle->Enabled() && Q->IsReady() && GEntityList->Player()->ManaPercent() > QJungleMana->GetFloat())
 					{

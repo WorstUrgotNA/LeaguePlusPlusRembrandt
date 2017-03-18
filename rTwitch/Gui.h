@@ -11,12 +11,21 @@ struct HeroUI
 	ITexture*	SummonerSpellIconsSmall[2];
 	ITexture*	SummonerSpellIconsCircle[2];
 	ITexture*	SpellIcons[4];
+
+	int TeleportStatus;
+	float TeleportDuration;
+	float TeleportEndTime;
+	int TeleportType;
+	bool IsTeleporting;
+
 	float		RespawnTime;
 	bool		RespawnNotification;
 	bool		UltimateNotification;
 	char		ChampionName[64];
 	bool		Valid;
 };
+
+
 
 struct UiFonts
 {
@@ -118,6 +127,7 @@ public:
 	~Gui();
 
 	void OnRender();
+	void OnTeleport(OnTeleportArgs* Args);
 	void OnCreateObject(IUnit* Args);
 	void OnDestroyObject(IUnit* Args);
 
@@ -131,6 +141,8 @@ private:
 	void LoadSpellIcons(HeroUI* Ui);
 	bool DoesTextureExist(std::string const& Filename, std::string& FullPath);
 	ITexture* CreateTextureEx(std::string const& Filename);
+
+	void RenderRecallTracker(HeroUI* Ui, float YPadding);
 
 	void RenderTeammates();
 	void RenderEnemies();
