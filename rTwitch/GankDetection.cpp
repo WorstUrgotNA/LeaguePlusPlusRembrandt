@@ -31,7 +31,7 @@ GankDetection::GankDetection(IMenu* Parent)
 	Menu.ShowPredictedMovementCircle	= Menu.Parent->CheckBox("Enable Minimap Awareness:", true);
 	Menu.ShowMovementCircle = Menu.Parent->CheckBox("Minimap Predicted Movement Circle:", true);
 	Menu.LastSeen = Menu.Parent->CheckBox("Minimap MIA Timer:", false);
-	Menu.IconDuration = Menu.Parent->AddInteger("Minimap MIA Duration (sec):", 1, 200, 10);
+	Menu.IconDuration = Menu.Parent->AddFloat("Minimap MIA Duration (sec):", 1, 200, 10);
 	Menu.DrawJunglerTracker = Menu.Parent->CheckBox("Enemy Jungler MIA Box:", true);
 	//Menu.DrawEnemyRadar					= Menu.Parent->CheckBox("Show Radar", false);
 	Menu.ShowClicks						= Menu.Parent->CheckBox("Draw Enemy Clicks:", false);
@@ -90,6 +90,27 @@ void GankDetection::OnJungleNotify(JungleNotifyData* Args)
 	FoWUpdated = true;
 	JGDisplayPos = Args->Position;
 	JGDelay = GGame->Time() + 5;
+}
+
+void GankDetection::OnTeleport(OnTeleportArgs* Args)
+{
+	if (Args->Type == 1 && Args->Status == 2)
+	{
+		for (auto& unit : Heros)
+		{
+			if (unit.Player == Args->Source)
+			{
+				unit.LastVisibleTime = GGame->Time();
+				unit.LastHiddenTime = GGame->Time();
+
+				if (unit.Player->GetTeam() == 100)
+					unit.Position = Vec3(396, 182, 462);
+				else
+					unit.Position = Vec3(14340, 171, 14391);
+				break;
+			}
+		}
+	}
 }
 
 void GankDetection::OnGameUpdate()
@@ -196,10 +217,10 @@ void GankDetection::UpdateChampions()
 		{
 			unit.LastHiddenTimeGank = GGame->Time();
 		}
-
+		
 		if (unit.Player->IsVisible() || unit.Player->IsDead())
 		{
-			unit.Position = unit.Player->GetPosition();
+			unit.Position = unit.Player->GetPosition();//slot
 			unit.LastVisibleTime = GGame->Time();
 			NumVisible++;
 		}
@@ -207,7 +228,10 @@ void GankDetection::UpdateChampions()
 		{
 			unit.TotalTimeHidden = GGame->Time() - unit.LastVisibleTime;
 		}
-		if (GGame->Time() - unit.LastHiddenTime > 10)
+
+		//unit.Position = unit.Player->GetPosition(); //slot
+
+		if (GGame->Time() - unit.LastHiddenTime > Menu.IconDuration->GetFloat())
 			unit.Position = unit.Player->GetPosition();
 
 		unit.Distance = (unit.Position - vecLocalPosition).Length();
@@ -376,7 +400,7 @@ void GankDetection::OnRender()
 			
 			if (Menu.ShowPredictedMovementCircle->Enabled())
 			{
-				if (GGame->Time() - unit.LastVisibleTime < Menu.IconDuration->GetInteger())
+				if (GGame->Time() - unit.LastVisibleTime < Menu.IconDuration->GetFloat())
 				{
 					Vec2 vecMinimap;
 					

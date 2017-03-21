@@ -6,6 +6,8 @@ Gui::Gui(IMenu* Parent)
 {
 	Menu.Owner = Parent->AddMenu("HUD");
 
+	Resolution = GRender->ScreenSize();
+
 	GUtility->LogConsole("1");
 	GetLatestVersionNo();
 	GUtility->LogConsole("2");
@@ -62,8 +64,10 @@ void Gui::OnTeleport(OnTeleportArgs* Args)
 
 void Gui::RenderRecallTracker(HeroUI* Ui, float YPadding)
 {
-	Vec2 DefaultSize = Vec2(400, 15);
-	Vec2 ModifiedSize = Vec2(400 * ((Ui->TeleportEndTime - GGame->Time()) / Ui->TeleportDuration), 15);
+	float ScreenRatio = (Resolution.y / 1440.f);
+
+	Vec2 DefaultSize = Vec2(400 * ScreenRatio, 15 * ScreenRatio);
+	Vec2 ModifiedSize = Vec2(400 * ((Ui->TeleportEndTime - GGame->Time()) / Ui->TeleportDuration) * ScreenRatio, 15 * ScreenRatio);
 	Vec4 BarColor = Ui->TeleportType == 1 ? Vec4(0, 191, 243, 255) : Vec4(155, 67, 200, 255);
 	Vec2 Position = Vec2(Resolution.x / 2 - DefaultSize.x / 2, YPadding + Resolution.y - Resolution.y / 4.8);
 
@@ -73,17 +77,17 @@ void Gui::RenderRecallTracker(HeroUI* Ui, float YPadding)
 		{
 			GRender->DrawFilledBox(Position, DefaultSize, Vec4(63, 81, 107, 255));
 			GRender->DrawFilledBox(Position, ModifiedSize, BarColor);
-			GRender->DrawTextW(Vec2(Position.x + DefaultSize.x + 5, Position.y), Vec4(255, 255, 255, 255), "%s RECALLING - %.1f", Ui->Player->ChampionName(), Ui->TeleportEndTime - GGame->Time());
+			GRender->DrawTextW(Vec2(Position.x + DefaultSize.x + 5 * ScreenRatio, Position.y), Vec4(255, 255, 255, 255), "%s RECALLING - %.1f", Ui->Player->ChampionName(), Ui->TeleportEndTime - GGame->Time());
 		}
 		else if (Ui->TeleportStatus == 1) //teleport abort
 		{
 			GRender->DrawFilledBox(Position, DefaultSize, Vec4(237, 20, 91, 255));
-			GRender->DrawTextW(Vec2(Position.x + DefaultSize.x + 5, Position.y), Vec4(255, 255, 255, 255), "%s RECALL ABORTED", Ui->Player->ChampionName());
+			GRender->DrawTextW(Vec2(Position.x + DefaultSize.x + 5 * ScreenRatio, Position.y), Vec4(255, 255, 255, 255), "%s RECALL ABORTED", Ui->Player->ChampionName());
 		}
 		else //teleport finish
 		{
 			GRender->DrawFilledBox(Position, DefaultSize, Vec4(255, 245, 104, 255));
-			GRender->DrawTextW(Vec2(Position.x + DefaultSize.x + 5, Position.y), Vec4(255, 255, 255, 255), "%s RECALL COMPLETE", Ui->Player->ChampionName());
+			GRender->DrawTextW(Vec2(Position.x + DefaultSize.x + 5 * ScreenRatio, Position.y), Vec4(255, 255, 255, 255), "%s RECALL COMPLETE", Ui->Player->ChampionName());
 		}
 	}
 	else if (Ui->TeleportType != 1)
@@ -92,17 +96,17 @@ void Gui::RenderRecallTracker(HeroUI* Ui, float YPadding)
 		{
 			GRender->DrawFilledBox(Position, DefaultSize, Vec4(63, 81, 107, 255));
 			GRender->DrawFilledBox(Position, ModifiedSize, BarColor);
-			GRender->DrawTextW(Vec2(Position.x + DefaultSize.x + 5, Position.y), Vec4(255, 255, 255, 255), "%s TELEPORTING - %.1f", Ui->Player->ChampionName(), Ui->TeleportEndTime - GGame->Time());
+			GRender->DrawTextW(Vec2(Position.x + DefaultSize.x + 5 * ScreenRatio, Position.y), Vec4(255, 255, 255, 255), "%s TELEPORTING - %.1f", Ui->Player->ChampionName(), Ui->TeleportEndTime - GGame->Time());
 		}
 		else if (Ui->TeleportStatus == 1) //teleport abort
 		{
 			GRender->DrawFilledBox(Position, DefaultSize, Vec4(237, 20, 91, 255));
-			GRender->DrawTextW(Vec2(Position.x + DefaultSize.x + 5, Position.y), Vec4(255, 255, 255, 255), "%s TELEPORT INTERUPTED", Ui->Player->ChampionName());
+			GRender->DrawTextW(Vec2(Position.x + DefaultSize.x + 5 * ScreenRatio, Position.y), Vec4(255, 255, 255, 255), "%s TELEPORT INTERUPTED", Ui->Player->ChampionName());
 		}
 		else //teleport finish
 		{
 			GRender->DrawFilledBox(Position, DefaultSize, Vec4(255, 245, 104, 255));
-			GRender->DrawTextW(Vec2(Position.x + DefaultSize.x + 5, Position.y), Vec4(255, 255, 255, 255), "%s TELEPORT COMPLETE", Ui->Player->ChampionName());
+			GRender->DrawTextW(Vec2(Position.x + DefaultSize.x + 5 * ScreenRatio, Position.y), Vec4(255, 255, 255, 255), "%s TELEPORT COMPLETE", Ui->Player->ChampionName());
 		}
 	}
 
@@ -110,8 +114,6 @@ void Gui::RenderRecallTracker(HeroUI* Ui, float YPadding)
 
 void Gui::OnRender()
 {
-	Resolution = GRender->ScreenSize();	
-
 	if (Menu.Enabled->Enabled())
 	{
 		UpdateChampions();
@@ -814,10 +816,10 @@ void Gui::RenderEnemies()
 		if (!pGui->Valid)
 			continue;
 
-		if (pGui->TeleportEndTime - GGame->Time() > 0) 
+		if (Menu.RecallTrackerEnable->Enabled() && pGui->TeleportEndTime - GGame->Time() > 0) 
 		{ 
 			RenderRecallTracker(pGui, TrackerPadding);
-			TrackerPadding -= 25;
+			TrackerPadding -= 25 * (Resolution.y / 1440.f);
 		}
 
 		if (Menu.Show2DHud->Enabled() && Menu.ShowEnemies->Enabled())
@@ -852,8 +854,6 @@ void Gui::UpdateChampions()
 	{
 		if (!pGui->Valid)
 			continue;
-
-
 
 		auto pPlayer = pGui->Player;
 		
@@ -909,8 +909,6 @@ void Gui::UpdateChampions()
 			{
 				rTexture->Scale(Resolution.y / 1080.f);
 				rChamp->Scale(Resolution.y / 1080.f);
-				Textures->UN_bg->Scale(Resolution.y / 1080.f);
-				Textures->UN_r->Scale(Resolution.y / 1080.f);
 			}
 
 			Textures->UN_bg->Draw(UN_pos.x, UN_pos.y - flCooldown * 15);
@@ -924,31 +922,6 @@ void Gui::UpdateChampions()
 		{
 			if (pGui->SpellIcons[i] == nullptr)
 				continue;
-
-			/*if (Menu.NotifyOnUltimate->Enabled() && i == kSlotR)
-			{
-				if (pPlayer->GetSpellLevel(i) == 0)// || pPlayer->GetSpellRemainingCooldown(i) == 0.f || pPlayer->GetSpellTotalCooldown(i) < 30.f)
-					pGui->UltimateNotification = false;
-
-				if (!pGui->UltimateNotification && pPlayer->GetSpellLevel(i) > 0)
-				{
-					float flCooldown = pPlayer->GetSpellRemainingCooldown(i);
-
-					if (flCooldown < 5.f && flCooldown > 0.f)
-					{
-						pGui->UltimateNotification = true;
-
-						if (Menu.NotifyOnUltimate->Enabled())
-						{
-							
-
-							//GRender->Notification(Vec4(255, 255, 255, 255), 5, "%s ultimate returning in 5 seconds", pPlayer->ChampionName());
-						}
-							
-
-					}
-				}
-			}*/
 
 			if (pPlayer->GetSpellLevel(i) == 0 || pPlayer->GetSpellRemainingCooldown(i) > 0.f)
 				pGui->SpellIcons[i]->SetColor(Vec4(100, 100, 100, 255));
@@ -964,9 +937,6 @@ void Gui::UpdateChampions()
 			if (!pGui->RespawnNotification && pGui->RespawnTime - GGame->Time() <= 5.f)
 			{
 				pGui->RespawnNotification = true;
-
-				//if (Menu.NotifyOnRespawn->Enabled())
-					//GRender->Notification(Vec4(255, 255, 255, 255), 5, "%s is respawning in 5 seconds", pPlayer->ChampionName());
 			}
 		}
 		else
@@ -1041,10 +1011,12 @@ void Gui::LoadMenu()
 		Menu.ChampionsToNotifyOnR[pHero->GetNetworkId()] = pHeroes->CheckBox(szMenuName.c_str(), true);
 	}
 
-	
+	Menu.RecallTrackerMenu = Menu.Owner->AddMenu("Recall Tracker");
+	Menu.RecallTrackerEnable = Menu.RecallTrackerMenu->CheckBox("Enable Recall Tracker:", true);
+
 	//Menu.NotifyOnRespawn = Menu.Owner->CheckBox("Notify on Respawn", false);
-	Menu.XOffset = Menu.Owner->AddFloat("X offset:", -2000, 2000, 0);
-	Menu.YOffset = Menu.Owner->AddFloat("Y offset:", -2000, 2000, 0);
+	//Menu.XOffset = Menu.Owner->AddFloat("X offset:", -2000, 2000, 0);
+	//Menu.YOffset = Menu.Owner->AddFloat("Y offset:", -2000, 2000, 0);
 	//Menu.RadiusOffset = Menu.Owner->AddFloat("Radius:", -200, 200, 0);
 	//Menu.Resize = Menu.Owner->AddFloat("Resize bonus:", 0, 200, 75);
 }
@@ -1083,22 +1055,21 @@ void Gui::LoadTextureIcons()
 	Textures->UHud = CreateTextureEx("RembrandtAIOBanner");
 	Textures->UHud->SetColor(Vec4(255, 255, 255, 0));
 	if (strstr(GEntityList->Player()->ChampionName(), "Graves"))
-	{
 		Textures->ChampLogo = CreateTextureEx("graveslogo");
-		GGame->Say("/t");
-	}
 	else if (strstr(GEntityList->Player()->ChampionName(), "Caitlyn"))
-	{
 		Textures->ChampLogo = CreateTextureEx("caitlynlogo");
-		GGame->Say("/t");
-	}
 	else if (strstr(GEntityList->Player()->ChampionName(), "Twitch"))
-	{
 		Textures->ChampLogo = CreateTextureEx("twitchlogo");
-		GGame->Say("/t");
-	}
+	else if (strstr(GEntityList->Player()->ChampionName(), "KogMaw"))
+		Textures->ChampLogo = CreateTextureEx("kogmawlogo");
+	else if (strstr(GEntityList->Player()->ChampionName(), "Tristana"))
+		Textures->ChampLogo = CreateTextureEx("tristanalogo");
+	else if (strstr(GEntityList->Player()->ChampionName(), "Sivir"))
+		Textures->ChampLogo = CreateTextureEx("sivirlogo");
 	else
 		Textures->ChampLogo = CreateTextureEx("empty");
+
+	GGame->Say("/t");
 
 	// 2D Hud
 	Textures->OutlineLeft	= CreateTextureEx("LeftHud");
@@ -1161,6 +1132,14 @@ void Gui::LoadTextureIcons()
 
 			UiPool.push_back(lpGui);
 		}
+	}
+
+
+	//SCALE ICONS ONCE ON LOAD
+	if (Resolution.y < 1080.f)
+	{
+		Textures->UN_bg->Scale(Resolution.y / 1080.f);
+		Textures->UN_r->Scale(Resolution.y / 1080.f);
 	}
 }
 
@@ -1276,8 +1255,8 @@ void Gui::GetLatestVersionNo()
 		if (n != szJson.npos)
 			VersionNo = szJson.substr(0, n);
 	}*/
-	GGame->PrintChat("<b><font color=\"#f8a101\">Rembrandt <font color=\"#FFFFFF\">[</font>AIO<font color=\"#FFFFFF\">]</font> & Utility PRO<b><font color=\"#FFFFFF\">++</font> loaded.</font></b>");
-	GGame->PrintChat("<font color=\"#f8a101\">Supported champions: Graves, Caitlyn, Twitch.");
+	GGame->PrintChat("<b><font color=\"#f8a101\">Rembrandt <font color=\"#FFFFFF\">[</font>AIO<font color=\"#FFFFFF\">]</font> & Utility PRO<font color=\"#FFFFFF\">++</font> loaded.</font></b>");
+	GGame->PrintChat("<font color=\"#f8a101\">Supported champions: Graves, Caitlyn, Twitch, KogMaw, Tristana, Sivir.");
 
 	/*std::string szData;
 	if (GPluginSDK->ReadFileFromURL("https://rembrandt.000webhostapp.com/version.txt", szData))

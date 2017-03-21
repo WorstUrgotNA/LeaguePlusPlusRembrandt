@@ -17,6 +17,12 @@ Tristana::Tristana(IMenu* Parent)
 	//Menu
 	TristanaMenu = Parent->AddMenu("Tristana PRO++");
 
+	QinCombo = TristanaMenu->CheckBox("Use Q in Combo:", true);
+	EinCombo = TristanaMenu->CheckBox("Use E in Combo:", true);
+	RinCombo = TristanaMenu->CheckBox("Use R in Combo:", true);
+	InteruptSpellCasts = TristanaMenu->CheckBox("Use R to Interupt:", true);
+	RGapCloser = TristanaMenu->CheckBox("Use R on Gap Closer:", true);
+
 	DrawReady = TristanaMenu->CheckBox("Draw Only Ready Spells:", true);
 	DrawW = TristanaMenu->CheckBox("Draw W Range:", true);
 
@@ -90,7 +96,7 @@ void Tristana::Combo()
 	auto Target = GTargetSelector->FindTarget(QuickestKill, SpellDamage, Hero->AttackRange());
 	if (Target != nullptr)
 	{
-		if (R->IsReady() && CalcRDamage(Target) > Target->GetHealth())
+		if (R->IsReady() && RinCombo->Enabled() && CalcRDamage(Target) > Target->GetHealth())
 		{
 
 			R->CastOnTarget(Target);
@@ -118,13 +124,15 @@ void Tristana::OnRender()
 
 void Tristana::OnSpellCast(CastedSpell const& Args)
 {
+	if (Args.Target_ == Hero && Args.Caster_->IsDashing() && Args.Caster_->IsHero() && Args.Caster_->IsEnemy(Hero))
+		R->CastOnTarget(Args.Caster_);
 
 }
 
 void Tristana::OnOrbwalkAttack(IUnit* Source, IUnit* Target)
 {
-	GRender->Notification(Vec4(255, 255, 255, 255), 0, "%.f", CalcEDamage(Target) + GDamage->GetAutoAttackDamage(Hero, Target, true));
-	if (Target->IsHero() && GOrbwalking->GetOrbwalkingMode() == kModeCombo && R->IsReady() && CalcEDamage(Target) + CalcRDamage(Target) + GDamage->GetAutoAttackDamage(Hero, Target, true) > Target->GetHealth() && Target->IsValidTarget() && !Target->IsDead())
+	//GRender->Notification(Vec4(255, 255, 255, 255), 0, "%.f", CalcEDamage(Target) + GDamage->GetAutoAttackDamage(Hero, Target, true));
+	if (Target->IsHero() && RinCombo->Enabled() && GOrbwalking->GetOrbwalkingMode() == kModeCombo && R->IsReady() && CalcEDamage(Target) + CalcRDamage(Target) + GDamage->GetAutoAttackDamage(Hero, Target, true) > Target->GetHealth() && Target->IsValidTarget() && !Target->IsDead())
 		R->CastOnTarget(Target);
 }
 
@@ -132,8 +140,19 @@ void Tristana::BeforeAttack(IUnit* Target)
 {
 	if (Target->IsHero() && GOrbwalking->GetOrbwalkingMode() == kModeCombo && Target->IsValidTarget() && !Target->IsDead())
 	{
-		if (Q->IsReady()) { Q->CastOnPlayer(); }
-		if (E->IsReady()) { E->CastOnTarget(Target); }
+		if (Q->IsReady() && QinCombo->Enabled()) { Q->CastOnPlayer(); }
+		if (E->IsReady() && EinCombo->Enabled()) { E->CastOnTarget(Target); }
 	}
 }
 
+void Tristana::OnInterruptible(InterruptibleSpell const& Args)
+{
+	if (GOrbwalking->GetOrbwalkingMode() == kModeCombo && Args.Target != nullptr && Args.Target->IsEnemy(Hero) && InteruptSpellCasts->Enabled() && R->IsReady() && Args.DangerLevel >= kHighDanger)
+		R->CastOnTarget(Args.Target);
+}
+
+void Tristana::OnGapCloser(GapCloserSpell const& Args)
+{
+	if (GOrbwalking->GetOrbwalkingMode() == kModeCombo && RGapCloser->Enabled() && Args.Sender->IsEnemy(Hero) && Args.Sender->IsValidTarget() && !Args.Sender->IsDead() && (Hero->GetPosition() - Args.EndPosition).Length() < 200)
+		R->CastOnTarget(Args.Sender);
+}

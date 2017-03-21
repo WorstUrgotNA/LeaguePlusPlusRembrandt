@@ -19,6 +19,7 @@ public:
 private:
 	IMenu*			GravesMenu;
 	IMenuOption*	SemiManualMenuKey;
+	IMenuOption*	UseWCombo;
 	IMenuOption*	UseQJungle;
 	IMenuOption*	UseWJungle;
 	IMenuOption*	UseEJungle;

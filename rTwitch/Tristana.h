@@ -14,12 +14,20 @@ public:
 	void OnOrbwalkAttack(IUnit* Source, IUnit* Target);
 	void OnSpellCast(CastedSpell const& Args);
 	void BeforeAttack(IUnit* Target);
+	void OnInterruptible(InterruptibleSpell const& Args);
+	void OnGapCloser(GapCloserSpell const& Args);
 	void Combo();
 	float CalcRDamage(IUnit* Target);
 	float CalcEDamage(IUnit* Target);
 
 private:
 	IMenu*			TristanaMenu;
+
+	IMenuOption*	QinCombo;
+	IMenuOption*	EinCombo;
+	IMenuOption*	RinCombo;
+	IMenuOption*	InteruptSpellCasts;
+	IMenuOption*	RGapCloser;
 
 	IMenuOption*	DrawReady;
 	IMenuOption*	DrawW;

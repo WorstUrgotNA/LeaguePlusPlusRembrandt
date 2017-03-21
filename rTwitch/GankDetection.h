@@ -70,6 +70,7 @@ public:
 	void OnGameUpdate();
 	void OnRender();
 	void OnJungleNotify(JungleNotifyData* Args);
+	void OnTeleport(OnTeleportArgs* Args);
 
 private:
 	void UpdateChampions();

@@ -162,6 +162,7 @@
     <ClInclude Include="GankDetection.h" />
     <ClInclude Include="Graves.h" />
     <ClInclude Include="Gui.h" />
+    <ClInclude Include="Kogmaw.h" />
     <ClInclude Include="LPPConstants.h" />
     <ClInclude Include="ObjectTracker.h" />
     <ClInclude Include="PluginData.h" />
@@ -182,6 +183,7 @@
     <ClCompile Include="GankDetection.cpp" />
     <ClCompile Include="Graves.cpp" />
     <ClCompile Include="Gui.cpp" />
+    <ClCompile Include="Kogmaw.cpp" />
     <ClCompile Include="ObjectTracker.cpp" />
     <ClCompile Include="PluginSDK.cpp" />
     <ClCompile Include="Sivir.cpp" />

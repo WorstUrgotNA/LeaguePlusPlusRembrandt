@@ -470,9 +470,9 @@ void Tracker::OnUnitDeath(IUnit* Args)
 		return;
 	if (!Args->IsEnemy(GEntityList->Player()))
 		return;
-
+	GRender->Notification(Vec4(255, 255, 255, 255), 0, "%s", Args->GetObjectName());
 	// Invalidate all destroyed wards
-	if (strstr(Args->GetObjectName(), "Noxious") || strstr(Args->GetObjectName(), "Jack") || strstr(Args->GetObjectName(), "Bushwhack"))
+	if (strstr(Args->GetObjectName(), "Noxious") || strstr(Args->GetObjectName(), "Jack"))
 		UpdateHiddenObjects(Args);
 
 	if (!Args->IsJungleCreep())

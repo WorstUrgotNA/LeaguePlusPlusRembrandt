@@ -117,6 +117,9 @@ struct UiMenu
 	IMenuOption* HUDType;
 	IMenuOption* DisplayLogo;
 
+	IMenu*			RecallTrackerMenu;
+	IMenuOption*	RecallTrackerEnable;
+
 	std::map<int, IMenuOption*> ChampionsToNotifyOnR;
 };
 

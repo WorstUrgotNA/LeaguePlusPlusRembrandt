@@ -29,6 +29,8 @@ Graves::Graves(IMenu* Parent)
 	GravesMenu = Parent->AddMenu("Graves PRO++");
 	SemiManualMenuKey = GravesMenu->AddKey("Semi-Manual Ult Key:", 84);
 
+	UseWCombo = GravesMenu->CheckBox("Use W in Combo:", true);
+
 	UseQJungle = GravesMenu->CheckBox("Use Q in Jungle Clear:", true);
 	QJungleMana = GravesMenu->AddFloat("Minimum Mana Percent:", 0, 100, 40);
 
@@ -114,15 +116,15 @@ void Graves::Combo()
 		for (auto enemy : GEntityList->GetAllHeros(false, true))
 		{
 			if (!enemy->IsClone() && !enemy->IsDead() && enemy->IsValidTarget() && (enemy->GetPosition() - GEntityList->Player()->GetPosition()).Length() < 1500 && enemy->GetHealth() - CalcRDamage(enemy) < 0)
-				R->CastOnTarget(enemy, kHitChanceHigh);
+				R->CastOnTarget(enemy, kHitChanceVeryHigh);
 		}
 	}
 
 	if (StackIndex < 0)
 	{
-		if (W->IsReady() && EnemiesInRange(GEntityList->Player(), 950) > 0)
+		if (W->IsReady() && UseWCombo->Enabled() && EnemiesInRange(GEntityList->Player(), 950) > 0)
 		{
-			W->CastOnTarget(GTargetSelector->FindTarget(QuickestKill, PhysicalDamage, 950));
+			W->CastOnTarget(GTargetSelector->FindTarget(QuickestKill, PhysicalDamage, 950), kHitChanceVeryHigh);
 		}
 
 		if (Q->IsReady()) //cast if wall to bang
@@ -158,7 +160,7 @@ void Graves::OnGameUpdate()
 			{
 				if (Stack[StackIndex] == "GravesQLineSpell")
 				{
-					Q->CastOnTarget(GTargetSelector->FindTarget(QuickestKill, PhysicalDamage, 1000), kHitChanceLow);
+					Q->CastOnTarget(GTargetSelector->FindTarget(QuickestKill, PhysicalDamage, 1000), kHitChanceVeryHigh);
 				}
 				else if (Stack[StackIndex] == "GravesChargeShot")
 				{
@@ -166,7 +168,7 @@ void Graves::OnGameUpdate()
 					{
 						StackIndex++;
 					}
-					R->CastOnTarget(GTargetSelector->FindTarget(QuickestKill, PhysicalDamage, 1500), kHitChanceHigh);
+					R->CastOnTarget(GTargetSelector->FindTarget(QuickestKill, PhysicalDamage, 1500), kHitChanceVeryHigh);
 				}
 				else if (Stack[StackIndex] == "GravesMove")
 				{
@@ -191,7 +193,7 @@ void Graves::OnGameUpdate()
 		{
 			for (auto Mob : GEntityList->GetAllMinions(false, true, true))
 			{
-				if (!Mob->IsDead() && Mob->IsValidTarget() && (Mob->IsCreep() || Mob->IsJungleCreep()))
+				if (!Mob->IsDead() && Mob->IsValidTarget() && !Mob->IsWard() && (Mob->IsCreep() || Mob->IsJungleCreep()))
 				{
 					if ((Mob->GetPosition() - GEntityList->Player()->GetPosition()).Length() < 500 && UseQJungle->Enabled() && Q->IsReady() && GEntityList->Player()->ManaPercent() > QJungleMana->GetFloat())
 					{
@@ -217,7 +219,7 @@ void Graves::OnGameUpdate()
 					//toggle smite
 					if (R->IsReady())
 					{
-						R->CastOnTarget(GTargetSelector->FindTarget(QuickestKill, PhysicalDamage, 1500), kHitChanceMedium);
+						R->CastOnTarget(GTargetSelector->FindTarget(QuickestKill, PhysicalDamage, 1500), kHitChanceVeryHigh);
 					}
 					SemiManualKey = true;
 				}

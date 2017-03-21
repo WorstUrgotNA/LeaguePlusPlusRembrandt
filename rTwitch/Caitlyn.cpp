@@ -299,7 +299,7 @@ void Caitlyn::OnSpellCast(CastedSpell const& Args)
 		if (flDistance < Q->Range() && Q->IsReady())
 		{
 			if (flDistance > 650 || MyHero->AttackSpeed() < 1.25f)
-			Q->CastOnTarget(GTargetSelector->FindTarget(QuickestKill, PhysicalDamage, Q->Range()), kHitChanceVeryHigh);
+				Q->CastOnTarget(GTargetSelector->FindTarget(QuickestKill, PhysicalDamage, Q->Range()), kHitChanceVeryHigh);
 		}
 	}
 	

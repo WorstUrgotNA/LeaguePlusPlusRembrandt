@@ -5,6 +5,7 @@
 #include "Twitch.h"
 #include "Sivir.h"
 #include "Tristana.h"
+#include "Kogmaw.h"
 
 
 ChampionHandler::ChampionHandler()
@@ -21,6 +22,8 @@ ChampionHandler::ChampionHandler()
 		SivirHandler = new Sivir(Menu);
 	else if (strstr(GEntityList->Player()->ChampionName(), "Tristana"))
 		TristanaHandler = new Tristana(Menu);
+	else if (strstr(GEntityList->Player()->ChampionName(), "KogMaw"))
+		KogmawHandler = new Kogmaw(Menu);
 
 	LoadEvents();
 }
@@ -43,6 +46,8 @@ void ChampionHandler::_OnGameUpdate()
 		SivirHandler->OnGameUpdate();
 	if (strstr(GEntityList->Player()->ChampionName(), "Tristana"))
 		TristanaHandler->OnGameUpdate();
+	if (strstr(GEntityList->Player()->ChampionName(), "KogMaw"))
+		KogmawHandler->OnGameUpdate();
 }
 
 void ChampionHandler::_OnRender()
@@ -57,6 +62,8 @@ void ChampionHandler::_OnRender()
 		SivirHandler->OnRender();
 	if (strstr(GEntityList->Player()->ChampionName(), "Tristana"))
 		TristanaHandler->OnRender();
+	if (strstr(GEntityList->Player()->ChampionName(), "KogMaw"))
+		KogmawHandler->OnRender();
 }
 
 void ChampionHandler::_OnSpellCast(CastedSpell const& Args)
@@ -71,6 +78,8 @@ void ChampionHandler::_OnSpellCast(CastedSpell const& Args)
 		SivirHandler->OnSpellCast(Args);
 	if (strstr(GEntityList->Player()->ChampionName(), "Tristana"))
 		TristanaHandler->OnSpellCast(Args);
+	if (strstr(GEntityList->Player()->ChampionName(), "KogMaw"))
+		KogmawHandler->OnSpellCast(Args);
 }
 
 bool ChampionHandler::_OnPreCast(int Slot, IUnit* Target, Vec3* StartPosition, Vec3* EndPosition)
@@ -93,32 +102,61 @@ void ChampionHandler::_OnOrbwalkAttack(IUnit* Source, IUnit* Target)
 		SivirHandler->OnOrbwalkAttack(Source, Target);
 	if (strstr(GEntityList->Player()->ChampionName(), "Tristana"))
 		TristanaHandler->OnOrbwalkAttack(Source, Target);
+	if (strstr(GEntityList->Player()->ChampionName(), "KogMaw"))
+		KogmawHandler->OnOrbwalkAttack(Source, Target);
 }
 
 void ChampionHandler::_BeforeAttack(IUnit* Target)
 {
 	if (strstr(GEntityList->Player()->ChampionName(), "Tristana"))
 		TristanaHandler->BeforeAttack(Target);
+	if (strstr(GEntityList->Player()->ChampionName(), "KogMaw"))
+		KogmawHandler->BeforeAttack(Target);
+}
+
+void ChampionHandler::_OnInterruptible(InterruptibleSpell const& Args)
+{
+	if (strstr(GEntityList->Player()->ChampionName(), "Tristana"))
+		TristanaHandler->OnInterruptible(Args);
+}
+
+void ChampionHandler::_OnGapCloser(GapCloserSpell const& Args)
+{
+	if (strstr(GEntityList->Player()->ChampionName(), "Tristana"))
+		TristanaHandler->OnGapCloser(Args);
+}
+
+void ChampionHandler::_OnNewPath(IUnit* Source, std::vector<Vec3> const& Path)
+{
+	if (strstr(GEntityList->Player()->ChampionName(), "KogMaw"))
+		KogmawHandler->OnNewPath(Source, Path);
 }
 
 void ChampionHandler::LoadEvents()
 {
 	GEventManager->AddEventHandler(kEventOnGameUpdate, OnGameUpdate);
-	GEventManager->AddEventHandler(kEventOnSpellCast, OnSpellCast);
+	//GEventManager->AddEventHandler(kEventOnSpellCast, OnSpellCast);
+	GEventManager->AddEventHandler(kEventOnDoCast, OnSpellCast);
 	GEventManager->AddEventHandler(kEventOnPreCast, OnPreCast);
 	GEventManager->AddEventHandler(kEventOnRender, OnRender);
 	GEventManager->AddEventHandler(kEventOrbwalkAfterAttack, OnOrbwalkAttack);
 	GEventManager->AddEventHandler(kEventOrbwalkBeforeAttack, BeforeAttack);
+	GEventManager->AddEventHandler(kEventOnInterruptible, OnInterruptible);
+	GEventManager->AddEventHandler(kEventOnGapCloser, OnGapCloser);
+	GEventManager->AddEventHandler(kEventOnNewPath, OnNewPath);
 }
 
 void ChampionHandler::UnloadEvents()
 {
 	GEventManager->RemoveEventHandler(kEventOnGameUpdate, OnGameUpdate);
-	GEventManager->RemoveEventHandler(kEventOnSpellCast, OnSpellCast);
+	GEventManager->RemoveEventHandler(kEventOnDoCast, OnSpellCast);
 	GEventManager->RemoveEventHandler(kEventOnPreCast, OnPreCast);
 	GEventManager->RemoveEventHandler(kEventOnRender, OnRender);
 	GEventManager->RemoveEventHandler(kEventOrbwalkAfterAttack, OnOrbwalkAttack);
 	GEventManager->RemoveEventHandler(kEventOrbwalkBeforeAttack, BeforeAttack);
+	GEventManager->RemoveEventHandler(kEventOnInterruptible, OnInterruptible);
+	GEventManager->RemoveEventHandler(kEventOnGapCloser, OnGapCloser);
+	GEventManager->RemoveEventHandler(kEventOnNewPath, OnNewPath);
 }
 
 PLUGIN_EVENTD(void) ChampionHandler::OnGameUpdate()
@@ -148,4 +186,19 @@ PLUGIN_EVENTD(void) ChampionHandler::OnOrbwalkAttack(IUnit* Source, IUnit* Targe
 PLUGIN_EVENTD(void) ChampionHandler::BeforeAttack(IUnit* Target)
 {
 	GPluginInstance3->_BeforeAttack(Target);
+}
+
+PLUGIN_EVENTD(void) ChampionHandler::OnInterruptible(InterruptibleSpell const& Args)
+{
+	GPluginInstance3->_OnInterruptible(Args);
+}
+
+PLUGIN_EVENTD(void) ChampionHandler::OnGapCloser(GapCloserSpell const& Args)
+{
+	GPluginInstance3->_OnGapCloser(Args);
+}
+
+PLUGIN_EVENTD(void) ChampionHandler::OnNewPath(IUnit* Source, std::vector<Vec3> const& Path)
+{
+	GPluginInstance3->_OnNewPath(Source, Path);
 }

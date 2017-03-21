@@ -78,6 +78,9 @@
     <ClInclude Include="Tristana.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Kogmaw.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="PluginSDK.cpp">
@@ -117,6 +120,9 @@
       <Filter>Resource Files\Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Tristana.cpp">
+      <Filter>Resource Files\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Kogmaw.cpp">
       <Filter>Resource Files\Source Files</Filter>
     </ClCompile>
   </ItemGroup>
