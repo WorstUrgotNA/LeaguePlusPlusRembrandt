@@ -291,7 +291,7 @@ void Graves::OnSpellCast(CastedSpell const& Args)
 	auto MyHero = GEntityList->Player();
 	float AttackDamage = GEntityList->Player()->PhysicalDamage() + GEntityList->Player()->BonusDamage();
 		
-	if (GOrbwalking->GetOrbwalkingMode() == kModeCombo)
+	if (Args.Target_ != nullptr && GOrbwalking->GetOrbwalkingMode() == kModeCombo)
 	{
 		if ((strstr(Args.Name_, "GravesBasicAttack") || strstr(Args.Name_, "GravesCritAttack")) && Args.Caster_ == MyHero && Args.Target_->IsHero()) //listen for autos
 		{
@@ -337,7 +337,7 @@ void Graves::OnSpellCast(CastedSpell const& Args)
 	}
 	if (GOrbwalking->GetOrbwalkingMode() == kModeLaneClear && (strstr(Args.Name_, "GravesBasicAttack") || strstr(Args.Name_, "GravesCritAttack")))
 	{
-		if (Args.Target_->IsJungleCreep() && Args.Target_->IsValidTarget() && !Args.Target_->IsDead())
+		if (Args.Target_ != nullptr && Args.Target_->IsJungleCreep() && Args.Target_->IsValidTarget() && !Args.Target_->IsDead())
 		{
 			if (UseEJungle->Enabled() && E->IsReady() && MyHero->ManaPercent() > EJungleMana->GetFloat())
 			{
