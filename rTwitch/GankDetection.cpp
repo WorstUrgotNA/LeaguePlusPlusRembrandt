@@ -1,6 +1,7 @@
 #include "GankDetection.h"
 
 ITexture*	RC_On;
+#define M_PI 3.14159265358979323846f
 
 GankDetection::GankDetection(IMenu* Parent)
 {
@@ -50,6 +51,12 @@ GankDetection::GankDetection(IMenu* Parent)
 	//Menu.DrawJunglerTrackerPingGlobal = pFoWJungleTrackerMenu->CheckBox("Ping Global (everyone sees):", false);
 	Menu.DrawJunglerTrackerPingType = pFoWJungleTrackerMenu->AddInteger("Ping Type:", 1, 3, 1);
 	Menu.PingInterval = pFoWJungleTrackerMenu->AddInteger("Minimum Time Between Pings:", 0, 20, 5);
+
+	IMenu* pRadarMenu = Parent->AddMenu("Extended Radar");
+	Menu.EnableRadar = pRadarMenu->CheckBox("Enable Radar:", true);
+	Menu.CircleRadius = pRadarMenu->AddFloat("Circle Radius:", 1, 200, 40);
+	Menu.DetectionRadius = pRadarMenu->AddFloat("Detection Radius:", 1000, 20000, 4000);
+	Menu.CircleQuality = pRadarMenu->AddFloat("Circle Quality:", 30, 1000, 100);
 
 	//auto pHeroes = Menu.Parent->AddMenu("Ping on Gank (Champions)");
 	Menu.PingOnAll = Menu.Parent->CheckBox("Ping All Ganking Champs:", false);
@@ -236,7 +243,10 @@ void GankDetection::UpdateChampions()
 
 		unit.Distance = (unit.Position - vecLocalPosition).Length();
 		unit.IsVisible = unit.Player->IsVisible();
-
+		if (unit.Player->IsOnScreen())
+			unit.IsOnScreen = true;
+		else 
+			unit.IsOnScreen = false;
 	}
 
 	if (NumVisible == 4 && JGNUpdated)
@@ -273,6 +283,30 @@ void GankDetection::UpdateChampions()
 	}*/
 }
 
+void GankDetection::DrawCircleMinimap(Vec2 Position, float Radius, int Quality, Vec4 Color)
+{
+	std::vector<Vec2> points;
+
+	for (auto i = 0; i < Quality; i++)
+	{
+		auto angle = i * M_PI * 2 / Quality;
+		points.emplace_back(
+			Vec2(
+				Position.x + Radius * ::cosf(angle),
+				Position.y + Radius * ::sinf(angle)
+			)
+		);
+	}
+
+	for (size_t i = 0; i < points.size(); i++)
+	{
+		auto a = points[i];
+		auto b = points[i == points.size() - 1 ? 0 : i + 1];
+
+		GRender->DrawLine(a, b, Color);
+	}
+}
+
 void GankDetection::OnRender()
 {
 	IUnit* pLocal		= GEntityList->Player();
@@ -281,8 +315,6 @@ void GankDetection::OnRender()
 	int i = -1;
 
 	Vec2 vecScreen;
-
-	
 
 	//Draw FoW Jungle Tracker
 	if (Menu.TrackJungler->Enabled())
@@ -346,6 +378,79 @@ void GankDetection::OnRender()
 			continue;
 		}
 
+		//Extended Awareness
+		if (Menu.EnableRadar->Enabled() && !unit.IsOnScreen && GGame->Time() - unit.LastVisibleTime < Menu.IconDuration->GetFloat())
+		{
+			Vec3 ScreenCenterWorld;
+			static Vec2 Resoution = GRender->ScreenSize();
+			static Vec2 ScreenCenter = Vec2(Resoution.x / 2.f, Resoution.y / 2.f);
+			GGame->ScreenToWorld(ScreenCenter, &ScreenCenterWorld);
+			auto flDisXA = (ScreenCenterWorld - unit.Position).Length();
+
+			if (flDisXA < Menu.DetectionRadius->GetFloat())
+			{
+				Vec3 MiniWorldExtension = ScreenCenterWorld.Extend(unit.Position, 10);
+				Vec2 MiniScreenPos;
+				GGame->Projection(MiniWorldExtension, &MiniScreenPos);
+
+				float CircleRadius = Menu.CircleRadius->GetFloat();
+
+				Vec2 FinalScreenPos = ScreenCenter;
+				Vec2 Holder;
+				Vec3 Holder3D = ScreenCenterWorld;
+				float i = 300;
+
+				while (GGame->Projection(Holder3D, &Holder))
+				{
+					i += 1;
+					Holder3D = ScreenCenterWorld.Extend(unit.Position, i);
+				}
+
+				Holder = Holder.Extend(ScreenCenter, CircleRadius + 10);
+				FinalScreenPos = Holder;
+
+				if (!unit.IsVisible)
+					unit.ChampIcon->SetColor(Vec4(100, 100, 100, 255));
+				else
+					unit.ChampIcon->SetColor(Vec4(255, 255, 255, 255));
+
+				Vec2 PlayerPos2D;
+				GGame->Projection(pLocal->GetPosition(), &PlayerPos2D);
+
+				//GRender->DrawLine(FinalScreenPos, PlayerPos2D, Vec4(255, 0, 0, 50));
+				unit.ChampIcon->DrawCircle(FinalScreenPos.x, FinalScreenPos.y, CircleRadius);
+				//GRender->DrawOutlinedCircle(FinalScreenPos, Vec4(0, 255, 0, 255), CircleRadius);
+
+				if (!unit.IsVisible)
+					GRender->DrawTextW(Vec2(FinalScreenPos.x, FinalScreenPos.y), Vec4(255, 255, 255, 255), "%i", static_cast<int>(GGame->Time() - unit.LastVisibleTime));
+
+				//circle draw leaguesharp
+				auto points = std::vector<Vec2>();
+				auto Quality = Menu.CircleQuality->GetFloat();
+				auto radius = CircleRadius;
+				auto Position = FinalScreenPos;
+				auto Color = Vec4(255, 0, 0, 255);
+				for (auto i = 0; i < Quality; i++)
+				{
+					auto angle = i * M_PI * 2 / Quality;
+					points.emplace_back(
+						Vec2(
+							Position.x + radius * ::cosf(angle),
+							Position.y + radius * ::sinf(angle)
+						)
+					);
+				}
+
+				for (size_t i = 0; i < points.size(); i++)
+				{
+					auto a = points[i];
+					auto b = points[i == points.size() - 1 ? 0 : i + 1];
+
+					GRender->DrawLine(a, b, Color);
+				}
+			}
+		}
+
 		if (unit.IsVisible)
 		{
 			//GRender->Notification(Vec4(255, 255, 255, 255), 0, "%s is visible", unit.Player->ChampionName());
@@ -395,9 +500,8 @@ void GankDetection::OnRender()
 				vecScreen.y += 127;
 				GRender->DrawTextW(vecScreen, Vec4(255, 255, 255, 255), "Jungler MIA: %i", static_cast<int>(GGame->Time() - unit.LastVisibleTime));
 			}
-			
+
 			// Draw FoW Circle
-			
 			if (Menu.ShowPredictedMovementCircle->Enabled())
 			{
 				if (GGame->Time() - unit.LastVisibleTime < Menu.IconDuration->GetFloat())
@@ -407,22 +511,33 @@ void GankDetection::OnRender()
 					if (GGame->WorldToMinimap(unit.Position, vecMinimap))
 					{
 						float flMaxDistance = unit.Player->MovementSpeed() * (GGame->Time() - unit.LastVisibleTime);
+
+						Vec2 Radius;
+						GGame->WorldToMinimap(Vec3(unit.Position.x, unit.Position.y, unit.Position.z + flMaxDistance), Radius);
+
 						Vec3 vecNewPosition = unit.Position + (vecPosition - unit.Position).VectorNormalize() * flMaxDistance;
 
 						Vec2 vecMinimapNew;
 						if (GGame->WorldToMinimap(vecNewPosition, vecMinimapNew))
 						{
-							float flRadius = (vecMinimapNew - vecMinimap).Length();
-							
+							//float flRadius = (vecMinimapNew - vecMinimap).Length();
+							float MinimapRadius = (vecMinimap - Radius).Length();
 							
 							unit.ChampIcon->SetColor(Vec4(200, 200, 200, 255));
-							unit.ChampIcon->DrawCircle(vecMinimap.x, vecMinimap.y, 12);
 							
-							/*if (Menu.ShowMovementCircle->Enabled())
-								GRender->DrawOutlinedCircle(vecMinimap, Vec4(255, 255, 0, 255), flRadius + 22);
+							if (Menu.ShowMovementCircle->Enabled())
+							{
+								DrawCircleMinimap(vecMinimap, MinimapRadius, 50);
+								unit.ChampIcon->DrawCircle(vecMinimap.x, vecMinimap.y, 12);
+							}
+								//GRender->DrawOutlinedCircle(vecMinimap, Vec4(255, 255, 0, 255), flRadius + 22);
 							else
-								GRender->DrawOutlinedCircle(vecMinimap, Vec4(255, 255, 0, 255), 22);
-							*/
+							{
+								unit.ChampIcon->DrawCircle(vecMinimap.x, vecMinimap.y, 12);
+								//DrawCircleMinimap(vecMinimap, 22, 100);
+							}
+								//GRender->DrawOutlinedCircle(vecMinimap, Vec4(255, 255, 0, 255), 22);
+							
 							if (Menu.LastSeen->Enabled())
 							{
 								vecMinimap.x += 2;
@@ -518,8 +633,6 @@ ITexture* GankDetection::CreateTextureEx(std::string const& Filename)
 	if (GPluginSDK->ReadFileFromURL(DownloadUrl, szImage))
 		return GRender->CreateTextureFromMemory((uint8_t*)szImage.data(), szImage.length(), Filename.c_str());
 
-	//if (DoesTextureExist(Filename, szFullPath))
-		//return GRender->CreateTextureFromFile((Filename + ".png").c_str());
 
 	return nullptr;
 }

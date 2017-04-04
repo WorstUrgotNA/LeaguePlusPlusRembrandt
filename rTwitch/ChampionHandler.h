@@ -8,6 +8,7 @@ class Sivir;
 class Tristana;
 class Kogmaw;
 
+
 class ChampionHandler
 {
 public:
@@ -18,6 +19,7 @@ private:
 	void			LoadEvents();
 	void			UnloadEvents();
 	void			_OnGameUpdate();
+	void			_OnRealSpellCast(CastedSpell const& Args);
 	void			_OnSpellCast(CastedSpell const& Args);
 	bool			_OnPreCast(int Slot, IUnit* Target, Vec3* StartPosition, Vec3* EndPosition);
 	void			_OnOrbwalkAttack(IUnit* Source, IUnit* Target);
@@ -25,19 +27,21 @@ private:
 	void			_BeforeAttack(IUnit* Target);
 	void			_OnInterruptible(InterruptibleSpell const& Args);
 	void			_OnGapCloser(GapCloserSpell const& Args);
-	void			_OnNewPath(IUnit* Source, std::vector<Vec3> const& Path);
+
 	IMenu*			Menu;
+	IMenuOption*	LoadChampPlugin;
+	bool			PluginActive;
 
 private:
 	PLUGIN_EVENT(void) OnGameUpdate();
 	PLUGIN_EVENT(void) OnRender();
+	PLUGIN_EVENT(void) OnRealSpellCast(CastedSpell const& Args);
 	PLUGIN_EVENT(void) OnSpellCast(CastedSpell const& Args);
 	PLUGIN_EVENT(void) OnPreCast(int Slot, IUnit* Target, Vec3* StartPosition, Vec3* EndPosition);
 	PLUGIN_EVENT(void) OnOrbwalkAttack(IUnit* Source, IUnit* Target);
 	PLUGIN_EVENT(void) BeforeAttack(IUnit* Target);
 	PLUGIN_EVENT(void) OnInterruptible(InterruptibleSpell const& Args);
 	PLUGIN_EVENT(void) OnGapCloser(GapCloserSpell const& Args);
-	PLUGIN_EVENT(void) OnNewPath(IUnit* Source, std::vector<Vec3> const& Path);
 	Graves* GravesHandler;
 	Caitlyn* CaitlynHandler;
 	Twitch* TwitchHandler;

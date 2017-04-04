@@ -1,11 +1,9 @@
 #include "PluginSDK.h"
 #include "Color.h"
-#include "SkinHack.h"
 #include "string"
 #include "windows.h"
 #include "Gui.h"
 #include "Awareness.h"
-#include "AutoLevel.h"
 #include "ObjectTracker.h"
 #include "ChampionHandler.h"
 
@@ -37,9 +35,18 @@ IMenu* AutoTrinketMenu;
 IMenu* MikaelsMenu;
 IMenu* CCFilter;
 IMenu* SummonerTeller;
-//IMenu* MiscMenu;
 
-//IMenuOption* MinionHpKillableDraw;
+IMenu* AutoLevelMainMenu;
+IMenu* ChampNameMenu;
+
+IMenuOption* EnableAutoLevelUp;
+IMenuOption* ALUQ;
+IMenuOption* ALUW;
+IMenuOption* ALUE;
+IMenuOption* ALUR;
+IMenuOption* ALUOnlyR;
+IMenuOption* ALUStartLevel;
+
 IMenuOption* SummonerTellerKey;
 IMenuOption* SummonerTellerEnabled;
 IMenuOption* SmiteActive;
@@ -99,12 +106,19 @@ IMenuOption* RavenousEnabled;
 IMenuOption* TitanicEnabled;
 IMenu* TiamatMenu;
 
+IMenuOption* SkinID;
+IMenuOption* SkinEnable;
+
+IMenu* SkinMenu;
+
 IUnit* CleanseTeamate01;
 IUnit* CleanseTeamate02;
 IUnit* CleanseTeamate03;
 IUnit* CleanseTeamate04;
 IUnit* CleanseTeamate05;
 IUnit* MikaelsTargetToCast;
+
+IUnit* Hero;
 
 ISpell* HEAL;
 ISpell* BARRIER;
@@ -146,7 +160,6 @@ Awareness* GPluginInstance = nullptr;
 ObjectTracker* GPluginInstance2 = nullptr;
 ChampionHandler* GPluginInstance3 = nullptr;
 
-IFont* UtilityFont;
 
 std::string	formattedTime;
 
@@ -160,17 +173,20 @@ short keystate2;
 bool SummonerTellerKeyWasDown = false;
 bool smiteKeyWasDown = false;
 bool DelayedCleanse = false;
+bool SkinNeedsReset = false;
+int CurrentSkinID;
 float AfkTimer;
 
-#pragma comment(lib, "urlmon.lib")
 #pragma region Events
 void LoadSpells()
 {
 	AutoSmiteTextPos = Vec2(0, 0);
 
+	CurrentSkinID = Hero->GetSkinId();
+
 	MikaelsTargetToCast = nullptr;
-	auto PlayerSum1  = GPluginSDK->GetEntityList()->Player()->GetSpellName(kSummonerSlot1);
-	auto PlayerSum2 = GPluginSDK->GetEntityList()->Player()->GetSpellName(kSummonerSlot2);
+	auto PlayerSum1  = Hero->GetSpellName(kSummonerSlot1);
+	auto PlayerSum2 = Hero->GetSpellName(kSummonerSlot2);
 
 
 	if (strstr(PlayerSum1, "SummonerSmite")) { SMITE = GPluginSDK->CreateSpell2(kSummonerSlot1, kTargetCast, false, false, kCollidesWithNothing); }
@@ -186,13 +202,6 @@ void LoadSpells()
 	else if (strcmp(PlayerSum2, "SummonerExhaust") == 0) { EXHAUST = GPluginSDK->CreateSpell(kSummonerSlot2, 650); }
 	else if (strcmp(PlayerSum2, "SummonerBoost") == 0) { CLEANSE = GPluginSDK->CreateSpell(kSummonerSlot2, 0); }
 	else if (strcmp(PlayerSum2, "SummonerDot") == 0) { IGNITE = GPluginSDK->CreateSpell(kSummonerSlot2, 600); }
-
-	UtilityFont = GRender->CreateFont("Tahoma", 14.f);
-
-	UtilityFont->SetLocationFlags(kFontLocationCenter);
-	UtilityFont->SetOutline(false);
-
-	UtilityFont->SetColor(Vec4(255, 255, 255, 255));
 
 	JungleNotification = Vec3(0, 0, 0);
 
@@ -225,51 +234,10 @@ void LoadSpells()
 	
 }
 
-void DrawHpBarDamage(IRender *renderer, IUnit *hero, float damage, Vec4 &color)
-{
-	static auto font = renderer->CreateFontW("Tahoma", 12.f, kFontWeightThin);
-
-	const auto xOffset = 10;
-	const auto yOffset = 20;
-	const auto width = 103;
-	const auto height = 8;
-
-	Vec2 barPos;
-	if (hero->GetHPBarPosition(barPos))
-	{
-		auto hp = hero->GetHealth();
-		auto maxHp = hero->GetMaxHealth();
-		auto percentHealthAfterDamage = max(0, hp - damage) / maxHp;
-		auto yPos = barPos.y + yOffset;
-		auto xPosDamage = barPos.x + xOffset + (width * percentHealthAfterDamage);
-		auto xPosCurrentHp = barPos.y + xOffset + ((width * hp) / maxHp);
-
-		renderer->DrawOutlinedCircle(hero->GetPosition(), color, 30);
-	
-		
-		
-
-		//renderer->DrawLine(Vec2(xPosDamage, yPos), Vec2(xPosDamage, yPos + height), color);
-
-		auto differenceInHp = xPosCurrentHp - xPosDamage;
-		auto pos1 = barPos.x + 9 + (107 * percentHealthAfterDamage);
-
-		for (auto i = 0; i < differenceInHp; i++)
-		{
-			//renderer->DrawLine(Vec2(pos1 + i, yPos), Vec2(pos1 + i, yPos + height), color);
-		}
-	}
-}
 
 float GetDistance(IUnit* source, IUnit* target)
 {
-	auto x1 = source->GetPosition().x;
-	auto x2 = target->GetPosition().x;
-	auto y1 = source->GetPosition().y;
-	auto y2 = target->GetPosition().y;
-	auto z1 = source->GetPosition().z;
-	auto z2 = target->GetPosition().z;
-	return static_cast<float>(sqrt(pow((x2-x1), 2.0) + pow((y2-y1), 2.0) + pow((z2-z1), 2.0)));
+	return (source->GetPosition() - target->GetPosition()).Length();
 }
 
 void AddTeamatesToCleanse()
@@ -361,8 +329,6 @@ int EnemiesInRange(IUnit* Source, float range)
 
 void UseDefensives()
 {
-	auto Hero = GEntityList->Player();
-
 	//ITEMS
 	if (FaceOfTheMountain->IsOwned() && FaceOfTheMountain->IsReady() && FaceOfTheMountainEnabled->Enabled() && !(Hero->IsDead()))
 	{
@@ -399,9 +365,9 @@ void UseDefensives()
 
 
 	//HEAL
-	if (HEAL != nullptr && HEAL->IsReady() && HealActive->Enabled() && !(GPluginSDK->GetEntityList()->Player()->IsDead()))
+	if (HEAL != nullptr && HEAL->IsReady() && HealActive->Enabled() && !(Hero->IsDead()))
 	{
-		if (GPluginSDK->GetEntityList()->Player()->HealthPercent() <= HealPercent->GetInteger() && EnemiesInRange(Hero, 600) > 0) { HEAL->CastOnPlayer(); } //Cast on self
+		if (Hero->HealthPercent() <= HealPercent->GetInteger() && EnemiesInRange(Hero, 600) > 0) { HEAL->CastOnPlayer(); } //Cast on self
 
 		if (HealTeamateActive->Enabled())
 		{
@@ -421,9 +387,9 @@ void UseDefensives()
 	}
 
 	//Potions
-	if (!(GEntityList->Player()->IsDead()) && PotionsEnabled->Enabled() && GEntityList->Player()->HealthPercent() <= PotionsPercent->GetFloat() && !GUtility->IsPositionInFountain(Hero->GetPosition()) &&
-		!(GEntityList->Player()->HasBuff("RegenerationPotion") || GEntityList->Player()->HasBuff("ItemMiniRegenPotion") || GEntityList->Player()->HasBuff("ItemCrystalFlaskJungle") ||
-			GEntityList->Player()->HasBuff("ItemCrystalFlask") || GEntityList->Player()->HasBuff("ItemDarkCrystalFlask")) )
+	if (!(Hero->IsDead()) && PotionsEnabled->Enabled() && Hero->HealthPercent() <= PotionsPercent->GetFloat() && !GUtility->IsPositionInFountain(Hero->GetPosition()) &&
+		!(Hero->HasBuff("RegenerationPotion") || Hero->HasBuff("ItemMiniRegenPotion") || Hero->HasBuff("ItemCrystalFlaskJungle") ||
+			Hero->HasBuff("ItemCrystalFlask") || Hero->HasBuff("ItemDarkCrystalFlask")) )
 	{
 		if (HealthPotion->IsOwned() && HealthPotion->IsReady()) {
 			HealthPotion->CastOnPlayer();
@@ -587,17 +553,14 @@ int GetSmiteDamage(int PlayerLevel)
 void AutoSmite() // AUTO SMITE PRO BY REMBRANDT
 {	
 	if (SMITE != nullptr && SMITE->IsReady() && SmiteActive->Enabled()) {
-		auto minions = GEntityList->GetAllMinions(false, false, true);
-		for (IUnit* minion : minions)
+		
+		for (IUnit* minion : GEntityList->GetAllMinions(false, false, true))
 		{
-			if ((minion->GetPosition() - GEntityList->Player()->GetPosition()).Length() <= 570)
+			if (minion->IsValidTarget(Hero, 570) && minion->GetHealth() <= GetSmiteDamage(Hero->GetLevel()))
 			{
 				if ((strstr(minion->GetObjectName(), "Red") && SmiteRed->Enabled()) || (strstr(minion->GetObjectName(), "Blue") && SmiteBlue->Enabled()) || strstr(minion->GetObjectName(), "Dragon") || strstr(minion->GetObjectName(), "Rift") || strstr(minion->GetObjectName(), "Baron"))
 				{
-					if (minion != nullptr && !minion->IsDead() && minion->GetHealth() <= GetSmiteDamage(GEntityList->Player()->GetLevel()))
-					{
-						SMITE->CastOnUnit(minion);
-					}
+					if (SMITE->CastOnUnit(minion)) { return; }
 				}
 			}
 		}
@@ -630,9 +593,7 @@ bool TargetValidForMikaels(IUnit* Source)
 }
 
 void Combo()
-{
-	auto Hero = GEntityList->Player();
-	
+{	
 	//GRender->Notification(Vec4(255, 255, 255, 255), 0, "Smite Charges: %i", static_cast<int>(Hero->GetSpellTotalCooldown(kSummonerSlot1)));
 	//Smite Enemies
 	if (SMITE != nullptr && SMITE->IsReady() && SmiteEnemies->Enabled())
@@ -731,7 +692,7 @@ void Combo()
 			for (auto BadDude : BadDudes)
 			{
 				//GRender->Notification(Vec4(255, 255, 255, 255), 5, "Damage: %d", GDamage->GetSummonerSpellDamage(GEntityList->Player(), BadDude, kSummonerSpellIgnite));
-				if (BadDude != nullptr && !BadDude->IsDead() && GetDistance(Hero, BadDude) <= 600 && BadDude->GetHealth() <= GDamage->GetSummonerSpellDamage(GEntityList->Player(), BadDude, kSummonerSpellIgnite))
+				if (BadDude != nullptr && !BadDude->IsDead() && GetDistance(Hero, BadDude) <= 600 && BadDude->GetHealth() <= GDamage->GetSummonerSpellDamage(Hero, BadDude, kSummonerSpellIgnite))
 				{
 					IGNITE->CastOnUnit(BadDude);
 				}
@@ -742,18 +703,17 @@ void Combo()
 
 void AutoTrinket()
 {
-	auto HeroDad = GEntityList->Player();
-	if (GEntityList->Player()->GetLevel() < 9 || !GUtility->IsPositionInFountain(GEntityList->Player()->GetPosition())) { return; }
+	if (Hero->GetLevel() < 9 || !GUtility->IsPositionInFountain(Hero->GetPosition())) { return; }
 	if (AutoUpgradeTrinket->GetInteger() != 0)
 	{
 		if (AutoUpgradeTrinket->GetInteger() == 1) //sweeping lense
 		{
-			if(!HeroDad->HasItemId(3364))
+			if(!Hero->HasItemId(3364))
 				GGame->BuyItem(3364); //oracle alteration
 		}
 		if (AutoUpgradeTrinket->GetInteger() == 2) //ward
 		{
-			if (!HeroDad->HasItemId(3363))
+			if (!Hero->HasItemId(3363))
 			GGame->BuyItem(3363); //oracle alteration
 		}
 	}
@@ -777,7 +737,7 @@ PLUGIN_EVENT(void) OnOrbwalkAttack(IUnit* Source, IUnit* Target)
 PLUGIN_EVENT(void) OnOrbwalkAfterAttack(IUnit* Source, IUnit* Target)
 {
 	//Titanic
-	if (TitanicEnabled->Enabled() && Titanic->IsOwned() && Titanic->IsReady() && !GEntityList->Player()->IsDead())
+	if (TitanicEnabled->Enabled() && Titanic->IsOwned() && Titanic->IsReady() && !Hero->IsDead())
 	{
 		Titanic->CastOnPlayer();
 	}
@@ -799,26 +759,45 @@ PLUGIN_EVENT(void) OnOrbwalkAfterAttack(IUnit* Source, IUnit* Target)
 
 }*/
 
+void UpdateSkin()
+{
+	if (SkinEnable->Enabled())
+	{
+		//if (SkinID->GetInteger() != CurrentSkinID)
+		//{
+			Hero->SetSkinId(SkinID->GetInteger());
+			//CurrentSkinID = SkinID->GetInteger();
+			SkinNeedsReset = true;
+		//}
+	}
+	else
+	{
+		if (SkinNeedsReset)
+		{
+			Hero->SetSkinId(Hero->GetSkinId());
+			//CurrentSkinID = Hero->GetSkinId();
+			SkinNeedsReset = false;
+		}
+	}
+}
+
 PLUGIN_EVENT(void) OnGameUpdate()
 {
 	UseDefensives();
 	DelayCast();
-	SkinHack().UpdateSkin();
+	UpdateSkin();
 	CheckKeyPresses();
 	AutoSmite();
 	AutoTrinket();
 
 	if (GOrbwalking->GetOrbwalkingMode() == kModeCombo) { Combo();}
-
-	
 }
 
 PLUGIN_EVENT(void) OnRender()
 {
 	if (SMITE != nullptr && DrawSmiteEnabled->Enabled())
 	{
-		Vec3 vecPosition = GEntityList->Player()->GetPosition();
-		if (GGame->Projection(vecPosition, &AutoSmiteTextPos))
+		if (GGame->Projection(Hero->GetPosition(), &AutoSmiteTextPos))
 		{
 			AutoSmiteTextPos.y += 100;
 			GRender->DrawTextW(AutoSmiteTextPos, Vec4(255, 255, 255, 255), "%s", SmiteActive->Enabled() ? "AUTOSMITE ON" : "AUTOSMITE OFF");
@@ -876,9 +855,9 @@ PLUGIN_EVENT(void) OnBuffAdd(IUnit* Source, void* BuffData)
 	if (GBuffData->GetEndTime(BuffData) - GBuffData->GetStartTime(BuffData) >= CleanseDurationMin->GetFloat())
 	{
 		//CLEANSE
-		if (CLEANSE != nullptr && CLEANSE->IsReady() && !(GPluginSDK->GetEntityList()->Player()->IsDead()))
+		if (CLEANSE != nullptr && CLEANSE->IsReady() && !(Hero->IsDead()))
 		{
-			if (Source == GEntityList->Player() && CleanseActive->Enabled() && !Source->IsDead())
+			if (Source == Hero && CleanseActive->Enabled() && !Source->IsDead())
 			{
 				if (Source->HasBuffOfType(BUFF_Charm) && CleanseCharm->Enabled())
 				{
@@ -934,7 +913,7 @@ PLUGIN_EVENT(void) OnBuffAdd(IUnit* Source, void* BuffData)
 		}
 
 		//QSS
-		if (Source == GEntityList->Player() && !Source->IsDead() && CleanseActive->Enabled() && (QSS->IsOwned() || Scimitar->IsOwned()))
+		if (Source == Hero && !Source->IsDead() && CleanseActive->Enabled() && (QSS->IsOwned() || Scimitar->IsOwned()))
 		{
 			if (Source->HasBuffOfType(BUFF_Charm) && CleanseCharm->Enabled())
 			{
@@ -1082,7 +1061,7 @@ PLUGIN_EVENT(void) OnBuffAdd(IUnit* Source, void* BuffData)
 		}
 
 		//Mikael's
-		if (Mikaels->IsOwned() && Mikaels->IsReady() && !(GEntityList->Player()->IsDead()) && TargetValidForMikaels(Source) && GetDistance(GEntityList->Player(), Source) <= 600 && !Source->IsEnemy(Source) && CleanseActive->Enabled() && !Source->IsDead())
+		if (Mikaels->IsOwned() && Mikaels->IsReady() && !(Hero->IsDead()) && TargetValidForMikaels(Source) && GetDistance(Hero, Source) <= 600 && !Source->IsEnemy(Source) && CleanseActive->Enabled() && !Source->IsDead())
 		{
 			if (Source->HasBuffOfType(BUFF_Charm) && CleanseCharm->Enabled())
 			{
@@ -1160,7 +1139,25 @@ PLUGIN_EVENT(void) OnBuffAdd(IUnit* Source, void* BuffData)
 
 PLUGIN_EVENT(void) OnLevelUp(IUnit* Source, int NewLevel)
 {
-	AutoLevel().LevelUp(Source, NewLevel);
+	if (EnableAutoLevelUp->Enabled() && Source == Hero && NewLevel >= ALUStartLevel->GetInteger()) //auto level
+	{
+		for (int i = 1; i <= 4; i++)
+		{
+			if (ALUR->GetInteger() == i) {
+				Source->LevelUpSpell(kSlotR);
+			}
+			if (ALUQ->GetInteger() == i && !ALUOnlyR->Enabled()) {
+				Source->LevelUpSpell(kSlotQ);
+			}
+			if (ALUW->GetInteger() == i && !ALUOnlyR->Enabled()) {
+				Source->LevelUpSpell(kSlotW);
+			}
+			if (ALUE->GetInteger() == i && !ALUOnlyR->Enabled()) {
+				Source->LevelUpSpell(kSlotE);
+			}
+
+		}
+	}
 }
 
 // Only called for local player, before the spell packet is sent
@@ -1227,6 +1224,8 @@ PLUGIN_API void OnLoad(IPluginSDK* PluginSDK)
 	PluginSDKSetup(PluginSDK);
 	
 	//GUtility->CreateDebugConsole();
+
+	Hero = GEntityList->Player();
 
 		//Initialize Menus
 		MainMenu = GPluginSDK->AddMenu("[Rembrandt AIO] Utility PRO++");
@@ -1337,10 +1336,25 @@ PLUGIN_API void OnLoad(IPluginSDK* PluginSDK)
 		*/
 		GUtility->LogConsole("Menus Loaded");
 
-		AutoLevel().InitMenu(MainMenu);
-		SkinHack().InitMenu(MainMenu);
-		SkinHack().UpdateSkin();
-		GUtility->LogConsole("SkinHack Loaded");
+		std::string szMenuName = std::string(Hero->ChampionName());
+		szMenuName += " Level Builder";
+
+		AutoLevelMainMenu = MainMenu->AddMenu("Auto Level PRO");
+		ChampNameMenu = AutoLevelMainMenu->AddMenu(szMenuName.c_str());
+
+		EnableAutoLevelUp = ChampNameMenu->CheckBox("Enable: ", false);
+		ALUOnlyR = ChampNameMenu->CheckBox("Only level R (Ultimate):", false);
+		ALUR = ChampNameMenu->AddInteger("R: ", 1, 4, 1);
+		ALUQ = ChampNameMenu->AddInteger("Q: ", 1, 4, 2);
+		ALUW = ChampNameMenu->AddInteger("W: ", 1, 4, 3);
+		ALUE = ChampNameMenu->AddInteger("E: ", 1, 4, 4);
+		ALUStartLevel = ChampNameMenu->AddInteger("Start at level: ", 1, 16, 4);
+
+		SkinMenu = MainMenu->AddMenu("Skin Changer");
+		{
+			SkinEnable = SkinMenu->CheckBox("Enable:", false);
+			SkinID = SkinMenu->AddInteger("Select Skin ID:", 1, 30, 1);
+		}
 		LoadSpells();
 		GUtility->LogConsole("Spells Created");
 

@@ -30,7 +30,7 @@ Tristana::Tristana(IMenu* Parent)
 
 Tristana::~Tristana()
 {
-
+	TristanaMenu->Remove();
 }
 
 float Tristana::CalcRDamage(IUnit* Target)
@@ -44,7 +44,70 @@ float Tristana::CalcRDamage(IUnit* Target)
 	else if (Hero->GetSpellLevel(kSlotR) == 3)
 		InitDamage += 500;
 
-	return GDamage->CalcMagicDamage(Hero, Target, InitDamage);
+	auto FinalDamage = GDamage->CalcMagicDamage(Hero, Target, InitDamage);
+
+	std::vector<HeroMastery> MyMasteryBuffer;
+	if (Hero->GetMasteries(MyMasteryBuffer))
+	{
+		double Modifier = 0;
+
+		for (auto Mastery : MyMasteryBuffer)
+		{
+			//PageId 193 - MasteryId 201 - SORCERY: Increases ability and spell damage by 0.4 / 0.8 / 1.2 / 1.6 / 2 %
+			if (Mastery.PageId == 193 && Mastery.MasteryId == 201)
+			{
+				Modifier += (0.4 * Mastery.Points) / 100;
+			}
+			//PageId 193 - MasteryId 124 - DOUBLE EDGED SWORD: You deal 3% increased damage from all sources, but take 1.5% increased damage from all sources.
+			else if (Mastery.PageId == 193 && Mastery.MasteryId == 124)
+			{
+				Modifier += 0.03;
+			}
+			//PageId 62 - MasteryId 254 - ASSASSAIN: Grants 2% increased damage against enemy champions while no allied champions are nearby - 800 range
+			else if (Mastery.PageId == 62 && Mastery.MasteryId == 254)
+			{
+				bool IsActive = true;
+				for (auto Friend : GEntityList->GetAllHeros(true, false))
+				{
+					if (Friend != Hero && (Hero->GetPosition() - Friend->GetPosition()).Length() <= 800)
+					{
+						IsActive = false;
+						break;
+					}
+				}
+
+				if (IsActive) { Modifier += 0.02; }
+			}
+			// PageId 62 - MasteryId 119 - MERCILESS: Grants 0.6 / 1.2 / 1.8 / 2.4 / 3 % increased damage against champions below 40 % health.
+			else if (Mastery.PageId == 62 && Mastery.MasteryId == 119)
+			{
+				if (Target->HealthPercent() < 40)
+					Modifier += (0.6 * Mastery.Points) / 100;
+			}
+		}
+
+		FinalDamage += FinalDamage * Modifier;
+	}
+
+	//check if enemy has double edged sword
+	std::vector<HeroMastery> TarMasteryBuffer;
+	if (Target->GetMasteries(TarMasteryBuffer))
+	{
+		double Modifier = 0;
+
+		for (auto Mastery : TarMasteryBuffer)
+		{
+			//PageId 193 - MasteryId 124 - DOUBLE EDGED SWORD: You deal 3% increased damage from all sources, but take 1.5% increased damage from all sources.
+			if (Mastery.PageId == 193 && Mastery.MasteryId == 124)
+			{
+				Modifier += 0.015;
+			}
+		}
+
+		FinalDamage += FinalDamage * Modifier;
+	}
+
+	return FinalDamage;
 }
 
 float Tristana::CalcEDamage(IUnit* Target)
@@ -61,14 +124,77 @@ float Tristana::CalcEDamage(IUnit* Target)
 	auto BonusPhys = (std::vector<double>({ 0.5, 0.65, 0.8, 0.95, 1.1 }).at(index)) * Hero->BonusDamage();
 	auto BonusMagic = 0.5 * Hero->TotalMagicDamage();
 
-	auto FinalDamage = (InitDamage + BonusPhys + BonusMagic) * DamageModifier;
+	auto AlmostFinalDamage = (InitDamage + BonusPhys + BonusMagic) * DamageModifier;
 
 	/*PHYSICAL DAMAGE :
 	60 / 70 / 80 / 90 / 100 
 	(+50 / 65 / 80 / 95 / 110 % bonus AD) 
 	(+50 % AP) */
 
-	return GDamage->CalcPhysicalDamage(Hero, Target, FinalDamage);
+	auto FinalDamage = GDamage->CalcPhysicalDamage(Hero, Target, AlmostFinalDamage);
+
+	std::vector<HeroMastery> MyMasteryBuffer;
+	if (Hero->GetMasteries(MyMasteryBuffer))
+	{
+		double Modifier = 0;
+
+		for (auto Mastery : MyMasteryBuffer)
+		{
+			//PageId 193 - MasteryId 201 - SORCERY: Increases ability and spell damage by 0.4 / 0.8 / 1.2 / 1.6 / 2 %
+			if (Mastery.PageId == 193 && Mastery.MasteryId == 201)
+			{
+				Modifier += (0.4 * Mastery.Points) / 100;
+			}
+			//PageId 193 - MasteryId 124 - DOUBLE EDGED SWORD: You deal 3% increased damage from all sources, but take 1.5% increased damage from all sources.
+			else if (Mastery.PageId == 193 && Mastery.MasteryId == 124)
+			{
+				Modifier += 0.03;
+			}
+			//PageId 62 - MasteryId 254 - ASSASSAIN: Grants 2% increased damage against enemy champions while no allied champions are nearby - 800 range
+			else if (Mastery.PageId == 62 && Mastery.MasteryId == 254)
+			{
+				bool IsActive = true;
+				for (auto Friend : GEntityList->GetAllHeros(true, false))
+				{
+					if (Friend != Hero && (Hero->GetPosition() - Friend->GetPosition()).Length() <= 800)
+					{
+						IsActive = false;
+						break;
+					}
+				}
+
+				if (IsActive) { Modifier += 0.02; }
+			}
+			// PageId 62 - MasteryId 119 - MERCILESS: Grants 0.6 / 1.2 / 1.8 / 2.4 / 3 % increased damage against champions below 40 % health.
+			else if (Mastery.PageId == 62 && Mastery.MasteryId == 119)
+			{
+				if (Target->HealthPercent() < 40)
+					Modifier += (0.6 * Mastery.Points) / 100;
+			}
+		}
+
+		FinalDamage += FinalDamage * Modifier;
+	}
+
+	//check if enemy has double edged sword
+	std::vector<HeroMastery> TarMasteryBuffer;
+	if (Target->GetMasteries(TarMasteryBuffer))
+	{
+		double Modifier = 0;
+
+		for (auto Mastery : TarMasteryBuffer)
+		{
+			//PageId 193 - MasteryId 124 - DOUBLE EDGED SWORD: You deal 3% increased damage from all sources, but take 1.5% increased damage from all sources.
+			if (Mastery.PageId == 193 && Mastery.MasteryId == 124)
+			{
+				Modifier += 0.015;
+			}
+		}
+
+		FinalDamage += FinalDamage * Modifier;
+	}
+
+	return FinalDamage;
 }
 
 int Tristana::EnemiesInRange(IUnit* Source, float range)
@@ -147,12 +273,12 @@ void Tristana::BeforeAttack(IUnit* Target)
 
 void Tristana::OnInterruptible(InterruptibleSpell const& Args)
 {
-	if (GOrbwalking->GetOrbwalkingMode() == kModeCombo && Args.Target != nullptr && Args.Target->IsEnemy(Hero) && InteruptSpellCasts->Enabled() && R->IsReady() && Args.DangerLevel >= kHighDanger)
-		R->CastOnTarget(Args.Target);
+	if (GOrbwalking->GetOrbwalkingMode() == kModeCombo && Args.Source != nullptr && Args.Source->IsEnemy(Hero) && InteruptSpellCasts->Enabled() && R->IsReady() && Args.DangerLevel >= kHighDanger)
+		R->CastOnTarget(Args.Source);
 }
 
 void Tristana::OnGapCloser(GapCloserSpell const& Args)
 {
-	if (GOrbwalking->GetOrbwalkingMode() == kModeCombo && RGapCloser->Enabled() && Args.Sender->IsEnemy(Hero) && Args.Sender->IsValidTarget() && !Args.Sender->IsDead() && (Hero->GetPosition() - Args.EndPosition).Length() < 200)
-		R->CastOnTarget(Args.Sender);
+	if (GOrbwalking->GetOrbwalkingMode() == kModeCombo && RGapCloser->Enabled() && Args.Source->IsEnemy(Hero) && Args.Source->IsValidTarget() && !Args.Source->IsDead() && (Hero->GetPosition() - Args.EndPosition).Length() < 200)
+		R->CastOnTarget(Args.Source);
 }

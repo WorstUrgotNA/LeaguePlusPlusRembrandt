@@ -6,8 +6,10 @@ Twitch::Twitch(IMenu* Parent)
 
 	//Create Spells
 	Q = GPluginSDK->CreateSpell2(kSlotQ, kTargetCast, false, false, kCollidesWithNothing);
-	W = GPluginSDK->CreateSpell2(kSlotW, kCircleCast, true, true, kCollidesWithYasuoWall);
-	E = GPluginSDK->CreateSpell2(kSlotE, kTargetCast, false, false, kCollidesWithNothing);
+	W = GPluginSDK->CreateSpell2(kSlotW, kLineCast, true, true, (kCollidesWithYasuoWall));
+	W->SetSkillshot(0.25f, 275.f, 1400.f, 900.f);
+	E = GPluginSDK->CreateSpell2(kSlotE, kTargetCast, true, false, (kCollidesWithNothing));
+	E->SetSkillshot(0.25f, 0.f, 1000.f, 1200.f);
 	R = GPluginSDK->CreateSpell2(kSlotR, kTargetCast, false, false, kCollidesWithNothing);
 	//RECALL = GPluginSDK->CreateSpell2(kSlotRecall, kTargetCast, false, false, kCollidesWithNothing);
 
@@ -15,10 +17,14 @@ Twitch::Twitch(IMenu* Parent)
 	//Menu
 	TwitchMenu = Parent->AddMenu("Twitch PRO++");
 	ComboQOption = TwitchMenu->CheckBox("Use Q in Combo:", true);
+	QInRange = TwitchMenu->AddFloat("Use Combo-Q if Enemy in X Range:", 0, 3000, 600);
 	ComboWOption = TwitchMenu->CheckBox("Use W in Combo:", true);
 	ComboETypeOption = TwitchMenu->AddSelection("Use E in Combo:", 0, ComboEType);
+	EEnemyLeaving = TwitchMenu->CheckBox("Use E if Enemy Escaping Range:", true);
+	EJungleKS = TwitchMenu->CheckBox("Use E to KS Jungle Mobs:", true);
 	SaveManaForE = TwitchMenu->CheckBox("Save Mana for E:", true);
 	QRecall = TwitchMenu->CheckBox("Stealth Recall:", true);
+	WUnderTurret = TwitchMenu->CheckBox("Use W if Under Enemy Turret:", false);
 	DrawReady = TwitchMenu->CheckBox("Draw Only Ready Spells:", true);
 	DrawW = TwitchMenu->CheckBox("Draw W Range:", true);
 	DrawE = TwitchMenu->CheckBox("Draw E Range:", true);
@@ -27,7 +33,7 @@ Twitch::Twitch(IMenu* Parent)
 
 Twitch::~Twitch()
 {
-
+	TwitchMenu->Remove();
 }
 
 int Twitch::EnemiesInRange(IUnit* Source, float range)
@@ -74,42 +80,113 @@ float Twitch::CalcEDamage(IUnit* Target)
 		BONUS DAMAGE PER STACK: 15 / 20 / 25 / 30 / 35 (+ 25% bonus AD) (+ 20% AP)
 		*/
 
-	return GDamage->CalcPhysicalDamage(Hero, Target, InitDamage);
+	auto FinalDamage = GDamage->CalcPhysicalDamage(Hero, Target, InitDamage);
+
+	std::vector<HeroMastery> MyMasteryBuffer;
+	if (Hero->GetMasteries(MyMasteryBuffer))
+	{
+		double Modifier = 0;
+
+		for (auto Mastery : MyMasteryBuffer)
+		{
+			//PageId 193 - MasteryId 201 - SORCERY: Increases ability and spell damage by 0.4 / 0.8 / 1.2 / 1.6 / 2 %
+			if (Mastery.PageId == 193 && Mastery.MasteryId == 201)
+			{
+				Modifier += (0.4 * Mastery.Points) / 100;
+			}
+			//PageId 193 - MasteryId 124 - DOUBLE EDGED SWORD: You deal 3% increased damage from all sources, but take 1.5% increased damage from all sources.
+			else if (Mastery.PageId == 193 && Mastery.MasteryId == 124)
+			{
+				Modifier += 0.03;
+			}
+			//PageId 62 - MasteryId 254 - ASSASSAIN: Grants 2% increased damage against enemy champions while no allied champions are nearby - 800 range
+			else if (Mastery.PageId == 62 && Mastery.MasteryId == 254 && Target->IsHero())
+			{
+				bool IsActive = true;
+				for (auto Friend : GEntityList->GetAllHeros(true, false))
+				{
+					if (Friend != Hero && (Hero->GetPosition() - Friend->GetPosition()).Length() <= 800)
+					{
+						IsActive = false;
+						break;
+					}
+				}
+
+				if (IsActive) { Modifier += 0.02; }
+			}
+			// PageId 62 - MasteryId 119 - MERCILESS: Grants 0.6 / 1.2 / 1.8 / 2.4 / 3 % increased damage against champions below 40 % health.
+			else if (Mastery.PageId == 62 && Mastery.MasteryId == 119 && Target->IsHero())
+			{
+				if (Target->HealthPercent() < 40)
+					Modifier += (0.6 * Mastery.Points) / 100;
+			}
+		}
+
+		FinalDamage += FinalDamage * Modifier;
+	}
+
+	//check if enemy has double edged sword
+	std::vector<HeroMastery> TarMasteryBuffer;
+	if (Target->GetMasteries(TarMasteryBuffer))
+	{
+		double Modifier = 0;
+
+		for (auto Mastery : TarMasteryBuffer)
+		{
+			//PageId 193 - MasteryId 124 - DOUBLE EDGED SWORD: You deal 3% increased damage from all sources, but take 1.5% increased damage from all sources.
+			if (Mastery.PageId == 193 && Mastery.MasteryId == 124)
+			{
+				Modifier += 0.015;
+			}
+		}
+
+		FinalDamage += FinalDamage * Modifier;
+	}
+
+	//GRender->Notification(Vec4(255, 255, 255, 255), 0, "%f", FinalDamage);
+
+	return FinalDamage;
 }
 
 
 void Twitch::Combo()
 {
-	for (auto Enemy : GEntityList->GetAllHeros(false, true))
+	for (auto const& Enemy : GEntityList->GetAllHeros(false, true))
 	{
-		auto flDistance = (GEntityList->Player()->GetPosition() - Enemy->GetPosition()).Length();
-		if (Enemy->IsValidTarget() && !Enemy->IsDead() && !Enemy->IsClone())
+		if (Enemy->IsValidTarget() && !Enemy->IsClone())
 		{
+			auto flDistance = (Hero->GetPosition() - Enemy->GetPosition()).Length();
+
 			if (Enemy->HasBuff("twitchdeadlyvenom"))
 			{
-				if (E->IsReady() && flDistance < E->Range()) // Use E in Combo
+				if (flDistance <= E->Range()) // Use E in Combo
 				{
 					if (ComboETypeOption->GetInteger() == 1 && (Enemy->GetBuffCount("twitchdeadlyvenom") == 6 || CalcEDamage(Enemy) > Enemy->GetHealth()))
-						E->CastOnPlayer();
-					else if (ComboETypeOption->GetInteger() == 0 && CalcEDamage(Enemy) > Enemy->GetHealth())
-						E->CastOnPlayer();
+						if (E->CastOnPlayer()) { return; }
+					if (ComboETypeOption->GetInteger() == 0 && CalcEDamage(Enemy) > Enemy->GetHealth())
+						if (E->CastOnPlayer()) { return; }
+					if (EEnemyLeaving->Enabled() && flDistance > E->Range() - 20 && !Enemy->IsFacing(Hero))
+						if (E->CastOnPlayer()) { return; }
 				}
 			}
 
-			if (ComboQOption->Enabled() && Q->IsReady() && flDistance < 600)
+			if (ComboQOption->Enabled() && Q->IsReady() && flDistance < QInRange->GetFloat())
 			{
 				if (SaveManaForE->Enabled() && Hero->GetMana() - Q->ManaCost() < E->ManaCost())
 					continue;
-				Q->CastOnPlayer();
-			}
-
-			if (ComboWOption->Enabled() && W->IsReady() && flDistance < W->Range() && !Hero->HasBuff("globalcamouflage") && !Hero->HasBuff("twitchhideinshadowsbuff"))
-			{
-				if (SaveManaForE->Enabled() && Hero->GetMana() - W->ManaCost() < E->ManaCost())
-					continue;
-				W->CastOnTarget(GTargetSelector->FindTarget(QuickestKill, PhysicalDamage, W->Range()));
+				if (Q->CastOnPlayer()) { return; }
 			}
 		}
+	}
+	if (EnemiesInRange(Hero, Hero->AttackRange() + Hero->BoundingRadius()) == 0 && ComboWOption->Enabled() && !Hero->HasBuff("globalcamouflage") && !Hero->HasBuff("twitchhideinshadowsbuff"))
+	{
+		if (SaveManaForE->Enabled() && Hero->GetMana() - W->ManaCost() < E->ManaCost())
+			return;
+
+		if (!WUnderTurret->Enabled() && GUtility->IsPositionUnderTurret(Hero->GetPosition()))
+			return;
+		
+		W->CastOnTarget(GTargetSelector->FindTarget(QuickestKill, PhysicalDamage, W->Range()));
 	}
 }
 
@@ -117,6 +194,20 @@ void Twitch::OnGameUpdate()
 {
 	if (GOrbwalking->GetOrbwalkingMode() == kModeCombo)
 		Combo();
+
+	if (EJungleKS->Enabled() && (GOrbwalking->GetOrbwalkingMode() == kModeCombo || GOrbwalking->GetOrbwalkingMode() == kModeLaneClear))
+	{
+		for (auto JGCreep : GEntityList->GetAllMinions(false, false, true))
+		{
+			if (JGCreep->IsValidTarget(Hero, E->Range()) && JGCreep->HasBuff("twitchdeadlyvenom") && CalcEDamage(JGCreep) > JGCreep->GetHealth())
+			{
+				if (strstr(JGCreep->GetObjectName(), "Red") || strstr(JGCreep->GetObjectName(), "Blue") ||
+					strstr(JGCreep->GetObjectName(), "Dragon") || strstr(JGCreep->GetObjectName(), "Rift") || strstr(JGCreep->GetObjectName(), "Baron"))
+					if (E->CastOnPlayer()) { return; }
+			}
+		}
+	}
+
 }
 
 void Twitch::OnRender()
@@ -154,27 +245,27 @@ bool Twitch::OnPreCast(int Slot, IUnit* Target, Vec3* StartPosition, Vec3* EndPo
 	return true;
 }
 
-void Twitch::OnSpellCast(CastedSpell const& Args)
+void Twitch::OnRealSpellCast(CastedSpell const& Args)
 {
-		
+	if (Args.Caster_->IsEnemy(Hero) && Args.Name_ == "SummonerFlash" && Args.Caster_->HasBuff("twitchdeadlyvenom") && (Hero->GetPosition() - Args.Caster_->GetPosition()).Length() < E->Range() && (Hero->GetPosition() - Args.EndPosition_).Length() > E->Range())
+	{
+		if (E->CastOnPlayer()) { return; }
+	}
 }
 
 void Twitch::OnOrbwalkAttack(IUnit* Source, IUnit* Target)
 {
 	if (GOrbwalking->GetOrbwalkingMode() == kModeCombo)
 	{
-		for (auto Enemy : GEntityList->GetAllHeros(false, true))
+		if (Target->IsValidTarget() && Target->IsHero())
 		{
-			auto flDistance = (GEntityList->Player()->GetPosition() - Enemy->GetPosition()).Length();
-			if (Enemy->IsValidTarget() && !Enemy->IsDead() && !Enemy->IsClone())
-			{
-				if (ComboWOption->Enabled() && W->IsReady() && flDistance < W->Range() && !Hero->HasBuff("globalcamouflage"))
-				{
-					if (SaveManaForE->Enabled() && Hero->GetMana() - W->ManaCost() < E->ManaCost())
-						continue;
-					W->CastOnTarget(GTargetSelector->FindTarget(QuickestKill, PhysicalDamage, W->Range()));
-				}
-			}
+			if (SaveManaForE->Enabled() && Hero->GetMana() - W->ManaCost() < E->ManaCost())
+				return;
+
+			if (!WUnderTurret->Enabled() && GUtility->IsPositionUnderTurret(Hero->GetPosition()))
+				return;
+
+			W->CastOnTarget(GTargetSelector->FindTarget(QuickestKill, PhysicalDamage, W->Range()));
 		}
 	}
 }

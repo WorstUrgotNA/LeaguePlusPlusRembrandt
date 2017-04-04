@@ -44,7 +44,7 @@ Kogmaw::Kogmaw(IMenu* Parent)
 
 Kogmaw::~Kogmaw()
 {
-
+	KogmawMenu->Remove();
 }
 
 float Kogmaw::GetWRange()
@@ -67,40 +67,106 @@ float Kogmaw::CalcRDamage(IUnit* Target)
 
 	// MAGIC DAMAGE: 100 / 140 / 180 (+ 65% bonus AD) (+ 25% AP)
 
-	return GDamage->CalcMagicDamage(Hero, Target, InitDamage);
+	auto FinalDamage = GDamage->CalcMagicDamage(Hero, Target, InitDamage);
+
+	std::vector<HeroMastery> MyMasteryBuffer;
+	if (Hero->GetMasteries(MyMasteryBuffer))
+	{
+		double Modifier = 0;
+
+		for (auto Mastery : MyMasteryBuffer)
+		{
+			//PageId 193 - MasteryId 201 - SORCERY: Increases ability and spell damage by 0.4 / 0.8 / 1.2 / 1.6 / 2 %
+			if (Mastery.PageId == 193 && Mastery.MasteryId == 201)
+			{
+				Modifier += (0.4 * Mastery.Points) / 100;
+			}
+			//PageId 193 - MasteryId 124 - DOUBLE EDGED SWORD: You deal 3% increased damage from all sources, but take 1.5% increased damage from all sources.
+			else if (Mastery.PageId == 193 && Mastery.MasteryId == 124)
+			{
+				Modifier += 0.03;
+			}
+			//PageId 62 - MasteryId 254 - ASSASSAIN: Grants 2% increased damage against enemy champions while no allied champions are nearby - 800 range
+			else if (Mastery.PageId == 62 && Mastery.MasteryId == 254)
+			{
+				bool IsActive = true;
+				for (auto Friend : GEntityList->GetAllHeros(true, false))
+				{
+					if (Friend != Hero && (Hero->GetPosition() - Friend->GetPosition()).Length() <= 800)
+					{
+						IsActive = false;
+						break;
+					}
+				}
+
+				if (IsActive) { Modifier += 0.02; }
+			}
+			// PageId 62 - MasteryId 119 - MERCILESS: Grants 0.6 / 1.2 / 1.8 / 2.4 / 3 % increased damage against champions below 40 % health.
+			else if (Mastery.PageId == 62 && Mastery.MasteryId == 119)
+			{
+				if (Target->HealthPercent() < 40)
+					Modifier += (0.6 * Mastery.Points) / 100;
+			}
+		}
+
+		FinalDamage += FinalDamage * Modifier;
+	}
+
+	//check if enemy has double edged sword
+	std::vector<HeroMastery> TarMasteryBuffer;
+	if (Target->GetMasteries(TarMasteryBuffer))
+	{
+		double Modifier = 0;
+
+		for (auto Mastery : TarMasteryBuffer)
+		{
+			//PageId 193 - MasteryId 124 - DOUBLE EDGED SWORD: You deal 3% increased damage from all sources, but take 1.5% increased damage from all sources.
+			if (Mastery.PageId == 193 && Mastery.MasteryId == 124)
+			{
+				Modifier += 0.015;
+			}
+		}
+
+		FinalDamage += FinalDamage * Modifier;
+	}
+
+	return FinalDamage;
 }
 
 
 void Kogmaw::Combo()
 {
-	for (auto Enemy : GEntityList->GetAllHeros(false, true))
+	for (auto const& Enemy : GEntityList->GetAllHeros(false, true))
 	{
-		if (Enemy->IsValidTarget() && !Enemy->IsDead())
+		if (Enemy->IsValidTarget())
 		{
-			auto Target = GTargetSelector->GetFocusedTarget() != nullptr ? GTargetSelector->GetFocusedTarget() : Enemy;
-			auto flDistance = (Hero->GetPosition() - Target->GetPosition()).Length();
+			auto flDistance = (Hero->GetPosition() - Enemy->GetPosition()).Length();
 
-			if (flDistance <= GetWRange() && WinCombo->Enabled() && W->IsReady() && WinCombo->Enabled())
-				W->CastOnPlayer();
-			if (flDistance > Hero->AttackRange() + Hero->BoundingRadius() && Q->IsReady() && QinCombo->Enabled())
+			if (flDistance <= GetWRange() && WinCombo->Enabled() && WinCombo->Enabled())
 			{
-				Q->CastOnTarget(Target, kHitChanceVeryHigh);
+				if (W->CastOnPlayer()) { return; }
+			}
+				
+			if (flDistance > Hero->AttackRange() + Hero->BoundingRadius() && QinCombo->Enabled())
+			{
+				if (Q->CastOnTarget(Enemy, kHitChanceVeryHigh)) { return; }
 			}
 
-			if (flDistance < GetRRange() && Target != nullptr && R->IsReady() && flDistance > Hero->AttackRange() + Hero->BoundingRadius()
-				&& Target->HealthPercent() < 40 && (Hero->GetBuffCount("kogmawlivingartillerycost") < RMaxStacks->GetInteger() || CalcRDamage(Target) > Target->GetHealth()))
+			if (flDistance < GetRRange() && R->IsReady() && flDistance > Hero->AttackRange() + Hero->BoundingRadius()
+				&& Enemy->HealthPercent() < 40 && (Hero->GetBuffCount("kogmawlivingartillerycost") < RMaxStacks->GetInteger() || CalcRDamage(Enemy) > Enemy->GetHealth()))
 			{
 				Vec3 CastPos;
-				GPrediction->GetFutureUnitPosition(Target, 0.5, true, CastPos);
-				R->CastOnPosition(CastPos);
+				GPrediction->GetFutureUnitPosition(Enemy, 0.5, true, CastPos);
+				if ((CastPos - Hero->GetPosition()).Length() < GetRRange())
+					if (R->CastOnPosition(CastPos)) { return; }
 				//GRender->Notification(Vec4(255, 255, 255, 255), 0, "%.f", CalcRDamage(Target));
 			}
-
-			if (E->IsReady() && flDistance < ECastDistance->GetFloat() && Hero->GetMana() - E->ManaCost() > W->ManaCost())
-			{
-				E->CastOnTarget(Target, kHitChanceVeryHigh);
-			}
 		}
+	}
+
+	if (Hero->GetMana() - E->ManaCost() > W->ManaCost())
+	{
+		if (E->CastOnTarget(GTargetSelector->FindTarget(QuickestKill, SpellDamage, ECastDistance->GetFloat()), kHitChanceVeryHigh)) { return; }
 	}
 }
 
@@ -133,7 +199,7 @@ void Kogmaw::OnGameUpdate()
 
 
 	//key press
-	keystate = GetAsyncKeyState(SemiManualMenuKey->GetInteger()); //smite key
+	keystate = GetAsyncKeyState(SemiManualMenuKey->GetInteger()); //ult key
 
 	if (GUtility->IsLeagueWindowFocused() && !GGame->IsChatOpen())
 	{
@@ -145,20 +211,15 @@ void Kogmaw::OnGameUpdate()
 				//toggle smite
 				if (R->IsReady())
 				{
-					for (auto Enemy : GEntityList->GetAllHeros(false, true))
+					
+					auto Target = GTargetSelector->FindTarget(QuickestKill, SpellDamage, GetRRange());
+					if (Target)
 					{
-						if (Enemy->IsValidTarget() && !Enemy->IsDead())
-						{
-							auto Target = GTargetSelector->GetFocusedTarget() != nullptr ? GTargetSelector->GetFocusedTarget() : Enemy;
-							auto flDistance = (Hero->GetPosition() - Target->GetPosition()).Length();
+						auto flDistance = (Hero->GetPosition() - Target->GetPosition()).Length();
 
-							if (flDistance < GetRRange() && Target != nullptr)
-							{
-								Vec3 CastPos;
-								GPrediction->GetFutureUnitPosition(Target, 0.5, true, CastPos);
-								R->CastOnPosition(CastPos);
-							}
-						}
+						Vec3 CastPos;
+						GPrediction->GetFutureUnitPosition(Target, 0.5, true, CastPos);
+						R->CastOnPosition(CastPos);
 					}
 				}
 				SemiManualKey = true;
@@ -210,7 +271,7 @@ void Kogmaw::OnSpellCast(CastedSpell const& Args)
 
 void Kogmaw::OnOrbwalkAttack(IUnit* Source, IUnit* Target)
 {
-	if (Target->IsHero() && GOrbwalking->GetOrbwalkingMode() == kModeCombo && Target->IsValidTarget() && !Target->IsDead())
+	if (Target->IsHero() && GOrbwalking->GetOrbwalkingMode() == kModeCombo && Target->IsValidTarget())
 	{
 		if (QinCombo->Enabled()) { Q->CastOnTarget(Target, kHitChanceVeryHigh); }
 	}
@@ -218,21 +279,9 @@ void Kogmaw::OnOrbwalkAttack(IUnit* Source, IUnit* Target)
 
 void Kogmaw::BeforeAttack(IUnit* Target)
 {
-	if (Target->IsHero() && GOrbwalking->GetOrbwalkingMode() == kModeCombo && Target->IsValidTarget() && !Target->IsDead())
+	if (Target->IsHero() && GOrbwalking->GetOrbwalkingMode() == kModeCombo && Target->IsValidTarget())
 	{
 		if (WinCombo->Enabled()) { W->CastOnPlayer(); }
 	}
 }
 
-void Kogmaw::OnNewPath(IUnit* Source, std::vector<Vec3> const& Path)
-{
-	/*if (GOrbwalking->GetOrbwalkingMode() == kModeLaneClear && Source->IsHero() && !Source->IsDead() && Source->IsEnemy(Hero)) //&& strstr(Args.Name_, "BasicAttack") && strstr(Args.Name_, "CritAttack")
-	{
-		if (R->IsReady())
-		{
-			Vec3 CastPos;
-			GPrediction->GetFutureUnitPosition(Source, 1.2, true, CastPos);
-			R->CastOnTarget(Source);
-		}
-	}*/
-}

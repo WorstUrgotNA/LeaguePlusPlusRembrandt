@@ -20,6 +20,7 @@ struct GankHero
 	float	LastHiddenTime;
 	float	TotalTimeHidden;
 	bool	IsVisible;
+	bool	IsOnScreen;
 	bool	IsJungle;
 	float	LastHiddenTimeGank;
 	ITexture* ChampIcon;
@@ -56,6 +57,11 @@ struct GankMenu
 	IMenuOption* DrawJunglerTrackerPingGlobal;
 	IMenuOption* DrawJunglerTrackerPingType;
 	IMenuOption* PingInterval;
+	//radar
+	IMenuOption* EnableRadar;
+	IMenuOption* CircleRadius;
+	IMenuOption* DetectionRadius;
+	IMenuOption* CircleQuality;
 
 	std::map<int, IMenuOption*> ChampionsToPingOnGank;
 };
@@ -76,6 +82,7 @@ private:
 	void UpdateChampions();
 	void GetHealthColor(GankHero* Hero, Vec4& Out);
 	bool DoesTextureExist(std::string const& Filename, std::string& FullPath);
+	void DrawCircleMinimap(Vec2 Position, float Radius, int Quality, Vec4 Color = Vec4(255, 255, 0, 255));
 	ITexture* CreateTextureEx(std::string const& Filename);
 
 private:

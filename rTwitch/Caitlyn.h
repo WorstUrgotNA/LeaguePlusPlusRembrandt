@@ -9,7 +9,7 @@ public:
 
 	int EnemiesInRange(IUnit* Source, float range);
 	int AlliesInRange(IUnit* Source, float range);
-	float CalcRDamage(IUnit* Target);
+	float CalcSpellDamage(IUnit* Target, eSpellSlot Slot);
 
 	void OnGameUpdate();
 	void OnRender();
@@ -21,9 +21,27 @@ public:
 
 private:
 	IMenu*			CaitlynMenu;
+	IMenu*			ComboMenu;
+	IMenu*			DrawMenu;
+	IMenu*			HarassMenu;
+	IMenu*			LaneClearMenu;
+	IMenu*			ExtraMenu;
+	IMenuOption*	WAfterE;
+	IMenuOption*	SafeQKS;
+	IMenuOption*	RInCombo;
+	IMenuOption*	TrapEnemyCastHarass;
+	IMenuOption*	SafeQHarass;
+	IMenuOption*	SafeQHarassMana;
+	IMenuOption*	TrapImmobileCombo;
+	IMenuOption*	QInCombo;
+	IMenuOption*	ShortQDisableLevel;
 	IMenuOption*	SemiManualMenuKey;
 	IMenuOption*	DrawReady;
 	IMenuOption*	DrawQ;
+	IMenuOption*	QColor;
+	IMenuOption*	WColor;
+	IMenuOption*	EColor;
+	IMenuOption*	RColor;
 	IMenuOption*	DrawW;
 	IMenuOption*	DrawE;
 	IMenuOption*	DrawR;
@@ -34,6 +52,8 @@ private:
 	IMenuOption*	LaneClearMana;
 	IMenuOption*	LaneClearQ;
 	IMenuOption*	EToMouse;
+	IMenuOption*	EWhenClose;
+	IMenuOption*	EBeforeLevel;
 	std::vector<std::string> TrapEnemyCastType;
 
 private:
@@ -43,6 +63,7 @@ private:
 	ISpell2*		R;
 	short			keystate;
 	IUnit*			ComboTarget;
+	IUnit*			Hero;
 	bool			SemiManualKey;
 	bool			ComboTrap;
 	bool			UseNet;

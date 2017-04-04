@@ -35,6 +35,7 @@ struct TrackerMenu
 	IMenuOption*		Enabled;
 	IMenuOption*		TrackWards;
 	IMenuOption*		ToggleRangeKey;
+	IMenuOption*		RemoveWardsKey;
 	IMenuOption*		ShowVisionRange;
 	TrackerJungleMenu	Jungle;
 };
@@ -140,4 +141,5 @@ private:
 	IFont*						MinimapText;
 	short						keystate;
 	bool						IndicatorsEnabled;
+	bool						MouseButtonDown;
 };

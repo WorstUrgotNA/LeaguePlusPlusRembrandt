@@ -34,7 +34,7 @@ Sivir::Sivir(IMenu* Parent)
 
 Sivir::~Sivir()
 {
-
+	SivirMenu->Remove();
 }
 
 void Sivir::HandleKeyPress()

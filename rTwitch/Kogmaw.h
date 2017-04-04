@@ -12,7 +12,6 @@ public:
 	void OnOrbwalkAttack(IUnit* Source, IUnit* Target);
 	void OnSpellCast(CastedSpell const& Args);
 	void BeforeAttack(IUnit* Target);
-	void OnNewPath(IUnit* Source, std::vector<Vec3> const& Path);
 
 private:
 	IMenu*			KogmawMenu;

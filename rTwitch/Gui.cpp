@@ -22,8 +22,9 @@ Gui::Gui(IMenu* Parent)
 	InitLogoDuration = GGame->Time() + 3;
 	Opac = 0;
 	
-	Textures->ChampLogo->SetScaleBySize(Vec2(Resolution.x, Resolution.y));;
-	Textures->UHud->SetScaleBySize(Vec2(Resolution.x, Resolution.y));
+	//Textures->ChampLogo->SetScaleBySize(Vec2(Resolution.x, Resolution.y));;
+	//if (Resolution.y < 1080.f)
+		Textures->UHud->SetScaleBySize(Vec2(Resolution.x, Resolution.y));
 }
 
 Gui::~Gui()
@@ -128,23 +129,23 @@ void Gui::OnRender()
 			float Opacity = 255 * (1.f - ((InitLogoDuration - GGame->Time()) / 3));
 			Textures->UHud->SetColor(Vec4(255, 255, 255, Opacity));
 			Textures->UHud->Draw(0, 0);
-			Textures->ChampLogo->SetColor(Vec4(255, 255, 255, Opacity));
-			Textures->ChampLogo->Draw(0, 0);
+			//Textures->ChampLogo->SetColor(Vec4(255, 255, 255, Opacity));
+			//Textures->ChampLogo->Draw(0, 0);
 		}
 		else if (LogoDuration - GGame->Time() < 1)
 		{
 			float Opacity = 255 * ((LogoDuration - GGame->Time()) / 1);
 			Textures->UHud->SetColor(Vec4(255, 255, 255, Opacity));
 			Textures->UHud->Draw(0, 0);
-			Textures->ChampLogo->SetColor(Vec4(255, 255, 255, Opacity));
-			Textures->ChampLogo->Draw(0, 0);
+			//Textures->ChampLogo->SetColor(Vec4(255, 255, 255, Opacity));
+			//Textures->ChampLogo->Draw(0, 0);
 		}
 		else
 		{
 			Textures->UHud->SetColor(Vec4(255, 255, 255, 255));
 			Textures->UHud->Draw(0, 0);
-			Textures->ChampLogo->SetColor(Vec4(255, 255, 255, 255));
-			Textures->ChampLogo->Draw(0, 0);
+			//Textures->ChampLogo->SetColor(Vec4(255, 255, 255, 255));
+			//Textures->ChampLogo->Draw(0, 0);
 		}
 	}
 }
@@ -596,7 +597,7 @@ void Gui::RenderPlayer3DElement(HeroUI* Ui)
 
 
 	vecHealthBar += vecOffset;
-	if (!bIsLocal)
+	/*if (!bIsLocal)
 	{
 		if (strstr(Ui->Player->ChampionName(), "Xin"))
 			vecHealthBar.y += 16;
@@ -623,9 +624,9 @@ void Gui::RenderPlayer3DElement(HeroUI* Ui)
 			vecHealthBar.y -= 8;
 			vecHealthBar.x -= 10;
 		}
-	}
+	}*/
 	if (!bIsLocal)
-		vecHealthBar.y -= 4;
+		vecHealthBar.y += 5;
 
 	if (bIsLocal)
 	{
@@ -641,7 +642,7 @@ void Gui::RenderPlayer3DElement(HeroUI* Ui)
 	else
 	{
 		vecHealthBar.x -= 34;
-		vecHealthBar.y -= 5 + Menu.YOffset3D->GetFloat();
+		vecHealthBar.y -= 5;
 		Textures->CDHudBG->Draw(vecHealthBar.x, vecHealthBar.y);
 
 		float ExpRatio = Ui->Player->GetExperience() / GUtility->GetExperienceRequiredForLevel(Ui->Player->GetLevel() + 1);
@@ -690,7 +691,8 @@ void Gui::RenderPlayer3DElement(HeroUI* Ui)
 
 			// Needs to account for ammo CD as well
 			if (flCooldown > 0.f && Ui->Player->GetSpellLevel(i) > 0)
-				Fonts->CooldownFont->Render(vecHealthBar.x + vecSpell.x + (vecSize.x + 3) / 2, vecHealthBar.y + vecSpell.y + vecSize.y + 10, "%i", static_cast<int>(Ui->Player->GetSpellRemainingCooldown(i) + 1));
+				GRender->DrawTextW(Vec2(vecHealthBar.x - 10 + vecSpell.x + (vecSize.x + 3) / 2, vecHealthBar.y + vecSpell.y + vecSize.y + 5), Vec4(255,255,255,255), "%i", static_cast<int>(Ui->Player->GetSpellRemainingCooldown(i) + 1));
+				//Fonts->CooldownFont->Render(vecHealthBar.x + vecSpell.x + (vecSize.x + 3) / 2, vecHealthBar.y + vecSpell.y + vecSize.y + 10, "%i", static_cast<int>(Ui->Player->GetSpellRemainingCooldown(i) + 1));
 		}
 		else
 		{
@@ -700,7 +702,8 @@ void Gui::RenderPlayer3DElement(HeroUI* Ui)
 
 			// Needs to account for ammo CD as well
 			if (flCooldown > 0.f && Ui->Player->GetSpellLevel(i) > 0)
-				Fonts->CooldownFont->Render(vecHealthBar.x + 32 + vecSpell.x + (vecSize.x + 3) / 2, vecHealthBar.y + vecSpell.y + vecSize.y + 9, "%i", static_cast<int>(Ui->Player->GetSpellRemainingCooldown(i) + 1));
+				GRender->DrawTextW(Vec2(vecHealthBar.x + 25 + vecSpell.x + (vecSize.x + 3) / 2, vecHealthBar.y + vecSpell.y + vecSize.y + 4), Vec4(255,255,255,255), "%i", static_cast<int>(Ui->Player->GetSpellRemainingCooldown(i) + 1));
+				//Fonts->CooldownFont->Render(vecHealthBar.x + 32 + vecSpell.x + (vecSize.x + 3) / 2, vecHealthBar.y + vecSpell.y + vecSize.y + 9, "%i", static_cast<int>(Ui->Player->GetSpellRemainingCooldown(i) + 1));
 		}
 		vecSpell.x += flSkip;
 	}
@@ -968,8 +971,8 @@ void Gui::LoadMenu()
 
 	Menu.RembrandtSettings = Menu.GUI2D->AddMenu("Settings (Rembrandt Style)");
 	Menu.TeamOnLeft = Menu.RembrandtSettings->CheckBox("Flip Sides:", true);
-	Menu.ShowSelf = Menu.RembrandtSettings->CheckBox("Draw My UI:", true);
-	Menu.ShowTeam = Menu.RembrandtSettings->CheckBox("Draw Team UI:", true);
+	Menu.ShowSelf = Menu.RembrandtSettings->CheckBox("Draw My UI:", false);
+	Menu.ShowTeam = Menu.RembrandtSettings->CheckBox("Draw Team UI:", false);
 	Menu.ShowEnemies = Menu.RembrandtSettings->CheckBox("Draw Enemy UI:", true);
 	Menu.DrawHPBarText = Menu.RembrandtSettings->CheckBox("Draw Text on Health Bar:", true);
 	Menu.DrawManaBarText = Menu.RembrandtSettings->CheckBox("Draw Text on Mana Bar:", true);
@@ -993,11 +996,11 @@ void Gui::LoadMenu()
 	
 
 	Menu.GUI3D = Menu.Owner->AddMenu("3D GUI Options");
-	Menu.Show3DHud = Menu.GUI3D->CheckBox("Draw 3D HUD", true);
+	Menu.Show3DHud = Menu.GUI3D->CheckBox("Draw 3D HUD", false);
 	Menu.ShowSelf3D = Menu.GUI3D->CheckBox("Draw My UI:", true);
 	Menu.ShowTeam3D = Menu.GUI3D->CheckBox("Draw Team UI:", true);
 	Menu.ShowEnemies3D = Menu.GUI3D->CheckBox("Draw Enemy UI:", true);
-	Menu.YOffset3D = Menu.GUI3D->AddFloat("Health Bar Position Offset:", -50, 50, 0);
+	//Menu.YOffset3D = Menu.GUI3D->AddFloat("Health Bar Position Offset:", -50, 50, 0);
 	
 	auto pHeroes = Menu.Owner->AddMenu("Ultimate Cooldown Notifications");
 	Menu.NotifyOnUltimate = pHeroes->CheckBox("Enable:", true);
@@ -1052,9 +1055,9 @@ void Gui::LoadTextureIcons()
 
 	//Logo
 	GUtility->LogConsole("Trying to load first texture");
-	Textures->UHud = CreateTextureEx("RembrandtAIOBanner");
+	Textures->UHud = CreateTextureEx("LogoOnLoad");
 	Textures->UHud->SetColor(Vec4(255, 255, 255, 0));
-	if (strstr(GEntityList->Player()->ChampionName(), "Graves"))
+	/*if (strstr(GEntityList->Player()->ChampionName(), "Graves"))
 		Textures->ChampLogo = CreateTextureEx("graveslogo");
 	else if (strstr(GEntityList->Player()->ChampionName(), "Caitlyn"))
 		Textures->ChampLogo = CreateTextureEx("caitlynlogo");
@@ -1069,7 +1072,7 @@ void Gui::LoadTextureIcons()
 	else
 		Textures->ChampLogo = CreateTextureEx("empty");
 
-	GGame->Say("/t");
+	GGame->Say("/t");*/
 
 	// 2D Hud
 	Textures->OutlineLeft	= CreateTextureEx("LeftHud");

@@ -28,6 +28,7 @@ Tracker::Tracker(IMenu* Parent)
 	EnemyWard = CreateTextureEx("EnemyWard"); //load texture
 	
 	IndicatorsEnabled = false;
+	MouseButtonDown = false;
 
 	LoadMenu(Parent);
 	LoadJungleCamps();
@@ -66,6 +67,32 @@ void Tracker::OnGameUpdate()
 				IndicatorsEnabled = false;
 			else
 				IndicatorsEnabled = true;
+		}
+	}
+
+	//mouse  press
+	if (Menu.RemoveWardsKey->Enabled() && GUtility->IsLeagueWindowFocused() && !GGame->IsChatOpen())
+	{
+		if (GetAsyncKeyState(VK_LCONTROL) < 0)
+		{
+			if (GetAsyncKeyState(VK_LBUTTON) < 0) // If most-significant bit is set...
+			{
+				// key is down . . .
+				if (MouseButtonDown == false)
+				{
+					//toggle
+					for (auto& Object : HiddenObjects)
+					{
+						if ((GGame->CursorPosition() - Object.WorldPosition).Length() < 40)
+							Object.IsValid = false;
+					}
+					MouseButtonDown = true;
+				}
+			}
+			else
+			{
+				MouseButtonDown = false;
+			}
 		}
 	}
 }
@@ -564,6 +591,7 @@ void Tracker::LoadMenu(IMenu* Parent)
 	Menu.TrackWards = Menu.Owner->CheckBox("Draw Wards:", true);
 	Menu.ShowVisionRange = Menu.Owner->CheckBox("Draw Vision Indicators:", true);
 	Menu.ToggleRangeKey = Menu.Owner->CheckBox("Left CTRL Toggle Indicators:", true);
+	Menu.RemoveWardsKey = Menu.Owner->CheckBox("Delete Wards CTRL+Left Click:", true);
 
 	IMenu* pJungleMenu = Parent->AddMenu("Jungle");
 

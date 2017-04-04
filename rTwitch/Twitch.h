@@ -12,7 +12,7 @@ public:
 
 	void OnGameUpdate();
 	void OnRender();
-	void OnSpellCast(CastedSpell const& Args);
+	void OnRealSpellCast(CastedSpell const& Args);
 	void OnOrbwalkAttack(IUnit* Source, IUnit* Target);
 	bool OnPreCast(int Slot, IUnit* Target, Vec3* StartPosition, Vec3* EndPosition);
 	void Combo();
@@ -29,6 +29,10 @@ private:
 	IMenuOption*	SaveManaForE;
 	IMenuOption*	ComboQOption;
 	IMenuOption*	QRecall;
+	IMenuOption*	WUnderTurret;
+	IMenuOption*	EEnemyLeaving;
+	IMenuOption*	EJungleKS;
+	IMenuOption*	QInRange;
 
 	std::vector<std::string> ComboEType;
 
