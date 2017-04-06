@@ -14,6 +14,8 @@ Graves::Graves(IMenu* Parent)
 
 	SemiManualKey = false;
 
+	ComboQType = { "Always", "Wallbang Only", "Off" };
+
 	//Initialize Stack
 	Stack = {
 		"",
@@ -28,6 +30,8 @@ Graves::Graves(IMenu* Parent)
 	//Menu
 	GravesMenu = Parent->AddMenu("Graves PRO++");
 	SemiManualMenuKey = GravesMenu->AddKey("Semi-Manual Ult Key:", 84);
+
+	ComboQTypeOption = GravesMenu->AddSelection("Q Combo Usage:", 0, ComboQType);
 
 	UseWCombo = GravesMenu->CheckBox("Use W in Combo:", true);
 
@@ -180,20 +184,20 @@ void Graves::Combo()
 			W->CastOnTarget(GTargetSelector->FindTarget(QuickestKill, PhysicalDamage, 950), kHitChanceVeryHigh);
 		}
 
-		if (Q->IsReady()) //cast if wall to bang
+		if (ComboQTypeOption->GetInteger() != 2 && Q->IsReady()) //cast if wall to bang
 		{
 			auto pLocal = GEntityList->Player();
 
 			for (auto enemy : GEntityList->GetAllHeros(false, true))
 			{
-				if (!enemy->IsClone() && !enemy->IsDead() && enemy->IsValidTarget() && (enemy->GetPosition() - pLocal->GetPosition()).Length() < 950)
+				if (!enemy->IsClone() && enemy->IsValidTarget() && (enemy->GetPosition() - pLocal->GetPosition()).Length() < 950)
 				{
 					Vec3 EstimatedEnemyPos;
 					GPrediction->GetFutureUnitPosition(enemy, 0.35, true, EstimatedEnemyPos);
 					Vec3 EndPosition = pLocal->GetPosition() + (EstimatedEnemyPos - pLocal->GetPosition()).VectorNormalize() * 900;
 
 					if (GNavMesh->IsPointWall(EndPosition))
-						Q->CastOnTarget(enemy, kHitChanceLow);
+						if (Q->CastOnTarget(enemy, kHitChanceLow)) { return; }
 				}
 			}
 		}
@@ -364,7 +368,7 @@ void Graves::OnSpellCast(CastedSpell const& Args)
 				}
 				else if (E->IsReady())
 				{
-					if (Q->IsReady()) // add Q to combo array
+					if (ComboQTypeOption->GetInteger() == 0 && Q->IsReady()) // add Q to combo array
 					{
 						//GGame->PrintChat("Pushing Q to Stack");
 						Stack[StackPushIndex] = "GravesQLineSpell";

@@ -31,6 +31,9 @@ private:
 	IMenuOption*	DrawW;
 	IMenuOption*	DrawE;
 	IMenuOption*	DrawR;
+	IMenuOption*	ComboQTypeOption;
+
+	std::vector<std::string> ComboQType;
 private:
 	ISpell2*		Q;
 	ISpell2*		W;

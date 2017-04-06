@@ -75,7 +75,7 @@
     <ClInclude Include="PluginSDK.h">
       <Filter>SDK</Filter>
     </ClInclude>
-    <ClInclude Include="UtilityPlusPlus.h">
+    <ClInclude Include="Rembrandt.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -121,6 +121,9 @@
     </ClCompile>
     <ClCompile Include="PluginSDK.cpp">
       <Filter>SDK</Filter>
+    </ClCompile>
+    <ClCompile Include="Rembrandt.cpp">
+      <Filter>Resource Files\Source Files</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

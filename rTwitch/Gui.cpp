@@ -5,7 +5,7 @@
 Gui::Gui(IMenu* Parent)
 {
 	Menu.Owner = Parent->AddMenu("HUD");
-
+	Hero = GEntityList->Player();
 	Resolution = GRender->ScreenSize();
 
 	GUtility->LogConsole("1");
@@ -22,6 +22,7 @@ Gui::Gui(IMenu* Parent)
 	InitLogoDuration = GGame->Time() + 3;
 	Opac = 0;
 	
+
 	//Textures->ChampLogo->SetScaleBySize(Vec2(Resolution.x, Resolution.y));;
 	//if (Resolution.y < 1080.f)
 		Textures->UHud->SetScaleBySize(Vec2(Resolution.x, Resolution.y));
@@ -33,7 +34,7 @@ Gui::~Gui()
 
 void Gui::OnTeleport(OnTeleportArgs* Args)
 {
-	if (Args->Source->IsEnemy(GEntityList->Player()))
+	if (Args->Source->IsEnemy(Hero))
 	{
 		for (auto pPlayer : Enemies)
 		{
@@ -120,6 +121,9 @@ void Gui::OnRender()
 		UpdateChampions();
 		RenderTeammates();
 		RenderEnemies();
+
+		Last2DBigScreenRatio = (Resolution.y / 1440.f) * (Menu.RembrandtSize->GetFloat() / 100);
+		Last2DNostScreenRatio = (Resolution.y / 1080.f) * (Menu.NostalgicSize->GetFloat() / 100);
 	}
 
 	if (LogoDuration - GGame->Time() > 0 && Menu.DisplayLogo->Enabled())
@@ -209,7 +213,7 @@ void Gui::RenderPlayer2DBasic(HeroUI* Ui, Vec2 const& Position)
 
 }
 
-void Gui::RenderPlayer2DElementNostalgic(HeroUI* Ui, Vec2 StartingTestPos)
+void Gui::RenderPlayer2DElementNostalgic(HeroUI* Ui, Vec2 StartingTestPos, bool NResize)
 {
 	float ScreenRatio = (Resolution.y / 1080.f) * (Menu.NostalgicSize->GetFloat() / 100);
 	
@@ -219,10 +223,14 @@ void Gui::RenderPlayer2DElementNostalgic(HeroUI* Ui, Vec2 StartingTestPos)
 	auto Sum1 = Ui->SummonerSpellIconsCircle[0];
 	auto Sum2 = Ui->SummonerSpellIconsCircle[1];
 	//resize
-	pOKTW_bar->Scale(ScreenRatio);
-	pOKTW_circle->Scale(ScreenRatio);
-	Sum1->Scale(ScreenRatio);
-	Sum2->Scale(ScreenRatio);
+	if (NResize)
+	{
+		pOKTW_bar->Scale(ScreenRatio);
+		pOKTW_circle->Scale(ScreenRatio);
+		Sum1->Scale(ScreenRatio);
+		Sum2->Scale(ScreenRatio);
+	}
+	
 
 	Ui->ChampionIcon->DrawCircle(StartingTestPos.x + 30 * ScreenRatio, StartingTestPos.y + 34 * ScreenRatio, 29 * ScreenRatio);
 	pOKTW_circle->Draw(StartingTestPos.x, StartingTestPos.y);
@@ -293,11 +301,9 @@ void Gui::RenderPlayer2DElementNostalgic(HeroUI* Ui, Vec2 StartingTestPos)
 	}
 }
 
-void Gui::RenderPlayer2DElementBig(HeroUI* Ui, Vec2 const& Position, bool Left)
+void Gui::RenderPlayer2DElementBig(HeroUI* Ui, Vec2 const& Position, bool Left, bool NResize)
 {
 	float ScreenRatio = (Resolution.y / 1440.f) * (Menu.RembrandtSize->GetFloat() / 100);
-
-
 	Vec2 vecHealthOffset	= Left ? Vec2(9, 79) : Vec2(17, 79);
 	Vec2 vecManaOffset		= Left ? Vec2(9, 90) : Vec2(17, 90);
 	Vec2 vecChampionOffset	= Left ? Vec2(43, 6) : Vec2(13, 6);
@@ -307,6 +313,7 @@ void Gui::RenderPlayer2DElementBig(HeroUI* Ui, Vec2 const& Position, bool Left)
 	Vec2 vecChampionSize	= Ui->ChampionIcon->GetSize();
 	Vec2 vecLevelPosition	= Position + vecChampionOffset;
 	Vec2 HPScaledOffset = Vec2(Position.x - 150, Position.y);
+	Vec4 White = Vec4(255, 255, 255, 255);
 	
 	Vec2 LeftOffsetBase = Left ? Vec2(0, 0) : Vec2(150 * ScreenRatio, 0);
 	
@@ -324,14 +331,16 @@ void Gui::RenderPlayer2DElementBig(HeroUI* Ui, Vec2 const& Position, bool Left)
 	auto Sum2 = Ui->SummonerSpellIconsCircle[1];
 	
 	//RESIZE TO FIT SCREEN
-	
-	pHUD1_bar->Scale(ScreenRatio);
-	pHUD1_champ->Scale(ScreenRatio);
-	pHUD1_icons->Scale(ScreenRatio);
-	pHUD1_hp->Scale(ScreenRatio);
-	pHUD1_mp->Scale(ScreenRatio);
-	Sum1->Scale(ScreenRatio);
-	Sum2->Scale(ScreenRatio);
+	if (NResize)
+	{
+		pHUD1_bar->Scale(ScreenRatio);
+		pHUD1_champ->Scale(ScreenRatio);
+		pHUD1_icons->Scale(ScreenRatio);
+		pHUD1_hp->Scale(ScreenRatio);
+		pHUD1_mp->Scale(ScreenRatio);
+		Sum1->Scale(ScreenRatio);
+		Sum2->Scale(ScreenRatio);
+	}
 	
 	
 	if (Left)
@@ -387,13 +396,15 @@ void Gui::RenderPlayer2DElementBig(HeroUI* Ui, Vec2 const& Position, bool Left)
 				{
 				case 1:
 					//Fonts->HudFont2->Render(Position.x + (-300 + 221) * ScreenRatio, HPScaledOffset.y + 54 * ScreenRatio, "%i ", static_cast<int>(Ui->Player->GetHealth()));
-					GRender->DrawTextW(Vec2(Position.x + (-300 + 221) * ScreenRatio, HPScaledOffset.y + 52 * ScreenRatio), Vec4(255, 255, 255, 255), "%i ", static_cast<int>(Ui->Player->GetHealth()));
+					GRender->DrawTextW(Vec2(Position.x + (-300 + 221) * ScreenRatio, HPScaledOffset.y + 52 * ScreenRatio), White, "%i ", static_cast<int>(Ui->Player->GetHealth()));
 					break;
 				case 2:
-					Fonts->HudFont2->Render(Position.x  + (- 300 + 209) * ScreenRatio, HPScaledOffset.y + 54 * ScreenRatio, "%i/%i ", static_cast<int>(Ui->Player->GetHealth()), static_cast<int>(Ui->Player->GetMaxHealth()));
+					GRender->DrawTextW(Vec2(Position.x + (-300 + 209) * ScreenRatio, HPScaledOffset.y + 52 * ScreenRatio), White, "%i/%i ", static_cast<int>(Ui->Player->GetHealth()), static_cast<int>(Ui->Player->GetMaxHealth()));
+					//Fonts->HudFont2->Render(Position.x  + (- 300 + 209) * ScreenRatio, HPScaledOffset.y + 54 * ScreenRatio, "%i/%i ", static_cast<int>(Ui->Player->GetHealth()), static_cast<int>(Ui->Player->GetMaxHealth()));
 					break;
 				case 3:
-					Fonts->HudFont2->Render(Position.x + (-300 + 221) * ScreenRatio, HPScaledOffset.y + 54 * ScreenRatio, "%i%%", static_cast<int>(Ui->Player->HealthPercent()));
+					GRender->DrawTextW(Vec2(Position.x + (-300 + 221) * ScreenRatio, HPScaledOffset.y + 52 * ScreenRatio), White, "%i%%", static_cast<int>(Ui->Player->HealthPercent()));
+					//Fonts->HudFont2->Render(Position.x + (-300 + 221) * ScreenRatio, HPScaledOffset.y + 54 * ScreenRatio, "%i%%", static_cast<int>(Ui->Player->HealthPercent()));
 					break;
 				}
 			}
@@ -423,27 +434,31 @@ void Gui::RenderPlayer2DElementBig(HeroUI* Ui, Vec2 const& Position, bool Left)
 			{
 				flCooldown1 += 1.f;
 				Vec2 vecSpell1CD = Position + vecSpell1Offset + Ui->SummonerSpellIconsCircle[0]->GetSize() / 2;
-				Fonts->HudFont->Render(Position.x + (Sum1->GetSize().x / 2 + 63) * ScreenRatio, Position.y + (Sum1->GetSize().y / 2 + 42) * ScreenRatio, "%i", static_cast<int>(flCooldown1));
+				GRender->DrawTextW(Vec2(Position.x + (Sum1->GetSize().x / 2 + 55) * ScreenRatio, Position.y + (Sum1->GetSize().y / 2 + 37) * ScreenRatio), White, "%i", static_cast<int>(flCooldown1));
+				//Fonts->HudFont->Render(Position.x + (Sum1->GetSize().x / 2 + 63) * ScreenRatio, Position.y + (Sum1->GetSize().y / 2 + 42) * ScreenRatio, "%i", static_cast<int>(flCooldown1));
 			}
 
 			if (flCooldown2 > 0)
 			{
 				flCooldown2 += 1.f;
 				Vec2 vecSpell2CD = Position + vecSpell2Offset + Ui->SummonerSpellIconsCircle[1]->GetSize() / 2;
-				Fonts->HudFont->Render(Position.x + (Sum2->GetSize().x / 2 + 49) * ScreenRatio , Position.y + (vecSpell2Offset.y + Sum2->GetSize().y / 2 + 36) * ScreenRatio, "%i", static_cast<int>(flCooldown2));
+				GRender->DrawTextW(Vec2(Position.x + (Sum2->GetSize().x / 2 + 40) * ScreenRatio, Position.y + (vecSpell2Offset.y + Sum2->GetSize().y / 2 + 31) * ScreenRatio), White, "%i", static_cast<int>(flCooldown2));
+				//Fonts->HudFont->Render(Position.x + (Sum2->GetSize().x / 2 + 49) * ScreenRatio , Position.y + (vecSpell2Offset.y + Sum2->GetSize().y / 2 + 36) * ScreenRatio, "%i", static_cast<int>(flCooldown2));
 			}
 
 			if (flCooldown3 > 0)
 			{
 				flCooldown3 += 1.f;
 				Vec2 vecUltiCD = Position + vecUltimateOffset;
-				Fonts->HudFont->Render(Position.x + (vecUltimateOffset.x + 52) * ScreenRatio, Position.y + (vecUltimateOffset.y + 9) * ScreenRatio, "%i", static_cast<int>(flCooldown3));
+				GRender->DrawTextW(Vec2(Position.x + (vecUltimateOffset.x + 43) * ScreenRatio, Position.y + (vecUltimateOffset.y + 3) * ScreenRatio), White, "%i", static_cast<int>(flCooldown3));
+				//Fonts->HudFont->Render(Position.x + (vecUltimateOffset.x + 52) * ScreenRatio, Position.y + (vecUltimateOffset.y + 9) * ScreenRatio, "%i", static_cast<int>(flCooldown3));
 			}
 
 			if (Ui->RespawnTime > 0)
 			{
 				Vec2 vecChampionCenter = Position + vecChampionOffset + vecChampionSize / 2;
-				Fonts->HudFont->Render(Position.x + (vecChampionOffset.x + vecChampionSize.x / 2 - 14) * ScreenRatio, Position.y + (vecChampionOffset.y + vecChampionSize.y / 2 + 19) * ScreenRatio, "%i", static_cast<int>(Ui->RespawnTime - GGame->Time()));
+				GRender->DrawTextW(Vec2(Position.x + (vecChampionOffset.x + vecChampionSize.x / 2 - 18) * ScreenRatio, Position.y + (vecChampionOffset.y + vecChampionSize.y / 2 + 19) * ScreenRatio), White, "%i", static_cast<int>(Ui->RespawnTime - GGame->Time()));
+				//Fonts->HudFont->Render(Position.x + (vecChampionOffset.x + vecChampionSize.x / 2 - 14) * ScreenRatio, Position.y + (vecChampionOffset.y + vecChampionSize.y / 2 + 19) * ScreenRatio, "%i", static_cast<int>(Ui->RespawnTime - GGame->Time()));
 			}
 			
 			//Fonts->HudFont->Render(vecLevelPosition.x + 13, vecLevelPosition.y + 13, "%i", Ui->Player->GetLevel());
@@ -485,13 +500,16 @@ void Gui::RenderPlayer2DElementBig(HeroUI* Ui, Vec2 const& Position, bool Left)
 				switch (Menu.HPBarTextStyle->GetInteger())
 				{
 				case 1:
-					Fonts->HudFont2->Render((HPScaledOffset.x + 467) * ScreenRatio, HPScaledOffset.y + 54 * ScreenRatio, "%i ", static_cast<int>(Ui->Player->GetHealth()));
+					GRender->DrawTextW(Vec2((HPScaledOffset.x + 467) * ScreenRatio, HPScaledOffset.y + 50 * ScreenRatio), White, "%i ", static_cast<int>(Ui->Player->GetHealth()));
+					//Fonts->HudFont2->Render((HPScaledOffset.x + 467) * ScreenRatio, HPScaledOffset.y + 54 * ScreenRatio, "%i ", static_cast<int>(Ui->Player->GetHealth()));
 					break;
 				case 2:
-					Fonts->HudFont2->Render((HPScaledOffset.x + 457) * ScreenRatio, HPScaledOffset.y + 54 * ScreenRatio, "%i/%i ", static_cast<int>(Ui->Player->GetHealth()), static_cast<int>(Ui->Player->GetMaxHealth()));
+					GRender->DrawTextW(Vec2((HPScaledOffset.x + 457) * ScreenRatio, HPScaledOffset.y + 50 * ScreenRatio), White, "%i/%i ", static_cast<int>(Ui->Player->GetHealth()), static_cast<int>(Ui->Player->GetMaxHealth()));
+					//Fonts->HudFont2->Render((HPScaledOffset.x + 457) * ScreenRatio, HPScaledOffset.y + 54 * ScreenRatio, "%i/%i ", static_cast<int>(Ui->Player->GetHealth()), static_cast<int>(Ui->Player->GetMaxHealth()));
 					break;
 				case 3:
-					Fonts->HudFont2->Render((HPScaledOffset.x + 467) * ScreenRatio, HPScaledOffset.y + 54 * ScreenRatio, "%i%%", static_cast<int>(Ui->Player->HealthPercent()));
+					GRender->DrawTextW(Vec2((HPScaledOffset.x + 467) * ScreenRatio, HPScaledOffset.y + 50 * ScreenRatio), White, "%i%%", static_cast<int>(Ui->Player->HealthPercent()));
+					//Fonts->HudFont2->Render((HPScaledOffset.x + 467) * ScreenRatio, HPScaledOffset.y + 54 * ScreenRatio, "%i%%", static_cast<int>(Ui->Player->HealthPercent()));
 					break;
 				}
 			}
@@ -520,27 +538,32 @@ void Gui::RenderPlayer2DElementBig(HeroUI* Ui, Vec2 const& Position, bool Left)
 			{
 				flCooldown1 += 1.f;
 				Vec2 vecSpell1CD = Position + vecSpell1Offset + Sum1->GetSize() / 2;
-				Fonts->HudFont->Render(vecSpell1CD.x * ScreenRatio, Position.y + (vecSpell1Offset.y + Sum1->GetSize().y / 2 + 35) * ScreenRatio, "%i", static_cast<int>(flCooldown1));
+				GRender->DrawTextW(Vec2((vecSpell1CD.x - 7) * ScreenRatio, Position.y + (vecSpell1Offset.y + Sum1->GetSize().y / 2 + 30) * ScreenRatio), White, "%i", static_cast<int>(flCooldown1));
+				//Fonts->HudFont->Render(vecSpell1CD.x * ScreenRatio, Position.y + (vecSpell1Offset.y + Sum1->GetSize().y / 2 + 35) * ScreenRatio, "%i", static_cast<int>(flCooldown1));
 			}
 
 			if (flCooldown2 > 0)
 			{
 				flCooldown2 += 1.f;
 				Vec2 vecSpell2CD = Position + vecSpell2Offset + Sum2->GetSize() / 2;
-				Fonts->HudFont->Render((vecSpell2CD.x + 14) * ScreenRatio, Position.y + (vecSpell2Offset.y + Sum2->GetSize().y / 2 + 36) * ScreenRatio, "%i", static_cast<int>(flCooldown2));
+				GRender->DrawTextW(Vec2((vecSpell2CD.x + 7) * ScreenRatio, Position.y + (vecSpell2Offset.y + Sum2->GetSize().y / 2 + 31) * ScreenRatio), White, "%i", static_cast<int>(flCooldown2));
+				//Fonts->HudFont->Render((vecSpell2CD.x + 14) * ScreenRatio, Position.y + (vecSpell2Offset.y + Sum2->GetSize().y / 2 + 36) * ScreenRatio, "%i", static_cast<int>(flCooldown2));
 			}
 
 			if (flCooldown3 > 0)
 			{
 				flCooldown3 += 1.f;
 				Vec2 vecUltiCD = Position + vecUltimateOffset;
-				Fonts->HudFont->Render((vecUltiCD.x - 64) * ScreenRatio, Position.y + (vecUltimateOffset.y + 9) * ScreenRatio, "%i", static_cast<int>(flCooldown3));
+				GRender->DrawTextW(Vec2((vecUltiCD.x - 71) * ScreenRatio, Position.y + (vecUltimateOffset.y + 4) * ScreenRatio), White, "%i", static_cast<int>(flCooldown3));
+				//Fonts->HudFont->Render((vecUltiCD.x - 64) * ScreenRatio, Position.y + (vecUltimateOffset.y + 9) * ScreenRatio, "%i", static_cast<int>(flCooldown3));
 			}
 
 			if (Ui->RespawnTime > 0)
 			{
 				Vec2 vecChampionCenter = Position + vecChampionOffset + vecChampionSize / 2;
-				Fonts->HudFont->Render(vecChampionCenter.x * ScreenRatio, Position.y + (vecChampionOffset.y + vecChampionSize.y / 2 + 19) * ScreenRatio, "%i", static_cast<int>(Ui->RespawnTime - GGame->Time()));
+				GRender->DrawTextW(Vec2(vecChampionCenter.x * ScreenRatio, Position.y + (vecChampionOffset.y + vecChampionSize.y / 2 + 19) * ScreenRatio), White,
+					"%i", static_cast<int>(Ui->RespawnTime - GGame->Time()));
+				//Fonts->HudFont->Render(vecChampionCenter.x * ScreenRatio, Position.y + (vecChampionOffset.y + vecChampionSize.y / 2 + 19) * ScreenRatio, "%i", static_cast<int>(Ui->RespawnTime - GGame->Time()));
 			}
 
 			//Fonts->HudFont->Render(vecLevelPosition.x + 13, vecLevelPosition.y + 13, "%i", Ui->Player->GetLevel());
@@ -588,8 +611,8 @@ void Gui::RenderPlayer3DElement(HeroUI* Ui)
 	if (!Ui->Player->GetHPBarPosition(vecHealthBar) || !Ui->Player->IsVisible() || Ui->Player->IsDead())
 	return;
 
-	IUnit* pLocal = GEntityList->Player();
-	bool bIsLocal = Ui->Player == GEntityList->Player();
+	IUnit* pLocal = Hero;
+	bool bIsLocal = Ui->Player == Hero;
 	bool bIsEnemy = pLocal->IsEnemy(Ui->Player);
 	Vec2 vecOffset = Vec2(bIsLocal ? 10.f : -8.f, bIsEnemy ? 17.f : (bIsLocal ? 6.f : 14.f));
 	float SumCooldown1 = Ui->Player->GetSpellRemainingCooldown(kSummonerSlot1);
@@ -597,34 +620,7 @@ void Gui::RenderPlayer3DElement(HeroUI* Ui)
 
 
 	vecHealthBar += vecOffset;
-	/*if (!bIsLocal)
-	{
-		if (strstr(Ui->Player->ChampionName(), "Xin"))
-			vecHealthBar.y += 16;
-		else if (strstr(Ui->Player->ChampionName(), "Trundle"))
-			vecHealthBar.y += 9;
-		else if (strstr(Ui->Player->GetBaseSkinName(), "GnarBig"))
-			vecHealthBar.y += 15;
-		else if (strstr(Ui->Player->ChampionName(), "Diana"))
-			vecHealthBar.y += 13;
-		else if (strstr(Ui->Player->ChampionName(), "Camille"))
-			vecHealthBar.y -= 15;
-		else if (strstr(Ui->Player->ChampionName(), "Katarina"))
-			vecHealthBar.y += 4;
-		else if (strstr(Ui->Player->ChampionName(), "Ahri"))
-			vecHealthBar.y += 4;
-		else if (strstr(Ui->Player->ChampionName(), "Jhin"))
-			return;
-		else if (strstr(Ui->Player->ChampionName(), "Shaco"))
-			vecHealthBar.y += 4;
-		else if (strstr(Ui->Player->ChampionName(), "Chogath"))
-			vecHealthBar.y += 4;
-		else if (strstr(Ui->Player->ChampionName(), "Annie"))
-		{
-			vecHealthBar.y -= 8;
-			vecHealthBar.x -= 10;
-		}
-	}*/
+	
 	if (!bIsLocal)
 		vecHealthBar.y += 5;
 
@@ -711,8 +707,6 @@ void Gui::RenderPlayer3DElement(HeroUI* Ui)
 
 void Gui::RenderTeammates()
 {
-	
-
 	if (Teammates.size() == 0)
 		return;
 
@@ -728,7 +722,8 @@ void Gui::RenderTeammates()
 	float flLeft = bLeftSide ? 0 : Resolution.x - vecSize.x;
 	float flTop = Menu.HUDType->GetInteger() == 2 ? 125.f : 140.f;
 	Vec2 vecPosition = Vec2(flLeft, flTop);
-	
+	float currentRes2DBig = (Resolution.y / 1440.f) * (Menu.RembrandtSize->GetFloat() / 100);
+
 	for (auto pGui : Teammates)
 	{
 		if (!pGui->Valid)
@@ -737,7 +732,7 @@ void Gui::RenderTeammates()
 		if (Menu.Show2DHud->Enabled())
 		{
 			
-			if (pGui->Player == GEntityList->Player()) // pGui is player
+			if (pGui->Player == Hero) // pGui is player
 			{
 				if (Menu.ShowSelf->Enabled())
 				{
@@ -746,7 +741,8 @@ void Gui::RenderTeammates()
 					else if (Menu.HUDType->GetInteger() == 0)
 					{
 						
-						RenderPlayer2DElementBig(pGui, Vec2(bLeftSide ? vecPosition.x + Menu.RembrandtXLeft->GetFloat() : vecPosition.x + Menu.RembrandtXRight->GetFloat(), bLeftSide ? vecPosition.y + Menu.RembrandtYLeft->GetFloat() : vecPosition.y + Menu.RembrandtYRight->GetFloat()), bLeftSide);
+						RenderPlayer2DElementBig(pGui, Vec2(bLeftSide ? vecPosition.x + Menu.RembrandtXLeft->GetFloat() : vecPosition.x + Menu.RembrandtXRight->GetFloat(), bLeftSide ? vecPosition.y + Menu.RembrandtYLeft->GetFloat() : vecPosition.y + Menu.RembrandtYRight->GetFloat()), bLeftSide,
+							Last2DBigScreenRatio == currentRes2DBig ? 0 : 1);
 					}
 						
 				}
@@ -760,7 +756,8 @@ void Gui::RenderTeammates()
 					else if (Menu.HUDType->GetInteger() == 0)
 					{
 						
-						RenderPlayer2DElementBig(pGui, Vec2(bLeftSide ? vecPosition.x + Menu.RembrandtXLeft->GetFloat() : vecPosition.x + Menu.RembrandtXRight->GetFloat(), bLeftSide ? vecPosition.y + Menu.RembrandtYLeft->GetFloat() : vecPosition.y + Menu.RembrandtYRight->GetFloat()), bLeftSide);
+						RenderPlayer2DElementBig(pGui, Vec2(bLeftSide ? vecPosition.x + Menu.RembrandtXLeft->GetFloat() : vecPosition.x + Menu.RembrandtXRight->GetFloat(), bLeftSide ? vecPosition.y + Menu.RembrandtYLeft->GetFloat() : vecPosition.y + Menu.RembrandtYRight->GetFloat()), bLeftSide,
+							Last2DBigScreenRatio == currentRes2DBig ? 0 : 1);
 					}
 						
 				}
@@ -771,7 +768,7 @@ void Gui::RenderTeammates()
 		if (Menu.Show3DHud->Enabled())
 		{
 			
-			if (pGui->Player == GEntityList->Player()) // pGui is player
+			if (pGui->Player == Hero) // pGui is player
 			{
 				if (Menu.ShowSelf3D->Enabled())
 				{
@@ -790,6 +787,8 @@ void Gui::RenderTeammates()
 
 		vecPosition.y += vecSize.y + flPadding;
 	}
+
+	
 }
 
 void Gui::RenderEnemies()
@@ -814,6 +813,9 @@ void Gui::RenderEnemies()
 	Vec2 StartingTestPos = Vec2(Resolution.x - 323 * (Resolution.y / 1080.f) + Menu.NostalgicX->GetFloat(), Resolution.y - 451 * (Resolution.y / 1080.f) + Menu.NostalgicY->GetFloat());
 	Vec2 BasicPosition = Vec2(Resolution.x - 800 * (Resolution.y / 1440.f) + Menu.BasicX->GetFloat(), Resolution.y - 310 * (Resolution.y / 1440.f) + Menu.BasicY->GetFloat());
 
+	float currentRes2DBig = (Resolution.y / 1440.f) * (Menu.RembrandtSize->GetFloat() / 100);
+	float currentRes2DNost = (Resolution.y / 1080.f) * (Menu.NostalgicSize->GetFloat() / 100);
+
 	for (auto pGui : Enemies)
 	{
 		if (!pGui->Valid)
@@ -835,12 +837,13 @@ void Gui::RenderEnemies()
 			{
 				if (!pGui->Player->IsDead())
 				{
-					RenderPlayer2DElementNostalgic(pGui, StartingTestPos);
+					RenderPlayer2DElementNostalgic(pGui, StartingTestPos, Last2DNostScreenRatio == currentRes2DNost ? 0 : 1);
 					StartingTestPos.x += 65 * ((Resolution.y / 1080.f) * (Menu.NostalgicSize->GetFloat() / 100));
 				}
 			}
 			else if (Menu.HUDType->GetInteger() == 0)
-				RenderPlayer2DElementBig(pGui, Vec2(bLeftSide ? vecPosition.x + Menu.RembrandtXLeft->GetFloat() : vecPosition.x + Menu.RembrandtXRight->GetFloat(), bLeftSide ? vecPosition.y + Menu.RembrandtYLeft->GetFloat() : vecPosition.y + Menu.RembrandtYRight->GetFloat()), bLeftSide);
+				RenderPlayer2DElementBig(pGui, Vec2(bLeftSide ? vecPosition.x + Menu.RembrandtXLeft->GetFloat() : vecPosition.x + Menu.RembrandtXRight->GetFloat(), bLeftSide ? vecPosition.y + Menu.RembrandtYLeft->GetFloat() : vecPosition.y + Menu.RembrandtYRight->GetFloat()), bLeftSide,
+					Last2DBigScreenRatio == currentRes2DBig ? 0 : 1);
 		}
 
 		if (Menu.Show3DHud->Enabled() && Menu.ShowEnemies3D->Enabled())
@@ -860,7 +863,7 @@ void Gui::UpdateChampions()
 
 		auto pPlayer = pGui->Player;
 		
-		if (pPlayer->ChampionName() == GEntityList->Player()->ChampionName() && Menu.TestNotifyOnUltimate->Enabled()) //test notification
+		if (pPlayer->ChampionName() == Hero->ChampionName() && Menu.TestNotifyOnUltimate->Enabled()) //test notification
 		{
 			Vec2 UN_bgWidth = Textures->UN_bg->GetSize();
 			Vec2 UN_pos = Vec2(0, 75 + Menu.UltimateYOffset->GetFloat());
@@ -891,7 +894,7 @@ void Gui::UpdateChampions()
 		}
 
 
-		if (pPlayer->IsEnemy(GEntityList->Player()) && Menu.NotifyOnUltimate->Enabled() && pPlayer->GetSpellLevel(kSlotR) != 0 && Menu.ChampionsToNotifyOnR[pPlayer->GetNetworkId()]->Enabled() &&
+		if (pPlayer->IsEnemy(Hero) && Menu.NotifyOnUltimate->Enabled() && pPlayer->GetSpellLevel(kSlotR) != 0 && Menu.ChampionsToNotifyOnR[pPlayer->GetNetworkId()]->Enabled() &&
 			pPlayer->GetSpellRemainingCooldown(kSlotR) > 0 && pPlayer->GetSpellRemainingCooldown(kSlotR) < 4 && pPlayer->GetSpellTotalCooldown(kSlotR) > 30.f)
 		{
 			Vec2 UN_bgWidth = Textures->UN_bg->GetSize();
@@ -975,7 +978,7 @@ void Gui::LoadMenu()
 	Menu.ShowTeam = Menu.RembrandtSettings->CheckBox("Draw Team UI:", false);
 	Menu.ShowEnemies = Menu.RembrandtSettings->CheckBox("Draw Enemy UI:", true);
 	Menu.DrawHPBarText = Menu.RembrandtSettings->CheckBox("Draw Text on Health Bar:", true);
-	Menu.DrawManaBarText = Menu.RembrandtSettings->CheckBox("Draw Text on Mana Bar:", true);
+	Menu.DrawManaBarText = Menu.RembrandtSettings->CheckBox("Draw Text on Mana Bar:", false);
 	Menu.HPBarTextStyle = Menu.RembrandtSettings->AddInteger("Health Bar Text Style:", 1, 3, 2);
 	Menu.ManaBarTextStyle = Menu.RembrandtSettings->AddInteger("Mana Bar Text Style:", 1, 3, 1);;
 	Menu.RembrandtXLeft = Menu.RembrandtSettings->AddFloat("Left X Offset:", -5000, 5000, 0);
@@ -1120,7 +1123,7 @@ void Gui::LoadTextureIcons()
 			LoadHeroIcon(lpGui);
 			LoadSpellIcons(lpGui);
 
-			if (pPlayer->GetTeam() == GEntityList->Player()->GetTeam())
+			if (pPlayer->GetTeam() == Hero->GetTeam())
 				Teammates.push_back(lpGui);
 			else
 			{

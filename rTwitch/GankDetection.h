@@ -96,6 +96,7 @@ private:
 	IUnit*					IncomingGankUnit;
 	float					ShowGankEndTime;
 	ITexture*				ChampIcons[4];
+	ITexture*				OutlineCircle;
 	Vec3						JGDisplayPos;
 	float						JGDelay;
 	float						LastPingTimeTracker;

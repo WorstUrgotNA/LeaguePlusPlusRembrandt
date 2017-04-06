@@ -1,4 +1,5 @@
 #include "Caitlyn.h"
+#include "Rembrandt.h"
 
 Caitlyn::Caitlyn(IMenu* Parent)
 {
@@ -29,11 +30,7 @@ Caitlyn::Caitlyn(IMenu* Parent)
 
 	//Menu
 	CaitlynMenu = Parent->AddMenu("Caitlyn PRO++");
-	
-	
-	
-	
-	
+		
 	//DRAW MENU
 	DrawMenu = CaitlynMenu->AddMenu("++ Drawings");
 	DrawReady = DrawMenu->CheckBox("Draw Only Ready Spells:", true);
@@ -45,6 +42,8 @@ Caitlyn::Caitlyn(IMenu* Parent)
 	EColor = DrawMenu->AddColor("E Range Color:", 255, 255, 0, 255);
 	DrawR = DrawMenu->CheckBox("Draw R Range:", true);
 	RColor = DrawMenu->AddColor("R Range Color:", 255, 255, 0, 255);
+	DrawRDamage = DrawMenu->CheckBox("Draw R Damage:", true);
+	DrawRDamageColor = DrawMenu->AddColor("R Damage Color:", 255, 255, 0, 150);
 
 	//COMBO MENU
 	ComboMenu = CaitlynMenu->AddMenu("++ Combo"); 
@@ -122,7 +121,7 @@ int Caitlyn::EnemiesInRange(IUnit* Source, float range)
 float Caitlyn::CalcSpellDamage(IUnit* Target, eSpellSlot Slot)
 {
 	if (!Target || Hero->GetSpellLevel(Slot) == 0) return 0;
-	float InitDamage;
+	float InitDamage = 0;
 
 	if (Slot == kSlotR)
 	{
@@ -140,85 +139,7 @@ float Caitlyn::CalcSpellDamage(IUnit* Target, eSpellSlot Slot)
 		InitDamage = std::vector<double>({ 1.3, 1.4, 1.5, 1.6, 1.7 }).at(Hero->GetSpellLevel(kSlotQ) - 1) * Hero->TotalPhysicalDamage() + std::vector<double>({ 30 , 70 , 110 , 150 , 190 }).at(Hero->GetSpellLevel(kSlotQ) - 1);
 	}
 	
-	auto FinalDamage = GDamage->CalcPhysicalDamage(Hero, Target, InitDamage);
-
-	std::vector<HeroMastery> MyMasteryBuffer;
-	if (Hero->GetMasteries(MyMasteryBuffer))
-	{
-		double Modifier = 0;
-
-		for (auto Mastery : MyMasteryBuffer)
-		{
-			//PageId 193 - MasteryId 201 - SORCERY: Increases ability and spell damage by 0.4 / 0.8 / 1.2 / 1.6 / 2 %
-			if (Mastery.PageId == 193 && Mastery.MasteryId == 201)
-			{
-				Modifier += (0.4 * Mastery.Points) / 100;
-			}
-			//PageId 193 - MasteryId 124 - DOUBLE EDGED SWORD: You deal 3% increased damage from all sources, but take 1.5% increased damage from all sources.
-			else if (Mastery.PageId == 193 && Mastery.MasteryId == 124)
-			{
-				Modifier += 0.03;
-			}
-			//PageId 62 - MasteryId 254 - ASSASSAIN: Grants 2% increased damage against enemy champions while no allied champions are nearby - 800 range
-			else if (Mastery.PageId == 62 && Mastery.MasteryId == 254)
-			{
-				bool IsActive = true;
-				for (auto Friend : GEntityList->GetAllHeros(true, false))
-				{
-					if (Friend != Hero && (Hero->GetPosition() - Friend->GetPosition()).Length() <= 800)
-					{
-						IsActive = false;
-						break;
-					}
-				}
-
-				if (IsActive) { Modifier += 0.02; }
-			}
-			// PageId 62 - MasteryId 119 - MERCILESS: Grants 0.6 / 1.2 / 1.8 / 2.4 / 3 % increased damage against champions below 40 % health.
-			else if (Mastery.PageId == 62 && Mastery.MasteryId == 119)
-			{
-				if (Target->HealthPercent() < 40)
-					Modifier += (0.6 * Mastery.Points) / 100;
-			}
-		}
-
-		FinalDamage += FinalDamage * Modifier;
-	}
-	
-	//check if enemy has double edged sword
-	std::vector<HeroMastery> TarMasteryBuffer; 
-	if (Target->GetMasteries(TarMasteryBuffer))
-	{
-		double Modifier = 0;
-
-		for (auto Mastery : TarMasteryBuffer)
-		{
-			//PageId 193 - MasteryId 124 - DOUBLE EDGED SWORD: You deal 3% increased damage from all sources, but take 1.5% increased damage from all sources.
-			if (Mastery.PageId == 193 && Mastery.MasteryId == 124)
-			{
-				Modifier += 0.015;
-			}
-		}
-
-		FinalDamage += FinalDamage * Modifier;
-	}
-
-	/*
-	PageId: 193 = Ferocity, 62 = Cunning
-	
-	PageId 193 - MasteryId 127 - FRESH BLOOD: Basic attacks versus enemy champions deal (10 + 1 * level) bonus damage (6 second per-target cooldown).
-	PageId 193 - MasteryId 249 - NATURAL TALENT
-	
-	PageId 193 - MasteryId 103 - BATTERING BLOWS: %arm pen
-	PageId 193 - MasteryId 52 - FERVOR OF BATTLE
-	PageId 62 - MasteryId 44 - SAVAGERY: Basic attacks and single target spells deal 1 / 2 / 3 / 4 / 5 bonus damage to minions and monsters.
-	
-	
-	PageId 62 - MasteryId 238 - DANGEROUS GAME
-	
-	*/
-	
-	return FinalDamage;
+	return GDamage->CalcPhysicalDamage(Hero, Target, InitDamage) * Rembrandt::DamageModifierFromMasteries(Hero, Target);
 }
 
 void Caitlyn::LaneClear()
@@ -298,6 +219,16 @@ void Caitlyn::OnGameUpdate()
 			if (SemiManualKey == false)
 			{
 				R->CastOnTarget(GTargetSelector->FindTarget(QuickestKill, PhysicalDamage, R->Range()));
+
+				std::vector<HeroMastery> MyMasteryBuffer;
+				if (Hero->GetMasteries(MyMasteryBuffer))
+				{
+					for (auto Mastery : MyMasteryBuffer)
+					{
+						GUtility->LogConsole("%i - %i - %i", Mastery.MasteryId, Mastery.PageId, Mastery.Points);
+					}
+				}
+
 				//GRender->Notification(Vec4(255, 255, 255, 255), 0, "%.1f", CalcRDamage(GTargetSelector->FindTarget(QuickestKill, PhysicalDamage, R->Range())));
 				SemiManualKey = true;
 			}
@@ -345,7 +276,19 @@ void Caitlyn::OnRender()
 	}
 	}*/
 	//GRender->DrawCircle(GGame->CursorPosition(), circletestradius->GetFloat(), Vec4(255, 255, 255, 255), 1);
-
+	if (R->IsReady() && DrawRDamage->Enabled())
+	{
+		for (auto Enemy : GEntityList->GetAllHeros(false, true))
+		{
+			Vec4 BarColor;
+			if (Enemy->IsOnScreen() && Enemy->IsVisible() && Hero->IsValidTarget(Enemy, R->Range()))
+			{
+				DrawRDamageColor->GetColor(&BarColor);
+				Rembrandt::DrawDamageOnChampionHPBar(Enemy, CalcSpellDamage(Enemy, kSlotR), "R", BarColor);
+			}
+		}
+		
+	}
 
 	if (DrawReady->Enabled())
 	{

@@ -37,6 +37,9 @@ private:
 
 private:
 	IMenu*			Menu;
+	IMenuOption*	EnableUi;
+	IMenuOption*	EnableTracking;
+	IMenuOption*	EnableGanks;
 	Gui*			Ui;
 	Tracker*		Tracking;
 	GankDetection*	Ganks;

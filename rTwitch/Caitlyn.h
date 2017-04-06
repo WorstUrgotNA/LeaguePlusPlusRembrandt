@@ -1,6 +1,7 @@
 #pragma once
 #include "PluginSDK.h"
 
+
 class Caitlyn
 {
 public:
@@ -10,14 +11,14 @@ public:
 	int EnemiesInRange(IUnit* Source, float range);
 	int AlliesInRange(IUnit* Source, float range);
 	float CalcSpellDamage(IUnit* Target, eSpellSlot Slot);
+	void Combo();
+	void LaneClear();
 
 	void OnGameUpdate();
 	void OnRender();
 	void OnSpellCast(CastedSpell const& Args);
 	void OnOrbwalkAttack(IUnit* Source, IUnit* Target);
 	bool OnPreCast(int Slot, IUnit* Target, Vec3* StartPosition, Vec3* EndPosition);
-	void Combo();
-	void LaneClear();
 
 private:
 	IMenu*			CaitlynMenu;
@@ -45,6 +46,8 @@ private:
 	IMenuOption*	DrawW;
 	IMenuOption*	DrawE;
 	IMenuOption*	DrawR;
+	IMenuOption*	DrawRDamage;
+	IMenuOption*	DrawRDamageColor;
 	IMenuOption*	WDelay;
 	IMenuOption*	TrapEnemyCast;
 	IMenuOption*	UltRange;

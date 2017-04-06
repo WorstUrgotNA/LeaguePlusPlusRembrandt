@@ -5,14 +5,17 @@
 
 Awareness::Awareness(IMenu* Parent)
 {
-	GUtility->LogConsole("Adding Menu");
 	Menu		= Parent->AddMenu("Tracker PRO");
-	GUtility->LogConsole("Adding GUI");
-	Ui			= new Gui(Menu);
-	GUtility->LogConsole("Adding Tracking");
-	Tracking	= new Tracker(Menu);
-	GUtility->LogConsole("Adding Ganks");
-	Ganks		= new GankDetection(Menu);
+	EnableUi = Menu->CheckBox("Enable GUI Modules:", true);
+	EnableTracking = Menu->CheckBox("Enable Tracking Modules:", true);
+	EnableGanks = Menu->CheckBox("Enable Awareness Modules:", true);
+
+	if (EnableUi->Enabled())
+		Ui			= new Gui(Menu);
+	if (EnableTracking->Enabled())
+		Tracking	= new Tracker(Menu);
+	if (EnableGanks->Enabled())
+		Ganks		= new GankDetection(Menu);
 
 	LoadEvents();
 }
@@ -28,52 +31,63 @@ Awareness::~Awareness()
 
 void Awareness::_OnGameUpdate()
 {
-	Tracking->OnGameUpdate();
-	Ganks->OnGameUpdate();
+	if (Tracking && EnableTracking->Enabled())
+		Tracking->OnGameUpdate();
+	if (Ganks && EnableGanks->Enabled())
+		Ganks->OnGameUpdate();
 }
 
 void Awareness::_OnJungleNotify(JungleNotifyData* Args)
 {
-	Ganks->OnJungleNotify(Args);
+	if (Ganks && EnableGanks->Enabled())
+		Ganks->OnJungleNotify(Args);
 }
 
 void Awareness::_OnRender()
 {
-	
-	Ui->OnRender();
-	
-	Tracking->OnRender();
-	
-	Ganks->OnRender();
+	if (Ui && EnableUi->Enabled())
+		Ui->OnRender();
+	if (Tracking && EnableTracking->Enabled())
+		Tracking->OnRender();
+	if (Ganks && EnableGanks->Enabled())
+		Ganks->OnRender();
 	
 }
 
 void Awareness::_OnCreateObject(IUnit* Args)
 {
-	Ui->OnCreateObject(Args);
-	Tracking->OnCreateObject(Args);
+	if (Ui && EnableUi->Enabled())
+		Ui->OnCreateObject(Args);
+	if (Tracking && EnableTracking->Enabled())
+		Tracking->OnCreateObject(Args);
 }
 
 void Awareness::_OnDestroyObject(IUnit* Args)
 {
-	Ui->OnDestroyObject(Args);
-	Tracking->OnDestroyObject(Args);
+	if (Ui && EnableUi->Enabled())
+		Ui->OnDestroyObject(Args);
+	if (Tracking && EnableTracking->Enabled())
+		Tracking->OnDestroyObject(Args);
 }
 
 void Awareness::_OnUnitDeath(IUnit* Args)
 {
-	Tracking->OnUnitDeath(Args);
+	if (Tracking && EnableTracking->Enabled())
+		Tracking->OnUnitDeath(Args);
 }
 
 void Awareness::_OnProcessSpell(CastedSpell const& Args)
 {
-	Tracking->OnProcessSpell(Args);
+	if (Tracking && EnableTracking->Enabled())
+		Tracking->OnProcessSpell(Args);
 }
 
 void Awareness::_OnTeleport(OnTeleportArgs* Args)
 {
-	Ui->OnTeleport(Args);
-	Ganks->OnTeleport(Args);
+	if (Ui && EnableUi->Enabled())
+		Ui->OnTeleport(Args);
+	if (Ganks && EnableGanks->Enabled())
+		Ganks->OnTeleport(Args);
 }
 
 

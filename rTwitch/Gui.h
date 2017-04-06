@@ -150,8 +150,8 @@ private:
 	void RenderTeammates();
 	void RenderEnemies();
 	void RenderPlayer2DBasic(HeroUI* Ui, Vec2 const& Position);
-	void RenderPlayer2DElementNostalgic(HeroUI* Ui, Vec2 StartingTestPos);
-	void RenderPlayer2DElementBig(HeroUI* Ui, Vec2 const& Position, bool Left);
+	void RenderPlayer2DElementNostalgic(HeroUI* Ui, Vec2 StartingTestPos, bool NResize);
+	void RenderPlayer2DElementBig(HeroUI* Ui, Vec2 const& Position, bool Left, bool NResize);
 	void RenderPlayer2DElementSmall(HeroUI* Ui, Vec2 const& Position);
 	void RenderPlayer3DElement(HeroUI* Ui);
 
@@ -160,6 +160,7 @@ private:
 
 private:
 	UiMenu					Menu;
+	IUnit*					Hero;
 	std::vector<HeroUI*>	Teammates;
 	std::vector<HeroUI*>	Enemies;
 	std::vector<HeroUI*>	UiPool;
@@ -175,4 +176,7 @@ private:
 	float LogoDuration;
 	float InitLogoDuration;
 	float Opac;
+	bool NResize2DBig = true;
+	float Last2DBigScreenRatio = 0;
+	float Last2DNostScreenRatio = 0;
 };

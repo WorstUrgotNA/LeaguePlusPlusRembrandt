@@ -22,6 +22,8 @@ GankDetection::GankDetection(IMenu* Parent)
 	RC_On->SetColor(Vec4(255, 150, 150, 150));
 	RC_On->Scale(GRender->ScreenSize().y / 1440.f);
 
+	OutlineCircle = CreateTextureEx("BigCircle");
+
 	JGNUpdated = false;
 	FoWUpdated = false;
 	JGDelay = 0.f;
@@ -424,30 +426,19 @@ void GankDetection::OnRender()
 				if (!unit.IsVisible)
 					GRender->DrawTextW(Vec2(FinalScreenPos.x, FinalScreenPos.y), Vec4(255, 255, 255, 255), "%i", static_cast<int>(GGame->Time() - unit.LastVisibleTime));
 
-				//circle draw leaguesharp
-				auto points = std::vector<Vec2>();
-				auto Quality = Menu.CircleQuality->GetFloat();
-				auto radius = CircleRadius;
-				auto Position = FinalScreenPos;
-				auto Color = Vec4(255, 0, 0, 255);
-				for (auto i = 0; i < Quality; i++)
-				{
-					auto angle = i * M_PI * 2 / Quality;
-					points.emplace_back(
-						Vec2(
-							Position.x + radius * ::cosf(angle),
-							Position.y + radius * ::sinf(angle)
-						)
-					);
-				}
+				Vec4 VecColour;
 
-				for (size_t i = 0; i < points.size(); i++)
-				{
-					auto a = points[i];
-					auto b = points[i == points.size() - 1 ? 0 : i + 1];
+				if (unit.Player->HealthPercent() > 50)
+					VecColour = Vec4(2, 220, 10, 255);
+				else if (unit.Player->HealthPercent() > 35)
+					VecColour = Vec4(230, 169, 14, 255);
+				else
+					VecColour = Vec4(250, 0, 23, 255);
 
-					GRender->DrawLine(a, b, Color);
-				}
+
+				OutlineCircle->SetColor(VecColour);
+				OutlineCircle->Scale(CircleRadius / 58);
+				OutlineCircle->Draw(FinalScreenPos.x - CircleRadius, FinalScreenPos.y - CircleRadius);
 			}
 		}
 

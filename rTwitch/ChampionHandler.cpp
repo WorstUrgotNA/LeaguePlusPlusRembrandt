@@ -29,6 +29,7 @@ ChampionHandler::ChampionHandler()
 	else if (strstr(GEntityList->Player()->ChampionName(), "KogMaw"))
 		KogmawHandler = new Kogmaw(Menu);
 
+
 	LoadEvents();
 }
 

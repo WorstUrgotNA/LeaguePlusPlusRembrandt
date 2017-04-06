@@ -1,12 +1,13 @@
 #pragma once
 #include "PluginSDK.h"
 
+
 class Graves;
-class Caitlyn;
 class Twitch;
 class Sivir;
 class Tristana;
 class Kogmaw;
+class Caitlyn;
 
 
 class ChampionHandler

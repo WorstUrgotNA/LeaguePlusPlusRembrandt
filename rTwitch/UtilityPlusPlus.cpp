@@ -1141,6 +1141,7 @@ PLUGIN_EVENT(void) OnLevelUp(IUnit* Source, int NewLevel)
 {
 	if (EnableAutoLevelUp->Enabled() && Source == Hero && NewLevel >= ALUStartLevel->GetInteger()) //auto level
 	{
+		
 		for (int i = 1; i <= 4; i++)
 		{
 			if (ALUR->GetInteger() == i) {

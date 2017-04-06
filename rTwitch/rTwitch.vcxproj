@@ -168,13 +168,13 @@
     <ClInclude Include="ObjectTracker.h" />
     <ClInclude Include="PluginData.h" />
     <ClInclude Include="PluginSDK.h" />
+    <ClInclude Include="Rembrandt.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="resource1.h" />
     <ClInclude Include="Sivir.h" />
     <ClInclude Include="Tracker.h" />
     <ClInclude Include="Tristana.h" />
     <ClInclude Include="Twitch.h" />
-    <ClInclude Include="UtilityPlusPlus.h" />
     <ClInclude Include="Vector3.h" />
   </ItemGroup>
   <ItemGroup>
@@ -188,6 +188,7 @@
     <ClCompile Include="ObjectTracker.cpp" />
     <ClCompile Include="PluginSDK.cpp" />
     <ClCompile Include="Sivir.cpp" />
+    <ClCompile Include="Rembrandt.cpp" />
     <ClCompile Include="Tracker.cpp" />
     <ClCompile Include="Tristana.cpp" />
     <ClCompile Include="Twitch.cpp" />

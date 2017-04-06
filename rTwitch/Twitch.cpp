@@ -1,4 +1,5 @@
 #include "Twitch.h"
+#include "Rembrandt.h"
 
 Twitch::Twitch(IMenu* Parent)
 {
@@ -80,72 +81,7 @@ float Twitch::CalcEDamage(IUnit* Target)
 		BONUS DAMAGE PER STACK: 15 / 20 / 25 / 30 / 35 (+ 25% bonus AD) (+ 20% AP)
 		*/
 
-	auto FinalDamage = GDamage->CalcPhysicalDamage(Hero, Target, InitDamage);
-
-	std::vector<HeroMastery> MyMasteryBuffer;
-	if (Hero->GetMasteries(MyMasteryBuffer))
-	{
-		double Modifier = 0;
-
-		for (auto Mastery : MyMasteryBuffer)
-		{
-			//PageId 193 - MasteryId 201 - SORCERY: Increases ability and spell damage by 0.4 / 0.8 / 1.2 / 1.6 / 2 %
-			if (Mastery.PageId == 193 && Mastery.MasteryId == 201)
-			{
-				Modifier += (0.4 * Mastery.Points) / 100;
-			}
-			//PageId 193 - MasteryId 124 - DOUBLE EDGED SWORD: You deal 3% increased damage from all sources, but take 1.5% increased damage from all sources.
-			else if (Mastery.PageId == 193 && Mastery.MasteryId == 124)
-			{
-				Modifier += 0.03;
-			}
-			//PageId 62 - MasteryId 254 - ASSASSAIN: Grants 2% increased damage against enemy champions while no allied champions are nearby - 800 range
-			else if (Mastery.PageId == 62 && Mastery.MasteryId == 254 && Target->IsHero())
-			{
-				bool IsActive = true;
-				for (auto Friend : GEntityList->GetAllHeros(true, false))
-				{
-					if (Friend != Hero && (Hero->GetPosition() - Friend->GetPosition()).Length() <= 800)
-					{
-						IsActive = false;
-						break;
-					}
-				}
-
-				if (IsActive) { Modifier += 0.02; }
-			}
-			// PageId 62 - MasteryId 119 - MERCILESS: Grants 0.6 / 1.2 / 1.8 / 2.4 / 3 % increased damage against champions below 40 % health.
-			else if (Mastery.PageId == 62 && Mastery.MasteryId == 119 && Target->IsHero())
-			{
-				if (Target->HealthPercent() < 40)
-					Modifier += (0.6 * Mastery.Points) / 100;
-			}
-		}
-
-		FinalDamage += FinalDamage * Modifier;
-	}
-
-	//check if enemy has double edged sword
-	std::vector<HeroMastery> TarMasteryBuffer;
-	if (Target->GetMasteries(TarMasteryBuffer))
-	{
-		double Modifier = 0;
-
-		for (auto Mastery : TarMasteryBuffer)
-		{
-			//PageId 193 - MasteryId 124 - DOUBLE EDGED SWORD: You deal 3% increased damage from all sources, but take 1.5% increased damage from all sources.
-			if (Mastery.PageId == 193 && Mastery.MasteryId == 124)
-			{
-				Modifier += 0.015;
-			}
-		}
-
-		FinalDamage += FinalDamage * Modifier;
-	}
-
-	//GRender->Notification(Vec4(255, 255, 255, 255), 0, "%f", FinalDamage);
-
-	return FinalDamage;
+	return GDamage->CalcPhysicalDamage(Hero, Target, InitDamage) * Rembrandt::DamageModifierFromMasteries(Hero, Target);
 }
 
 
