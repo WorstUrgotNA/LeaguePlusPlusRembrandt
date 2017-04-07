@@ -70,10 +70,9 @@ int Twitch::EnemiesInRange(IUnit* Source, float range)
 
 	for (auto target : Targets)
 	{
-		if (target != nullptr && !target->IsDead())
+		if (target && !target->IsDead())
 		{
-			auto flDistance = (target->GetPosition() - Source->GetPosition()).Length();
-			if (flDistance <= range)
+			if (Rembrandt::IsInRange(target->GetPosition(), Source->GetPosition(), range))
 			{
 				enemiesInRange++;
 			}
@@ -120,7 +119,7 @@ void Twitch::Combo()
 	{
 		if (Enemy->IsValidTarget() && !Enemy->IsClone())
 		{
-			auto flDistance = (Hero->GetPosition() - Enemy->GetPosition()).Length();
+			auto flDistance = (Hero->GetPosition() - Enemy->GetPosition()).Length2D();
 
 			if (Enemy->HasBuff("twitchdeadlyvenom"))
 			{
@@ -161,7 +160,7 @@ void Twitch::LaneClear()
 	{
 		if (HarassE->GetInteger() > 0 && Enemy->IsValidTarget() && !Enemy->IsClone())
 		{
-			auto flDistance = (Hero->GetPosition() - Enemy->GetPosition()).Length();
+			auto flDistance = (Hero->GetPosition() - Enemy->GetPosition()).Length2D();
 
 			if (Enemy->HasBuff("twitchdeadlyvenom"))
 			{
@@ -255,7 +254,7 @@ bool Twitch::OnPreCast(int Slot, IUnit* Target, Vec3* StartPosition, Vec3* EndPo
 
 void Twitch::OnRealSpellCast(CastedSpell const& Args)
 {
-	if (Args.Caster_->IsEnemy(Hero) && Args.Name_ == "SummonerFlash" && Args.Caster_->HasBuff("twitchdeadlyvenom") && (Hero->GetPosition() - Args.Caster_->GetPosition()).Length() < E->Range() && (Hero->GetPosition() - Args.EndPosition_).Length() > E->Range())
+	if (Args.Caster_->IsEnemy(Hero) && Args.Name_ == "SummonerFlash" && Args.Caster_->HasBuff("twitchdeadlyvenom") && (Hero->GetPosition() - Args.Caster_->GetPosition()).Length2D() < E->Range() && (Hero->GetPosition() - Args.EndPosition_).Length() > E->Range())
 	{
 		if (E->CastOnPlayer()) { return; }
 	}
@@ -263,7 +262,7 @@ void Twitch::OnRealSpellCast(CastedSpell const& Args)
 
 void Twitch::OnOrbwalkAttack(IUnit* Source, IUnit* Target)
 {
-	if (GOrbwalking->GetOrbwalkingMode() == kModeCombo)
+	if (GOrbwalking->GetOrbwalkingMode() == kModeCombo && ComboWOption->Enabled())
 	{
 		if (Target->IsValidTarget() && Target->IsHero())
 		{

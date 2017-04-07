@@ -11,7 +11,7 @@ Kogmaw::Kogmaw(IMenu* Parent, IUnit* Hero) :Champion(Parent, Hero)
 	Hero = GEntityList->Player();
 
 	//Create Spells
-	Q = GPluginSDK->CreateSpell2(kSlotQ, kLineCast, true, false, (kCollidesWithYasuoWall, kCollidesWithHeroes, kCollidesWithMinions));
+	Q = GPluginSDK->CreateSpell2(kSlotQ, kLineCast, true, false, (kCollidesWithYasuoWall | kCollidesWithHeroes | kCollidesWithMinions));
 	Q->SetSkillshot(0.25, 70, 1650, 1200);
 
 	W = GPluginSDK->CreateSpell2(kSlotW, kTargetCast, false, false, (kCollidesWithNothing));
@@ -28,24 +28,48 @@ Kogmaw::Kogmaw(IMenu* Parent, IUnit* Hero) :Champion(Parent, Hero)
 	//Menu
 	KogmawMenu = Parent->AddMenu("KogMaw PRO++");
 
-	QinCombo = KogmawMenu->CheckBox("Use Q in Combo:", true);
-	EinCombo = KogmawMenu->CheckBox("Use E in Combo:", true);
-	WinCombo = KogmawMenu->CheckBox("Use W in Combo:", true);
-	RinCombo = KogmawMenu->CheckBox("Use R in Combo:", true);
+	//DRAW MENU
+	DrawMenu = KogmawMenu->AddMenu("++ Drawings");
+	DrawReady = DrawMenu->CheckBox("Draw Only Ready Spells:", true);
+	DrawQ = DrawMenu->CheckBox("Draw Q Range:", true);
+	QColor = DrawMenu->AddColor("Q Range Color:", 255, 255, 0, 255);
+	DrawW = DrawMenu->CheckBox("Draw W Range:", true);
+	WColor = DrawMenu->AddColor("W Range Color:", 255, 255, 0, 255);
+	DrawE = DrawMenu->CheckBox("Draw E Range:", true);
+	EColor = DrawMenu->AddColor("E Range Color:", 255, 255, 0, 255);
+	DrawR = DrawMenu->CheckBox("Draw R Range:", true);
+	RColor = DrawMenu->AddColor("R Range Color:", 255, 255, 0, 255);
+	DrawRDamage = DrawMenu->CheckBox("Draw R Damage:", true);
+	DrawRDamageColor = DrawMenu->AddColor("R Damage Color:", 255, 255, 0, 150);
 
-	SemiManualMenuKey = KogmawMenu->AddKey("Semi-Manual R Key:", 84);
+	ComboMenu = KogmawMenu->AddMenu("++ Combo");
+	QinCombo = ComboMenu->CheckBox("Use Q in Combo:", true);
+	WinCombo = ComboMenu->CheckBox("Use W in Combo:", true);
+	EinCombo = ComboMenu->CheckBox("Use E in Combo:", true);
+	ECastDistance = ComboMenu->AddFloat("E Maximum Cast Range:", 0, 1350, 1000);
+	RinCombo = ComboMenu->CheckBox("Use R in Combo:", true);
+	SemiManualMenuKey = ComboMenu->AddKey("Semi-Manual R Key:", 84);
+	RMaxStacks = ComboMenu->AddInteger("R Max Stacks Combo:", 0, 10, 3);
+	RKillSteal = ComboMenu->CheckBox("Force R KillSteal:", true);
 
-	RMaxStacks = KogmawMenu->AddInteger("R Max Stacks Combo:", 0, 10, 3);
-	RMaxStacksHarass = KogmawMenu->AddInteger("R Max Stacks Harass", 0, 10, 1);
-	RHarassMana = KogmawMenu->AddFloat("R Harass Min Mana %", 0, 100, 60);
-	ECastDistance = KogmawMenu->AddFloat("E Cast Range:", 0, 1350, 1000);
 
-	DrawReady = KogmawMenu->CheckBox("Draw Only Ready Spells:", true);
-	DrawQ = KogmawMenu->CheckBox("Draw Q Range:", true);
-	DrawW = KogmawMenu->CheckBox("Draw W Range:", true);
-	DrawE = KogmawMenu->CheckBox("Draw E Range:", true);
-	DrawR = KogmawMenu->CheckBox("Draw R Range:", true);
+	HarassMenu = KogmawMenu->AddMenu("++ Harass");
+	RHarassEnable = HarassMenu->CheckBox("Use R on Enemy AA/Spellcast:", true);
+	RMaxStacksHarass = HarassMenu->AddInteger("R Max Stacks Harass", 0, 10, 1);
+	RHarassMana = HarassMenu->AddFloat("R Harass Min Mana %", 0, 100, 60);
 
+	LaneClearMenu = KogmawMenu->AddMenu("++ Lane Clear");
+
+	ExtraMenu = KogmawMenu->AddMenu("++ Extra Settings");
+
+
+
+	
+
+	
+	
+	
+	
 }
 
 
@@ -64,7 +88,6 @@ float Kogmaw::CalcRDamage(IUnit* Target)
 
 	InitDamage *= Target->HealthPercent() > 40 ? (1 + ((100 - Target->HealthPercent()) * 0.83) / 100) : 2;
 	
-
 	// MAGIC DAMAGE: 100 / 140 / 180 (+ 65% bonus AD) (+ 25% AP)
 
 	return GDamage->CalcMagicDamage(Hero, Target, InitDamage) * Rembrandt::DamageModifierFromMasteries(Hero, Target);
@@ -77,7 +100,7 @@ void Kogmaw::Combo()
 	{
 		if (Enemy->IsValidTarget())
 		{
-			auto flDistance = (Hero->GetPosition() - Enemy->GetPosition()).Length();
+			auto flDistance = (Hero->GetPosition() - Enemy->GetPosition()).Length2D();
 
 			if (flDistance <= GetWRange() && WinCombo->Enabled() && WinCombo->Enabled())
 			{
@@ -89,8 +112,8 @@ void Kogmaw::Combo()
 				if (Q->CastOnTarget(Enemy, kHitChanceVeryHigh)) { return; }
 			}
 
-			if (flDistance < GetRRange() && R->IsReady() && flDistance > Hero->AttackRange() + Hero->BoundingRadius()
-				&& Enemy->HealthPercent() < 40 && (Hero->GetBuffCount("kogmawlivingartillerycost") < RMaxStacks->GetInteger() || CalcRDamage(Enemy) > Enemy->GetHealth()))
+			if (RinCombo->Enabled() && flDistance < GetRRange() && R->IsReady() && flDistance > Hero->AttackRange() + Hero->BoundingRadius()
+				&& Enemy->HealthPercent() < 40 && (Hero->GetBuffCount("kogmawlivingartillerycost") < RMaxStacks->GetInteger() || (CalcRDamage(Enemy) > Enemy->GetHealth() && RKillSteal->Enabled())))
 			{
 				Vec3 CastPos;
 				GPrediction->GetFutureUnitPosition(Enemy, 0.5, true, CastPos);
@@ -101,7 +124,7 @@ void Kogmaw::Combo()
 		}
 	}
 
-	if (Hero->GetMana() - E->ManaCost() > W->ManaCost())
+	if (EinCombo->Enabled() && Hero->GetMana() - E->ManaCost() > W->ManaCost())
 	{
 		if (E->CastOnTarget(GTargetSelector->FindTarget(QuickestKill, SpellDamage, ECastDistance->GetFloat()), kHitChanceVeryHigh)) { return; }
 	}
@@ -172,31 +195,47 @@ void Kogmaw::OnGameUpdate()
 
 void Kogmaw::OnRender()
 {
+	if (R->IsReady() && DrawRDamage->Enabled())
+	{
+		Vec4 BarColor;
+		DrawRDamageColor->GetColor(&BarColor);
+
+		for (auto Enemy : GEntityList->GetAllHeros(false, true))
+		{
+			if (Enemy->IsOnScreen() && Enemy->IsVisible() && Hero->IsValidTarget(Enemy, GetRRange()))
+				Rembrandt::DrawDamageOnChampionHPBar(Enemy, CalcRDamage(Enemy), "R", BarColor);
+		}
+	}
+
 	if (DrawReady->Enabled())
 	{
-		if (Q->IsReady() && DrawQ->Enabled()) { GRender->DrawOutlinedCircle(GEntityList->Player()->GetPosition(), Vec4(255, 255, 0, 255), Q->Range()); }
-
-		if (W->IsReady() && DrawW->Enabled()) { GRender->DrawOutlinedCircle(GEntityList->Player()->GetPosition(), Vec4(255, 255, 0, 255), GetWRange()); }
-
-		if (E->IsReady() && DrawE->Enabled()) { GRender->DrawOutlinedCircle(GEntityList->Player()->GetPosition(), Vec4(255, 255, 0, 255), E->Range()); }
-
-		if (R->IsReady() && DrawR->Enabled()) { GRender->DrawOutlinedCircle(GEntityList->Player()->GetPosition(), Vec4(255, 255, 0, 255), GetRRange()); }
+		Vec4 CircleColor;
+		QColor->GetColor(&CircleColor);
+		if (Q->IsReady() && DrawQ->Enabled()) { GRender->DrawOutlinedCircle(Hero->GetPosition(), CircleColor, Q->Range()); }
+		WColor->GetColor(&CircleColor);
+		if (W->IsReady() && DrawW->Enabled()) { GRender->DrawOutlinedCircle(Hero->GetPosition(), CircleColor, GetWRange()); }
+		EColor->GetColor(&CircleColor);
+		if (E->IsReady() && DrawE->Enabled()) { GRender->DrawOutlinedCircle(Hero->GetPosition(), CircleColor, E->Range()); }
+		RColor->GetColor(&CircleColor);
+		if (R->IsReady() && DrawR->Enabled()) { GRender->DrawOutlinedCircle(Hero->GetPosition(), CircleColor, GetRRange()); }
 	}
 	else
 	{
-		if (DrawQ->Enabled()) { GRender->DrawOutlinedCircle(GEntityList->Player()->GetPosition(), Vec4(255, 255, 0, 255), Q->Range()); }
-
-		if (DrawW->Enabled()) { GRender->DrawOutlinedCircle(GEntityList->Player()->GetPosition(), Vec4(255, 255, 0, 255), GetWRange()); }
-
-		if (DrawE->Enabled()) { GRender->DrawOutlinedCircle(GEntityList->Player()->GetPosition(), Vec4(255, 255, 0, 255), E->Range()); }
-
-		if (DrawR->Enabled()) { GRender->DrawOutlinedCircle(GEntityList->Player()->GetPosition(), Vec4(255, 255, 0, 255), GetRRange()); }
+		Vec4 CircleColor;
+		QColor->GetColor(&CircleColor);
+		if (DrawQ->Enabled()) { GRender->DrawOutlinedCircle(Hero->GetPosition(), CircleColor, Q->Range()); }
+		WColor->GetColor(&CircleColor);
+		if (DrawW->Enabled()) { GRender->DrawOutlinedCircle(Hero->GetPosition(), CircleColor, GetWRange()); }
+		EColor->GetColor(&CircleColor);
+		if (DrawE->Enabled()) { GRender->DrawOutlinedCircle(Hero->GetPosition(), CircleColor, E->Range()); }
+		RColor->GetColor(&CircleColor);
+		if (DrawR->Enabled()) { GRender->DrawOutlinedCircle(Hero->GetPosition(), CircleColor, GetRRange()); }
 	}
 }
 
 void Kogmaw::OnSpellCast(CastedSpell const& Args)
 {
-	if (Hero->ManaPercent() > RHarassMana->GetFloat() && GOrbwalking->GetOrbwalkingMode() == kModeLaneClear && Args.Caster_->IsHero() && Args.Caster_->IsEnemy(Hero) && Args.Caster_->IsValidTarget() && !Args.Caster_->IsDead())
+	if (RHarassEnable->Enabled() && Hero->ManaPercent() > RHarassMana->GetFloat() && GOrbwalking->GetOrbwalkingMode() == kModeLaneClear && Args.Caster_->IsHero() && Args.Caster_->IsEnemy(Hero) && Args.Caster_->IsValidTarget() && !Args.Caster_->IsDead())
 	{
 		if (Args.AutoAttack_ && R->IsReady() && Hero->GetBuffCount("kogmawlivingartillerycost") < RMaxStacksHarass->GetInteger())
 		{
@@ -208,9 +247,19 @@ void Kogmaw::OnSpellCast(CastedSpell const& Args)
 
 void Kogmaw::OnOrbwalkAttack(IUnit* Source, IUnit* Target)
 {
-	if (Target->IsHero() && GOrbwalking->GetOrbwalkingMode() == kModeCombo && Target->IsValidTarget())
+	if (Target->IsHero() && Hero->IsValidTarget(Target, GetRRange()) && RinCombo->Enabled() && R->IsReady() && CalcRDamage(Target) > Target->GetHealth() && RKillSteal->Enabled())
 	{
-		if (QinCombo->Enabled()) { Q->CastOnTarget(Target, kHitChanceVeryHigh); }
+		Vec3 CastPos;
+		GPrediction->GetFutureUnitPosition(Target, 0.5, true, CastPos);
+		if ((CastPos - Hero->GetPosition()).Length() < GetRRange())
+			if (R->CastOnPosition(CastPos)) { return; }
+	}
+
+	if (Target->IsHero() && GOrbwalking->GetOrbwalkingMode() == kModeCombo && Target->IsValidTarget() && QinCombo->Enabled())
+	{
+		if (QinCombo->Enabled())
+			if (Q->CastOnTarget(Target, kHitChanceVeryHigh))
+				return;
 	}
 }
 

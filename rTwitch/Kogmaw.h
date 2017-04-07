@@ -17,16 +17,34 @@ public:
 private:
 	IMenu*			KogmawMenu;
 
-	IMenuOption*	QinCombo;
-	IMenuOption*	EinCombo;
-	IMenuOption*	WinCombo;
-	IMenuOption*	RinCombo;
-
+	IMenu*			DrawMenu;
 	IMenuOption*	DrawReady;
 	IMenuOption*	DrawQ;
 	IMenuOption*	DrawW;
 	IMenuOption*	DrawE;
 	IMenuOption*	DrawR;
+	IMenuOption*	QColor;
+	IMenuOption*	WColor;
+	IMenuOption*	EColor;
+	IMenuOption*	RColor;
+	IMenuOption*	DrawRDamage;
+	IMenuOption*	DrawRDamageColor;
+
+	IMenu*			ComboMenu;
+
+	IMenu*			HarassMenu;
+
+	IMenu*			LaneClearMenu;
+
+	IMenu*			ExtraMenu;
+
+	IMenuOption*	RKillSteal;
+	IMenuOption*	RHarassEnable;
+
+	IMenuOption*	QinCombo;
+	IMenuOption*	EinCombo;
+	IMenuOption*	WinCombo;
+	IMenuOption*	RinCombo;
 
 	IMenuOption*	RMaxStacks;
 	IMenuOption*	RMaxStacksHarass;

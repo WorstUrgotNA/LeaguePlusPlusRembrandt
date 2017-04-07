@@ -80,7 +80,37 @@ auto Rembrandt::DrawDamageOnChampionHPBar(IUnit* Hero, double Damage, const char
 	}
 }
 
+auto Rembrandt::DrawDamageOnChampionHPBar(IUnit* Hero, double Damage, Vec4 BarColor) -> void
+{
+	Vec2 HPBarPos;
+	if (Hero->GetHPBarPosition(HPBarPos))
+	{
+		Vec2 HPBarSize = Vec2(103 * (Damage / Hero->GetMaxHealth()), 8);
+		HPBarPos = Vec2(HPBarPos.x + 10, HPBarPos.y += 20);
+
+		Vec2 LinePos1 = Vec2(HPBarPos.x + HPBarSize.x, HPBarPos.y);
+		Vec2 LinePos2 = Vec2(HPBarPos.x + HPBarSize.x - 5, HPBarPos.y - 7);
+
+		GRender->DrawFilledBox(HPBarPos, HPBarSize, BarColor);
+	}
+}
+
 auto Rembrandt::LengthSqr(Vec3 v) -> float
 {
 	return (v.x * v.x + v.y * v.y + v.z * v.z);
+}
+
+//Range functions that are lightweight and optimized
+auto Rembrandt::IsInRange(Vec2 PositionA, Vec2 PositionB, float Range) -> bool
+{
+	Vec2 DistanceVector = Vec2(PositionA.x - PositionB.x, PositionA.y - PositionB.y);
+
+	return DistanceVector.x * DistanceVector.x + DistanceVector.y * DistanceVector.y - Range * Range < 0;
+}
+
+auto Rembrandt::IsInRange(Vec3 PositionA, Vec3 PositionB, float Range) -> bool
+{
+	Vec2 DistanceVector = Vec2(PositionA.x - PositionB.x, PositionA.z - PositionB.z);
+
+	return DistanceVector.x * DistanceVector.x + DistanceVector.y * DistanceVector.y - Range * Range < 0;
 }
