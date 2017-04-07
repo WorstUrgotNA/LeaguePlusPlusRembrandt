@@ -42,9 +42,6 @@
     <ClInclude Include="Graves.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ChampionHandler.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Caitlyn.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -78,6 +75,9 @@
     <ClInclude Include="Rembrandt.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Champion.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="UtilityPlusPlus.cpp">
@@ -101,9 +101,6 @@
     <ClCompile Include="Graves.cpp">
       <Filter>Resource Files\Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ChampionHandler.cpp">
-      <Filter>Resource Files\Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Caitlyn.cpp">
       <Filter>Resource Files\Source Files</Filter>
     </ClCompile>
@@ -123,6 +120,9 @@
       <Filter>SDK</Filter>
     </ClCompile>
     <ClCompile Include="Rembrandt.cpp">
+      <Filter>Resource Files\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Champion.cpp">
       <Filter>Resource Files\Source Files</Filter>
     </ClCompile>
   </ItemGroup>

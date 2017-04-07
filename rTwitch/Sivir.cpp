@@ -1,6 +1,11 @@
 #include "Sivir.h"
 
-Sivir::Sivir(IMenu* Parent)
+Sivir::~Sivir()
+{
+	SivirMenu->Remove();
+}
+
+Sivir::Sivir(IMenu* Parent, IUnit* Hero) :Champion(Parent, Hero)
 {
 	Hero = GEntityList->Player();
 
@@ -32,10 +37,6 @@ Sivir::Sivir(IMenu* Parent)
 
 }
 
-Sivir::~Sivir()
-{
-	SivirMenu->Remove();
-}
 
 void Sivir::HandleKeyPress()
 {

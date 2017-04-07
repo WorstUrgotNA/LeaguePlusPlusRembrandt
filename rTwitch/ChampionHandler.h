@@ -1,7 +1,8 @@
 #pragma once
 #include "PluginSDK.h"
+#include "Champion.h"
 
-
+/*
 class Graves;
 class Twitch;
 class Sivir;
@@ -12,6 +13,7 @@ class Caitlyn;
 
 class ChampionHandler
 {
+	/*
 public:
 	ChampionHandler();
 	~ChampionHandler();
@@ -43,12 +45,16 @@ private:
 	PLUGIN_EVENT(void) BeforeAttack(IUnit* Target);
 	PLUGIN_EVENT(void) OnInterruptible(InterruptibleSpell const& Args);
 	PLUGIN_EVENT(void) OnGapCloser(GapCloserSpell const& Args);
+
+
+	Champion* ChampHandler;
 	Graves* GravesHandler;
 	Caitlyn* CaitlynHandler;
 	Twitch* TwitchHandler;
 	Sivir* SivirHandler;
 	Tristana* TristanaHandler;
 	Kogmaw* KogmawHandler;
-};
 
-extern ChampionHandler* GPluginInstance3;
+};
+*/
+//extern ChampionHandler* ChampHandler;

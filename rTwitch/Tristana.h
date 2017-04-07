@@ -1,10 +1,11 @@
 #pragma once
 #include "PluginSDK.h"
+#include "Champion.h"
 
-class Tristana
+class Tristana : public virtual Champion
 {
 public:
-	Tristana(IMenu* Parent);
+	Tristana(IMenu* Parent, IUnit* Hero);
 	~Tristana();
 
 	int EnemiesInRange(IUnit* Source, float range);
@@ -31,11 +32,4 @@ private:
 
 	IMenuOption*	DrawReady;
 	IMenuOption*	DrawW;
-
-private:
-	ISpell2*		Q;
-	ISpell2*		W;
-	ISpell2*		E;
-	ISpell2*		R;
-	IUnit*			Hero;
 };

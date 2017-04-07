@@ -1,40 +1,66 @@
 #include "Twitch.h"
 #include "Rembrandt.h"
 
-Twitch::Twitch(IMenu* Parent)
-{
-	Hero = GEntityList->Player();
-
-	//Create Spells
-	Q = GPluginSDK->CreateSpell2(kSlotQ, kTargetCast, false, false, kCollidesWithNothing);
-	W = GPluginSDK->CreateSpell2(kSlotW, kLineCast, true, true, (kCollidesWithYasuoWall));
-	W->SetSkillshot(0.25f, 275.f, 1400.f, 900.f);
-	E = GPluginSDK->CreateSpell2(kSlotE, kTargetCast, true, false, (kCollidesWithNothing));
-	E->SetSkillshot(0.25f, 0.f, 1000.f, 1200.f);
-	R = GPluginSDK->CreateSpell2(kSlotR, kTargetCast, false, false, kCollidesWithNothing);
-	//RECALL = GPluginSDK->CreateSpell2(kSlotRecall, kTargetCast, false, false, kCollidesWithNothing);
-
-	ComboEType = { "Kill Only", "Max Stacks", "Off" };
-	//Menu
-	TwitchMenu = Parent->AddMenu("Twitch PRO++");
-	ComboQOption = TwitchMenu->CheckBox("Use Q in Combo:", true);
-	QInRange = TwitchMenu->AddFloat("Use Combo-Q if Enemy in X Range:", 0, 3000, 600);
-	ComboWOption = TwitchMenu->CheckBox("Use W in Combo:", true);
-	ComboETypeOption = TwitchMenu->AddSelection("Use E in Combo:", 0, ComboEType);
-	EEnemyLeaving = TwitchMenu->CheckBox("Use E if Enemy Escaping Range:", true);
-	EJungleKS = TwitchMenu->CheckBox("Use E to KS Jungle Mobs:", true);
-	SaveManaForE = TwitchMenu->CheckBox("Save Mana for E:", true);
-	QRecall = TwitchMenu->CheckBox("Stealth Recall:", true);
-	WUnderTurret = TwitchMenu->CheckBox("Use W if Under Enemy Turret:", false);
-	DrawReady = TwitchMenu->CheckBox("Draw Only Ready Spells:", true);
-	DrawW = TwitchMenu->CheckBox("Draw W Range:", true);
-	DrawE = TwitchMenu->CheckBox("Draw E Range:", true);
-	DrawR = TwitchMenu->CheckBox("Draw R Range:", true);
-}
-
 Twitch::~Twitch()
 {
 	TwitchMenu->Remove();
+}
+
+Twitch::Twitch(IMenu* Parent, IUnit* Hero) :Champion(Parent, Hero)
+{
+	//Create Spells
+	Q = GPluginSDK->CreateSpell2(kSlotQ, kTargetCast, false, false, kCollidesWithNothing);
+	W = GPluginSDK->CreateSpell2(kSlotW, kLineCast, true, true, kCollidesWithYasuoWall);
+	W->SetSkillshot(0.25f, 275.f, 1400.f, 950.f);
+	E = GPluginSDK->CreateSpell2(kSlotE, kTargetCast, true, false, kCollidesWithNothing);
+	E->SetSkillshot(0.25f, 0.f, 1000.f, 1200.f);
+	R = GPluginSDK->CreateSpell2(kSlotR, kTargetCast, false, false, kCollidesWithNothing);
+	R->SetOverrideRange(850.f + Hero->BoundingRadius());
+
+	ComboWType = { "Instant", "Smart Logic", "Off" };
+	ComboEType = { "Kill Only", "Custom Stacks", "Off" };
+	ComboRType = { "Off", "1", "2" , "3" , "4" , "5" };
+	HarassEType = { "Off", "1", "2" , "3" , "4" , "5", "6" };
+	//MAIN Menu
+	TwitchMenu = Parent->AddMenu("Twitch PRO++");
+
+	//DRAW MENU
+	DrawMenu = TwitchMenu->AddMenu("++ Drawings");
+	DrawReady = DrawMenu->CheckBox("Draw Only Ready Spells:", true);
+	DrawW = DrawMenu->CheckBox("Draw W Range:", true);
+	WColor = DrawMenu->AddColor("W Range Color:", 255, 255, 0, 255);
+	DrawE = DrawMenu->CheckBox("Draw E Range:", true);
+	EColor = DrawMenu->AddColor("E Range Color:", 255, 255, 0, 255);
+	DrawR = DrawMenu->CheckBox("Draw R Range:", true);
+	RColor = DrawMenu->AddColor("R Range Color:", 255, 255, 0, 255);
+	DrawEDamage = DrawMenu->CheckBox("Draw E Damage:", true);
+	DrawEDamageColor = DrawMenu->AddColor("E Damage Color:", 255, 255, 0, 150);
+
+	//COMBO MENU
+	ComboMenu = TwitchMenu->AddMenu("++ Combo");
+	ComboQOption = ComboMenu->CheckBox("Use Q in Combo:", true);
+	QInRange = ComboMenu->AddFloat("-> Use Q if Enemy in X Range:", 0, 3000, 600);
+	ComboWOption = ComboMenu->CheckBox("Use W in Combo:", true);
+	ComboETypeOption = ComboMenu->AddSelection("Use E in Combo:", 0, ComboEType);
+	ComboECustomStacks = ComboMenu->AddInteger("-> Custom E Stacks:", 1, 6, 6);
+	EEnemyLeaving = ComboMenu->CheckBox("Use E if Enemy Escaping Range:", true);
+	ComboR = ComboMenu->AddSelection("Use R if X Enemies in Range:", 0, ComboRType);
+
+	//HARASS MENU
+	HarassMenu = TwitchMenu->AddMenu("++ Harass");
+	HarassW = HarassMenu->CheckBox("Use W for Harass:", false);
+	HarassWMana = HarassMenu->AddFloat("-> Min Mana % W Harass:", 0, 100, 75);
+	HarassE = HarassMenu->AddSelection("Use E Harass on X Stacks:", 0, HarassEType);
+
+	//LANE CLEAR MENU
+	LaneClearMenu = TwitchMenu->AddMenu("++ Jungle Clear");
+	EJungleKS = LaneClearMenu->CheckBox("Use E to KS Jungle Mobs:", true);
+
+	//EXTRA MENU
+	ExtraMenu = TwitchMenu->AddMenu("++ Extra Settings");
+	QRecall = ExtraMenu->CheckBox("Stealth Recall:", true);
+	WUnderTurret = ExtraMenu->CheckBox("Use W if Under Enemy Turret:", false);
+	SaveManaForE = ExtraMenu->CheckBox("Save Mana for E:", true);
 }
 
 int Twitch::EnemiesInRange(IUnit* Source, float range)
@@ -62,7 +88,7 @@ float Twitch::CalcEDamage(IUnit* Target)
 	int StackCount = Target->GetBuffCount("twitchdeadlyvenom");
 
 	if (StackCount == 0) return 0;
-
+	
 	float BonusStackDamage = ((0.25 * Hero->BonusDamage()) + (0.2 * Hero->TotalMagicDamage())) * StackCount;
 
 	if (Hero->GetSpellLevel(kSlotE) == 1)
@@ -87,6 +113,9 @@ float Twitch::CalcEDamage(IUnit* Target)
 
 void Twitch::Combo()
 {
+	if (ComboR->GetInteger() > 0 && EnemiesInRange(Hero, R->Range()) >= ComboR->GetInteger())
+		if (R->CastOnPlayer()) return;
+
 	for (auto const& Enemy : GEntityList->GetAllHeros(false, true))
 	{
 		if (Enemy->IsValidTarget() && !Enemy->IsClone())
@@ -97,7 +126,7 @@ void Twitch::Combo()
 			{
 				if (flDistance <= E->Range()) // Use E in Combo
 				{
-					if (ComboETypeOption->GetInteger() == 1 && (Enemy->GetBuffCount("twitchdeadlyvenom") == 6 || CalcEDamage(Enemy) > Enemy->GetHealth()))
+					if (ComboETypeOption->GetInteger() == 1 && (Enemy->GetBuffCount("twitchdeadlyvenom") >= ComboECustomStacks->GetInteger() || CalcEDamage(Enemy) > Enemy->GetHealth()))
 						if (E->CastOnPlayer()) { return; }
 					if (ComboETypeOption->GetInteger() == 0 && CalcEDamage(Enemy) > Enemy->GetHealth())
 						if (E->CastOnPlayer()) { return; }
@@ -122,15 +151,47 @@ void Twitch::Combo()
 		if (!WUnderTurret->Enabled() && GUtility->IsPositionUnderTurret(Hero->GetPosition()))
 			return;
 		
-		W->CastOnTarget(GTargetSelector->FindTarget(QuickestKill, PhysicalDamage, W->Range()));
+		if (W->CastOnTarget(GTargetSelector->FindTarget(QuickestKill, PhysicalDamage, W->Range()))) return;
 	}
+}
+
+void Twitch::LaneClear()
+{
+	for (auto const& Enemy : GEntityList->GetAllHeros(false, true))
+	{
+		if (HarassE->GetInteger() > 0 && Enemy->IsValidTarget() && !Enemy->IsClone())
+		{
+			auto flDistance = (Hero->GetPosition() - Enemy->GetPosition()).Length();
+
+			if (Enemy->HasBuff("twitchdeadlyvenom"))
+			{
+				if (flDistance <= E->Range()) // Use E in Harass
+				{
+					if (Enemy->GetBuffCount("twitchdeadlyvenom") >= HarassE->GetInteger() || CalcEDamage(Enemy) > Enemy->GetHealth())
+						if (E->CastOnPlayer()) { return; }
+					if (EEnemyLeaving->Enabled() && flDistance > E->Range() - 20 && !Enemy->IsFacing(Hero))
+						if (E->CastOnPlayer()) { return; }
+				}
+			}
+		}
+	}
+
+	if (SaveManaForE->Enabled() && Hero->GetMana() - W->ManaCost() < E->ManaCost())
+		return;
+	if (!WUnderTurret->Enabled() && GUtility->IsPositionUnderTurret(Hero->GetPosition()))
+		return;
+
+	if (HarassW->Enabled() && Hero->ManaPercent() > HarassWMana->GetFloat())
+		if (W->CastOnTarget(GTargetSelector->FindTarget(QuickestKill, PhysicalDamage, W->Range()))) return;
 }
 
 void Twitch::OnGameUpdate()
 {
 	if (GOrbwalking->GetOrbwalkingMode() == kModeCombo)
 		Combo();
-
+	else if (GOrbwalking->GetOrbwalkingMode() == kModeLaneClear)
+		LaneClear();
+	
 	if (EJungleKS->Enabled() && (GOrbwalking->GetOrbwalkingMode() == kModeCombo || GOrbwalking->GetOrbwalkingMode() == kModeLaneClear))
 	{
 		for (auto JGCreep : GEntityList->GetAllMinions(false, false, true))
@@ -148,26 +209,37 @@ void Twitch::OnGameUpdate()
 
 void Twitch::OnRender()
 {
-	/*Vec2 ScreenPos;
-	if (GTargetSelector->GetFocusedTarget() != nullptr && GGame->Projection(GGame->CursorPosition(), &ScreenPos))
-		GRender->DrawTextW(Vec2(ScreenPos.x + 100, ScreenPos.y + 100), Vec4(255, 255, 255, 255), "%i", static_cast<int>(CalcEDamage(GTargetSelector->GetFocusedTarget())));*/
+	if (E->IsReady() && DrawEDamage->Enabled())
+	{
+		Vec4 BarColor;
+		DrawEDamageColor->GetColor(&BarColor);
+
+		for (auto Enemy : GEntityList->GetAllHeros(false, true))
+		{
+			if (Enemy->IsOnScreen() && Enemy->IsVisible() && Enemy->IsValidTarget() && Enemy->HasBuff("twitchdeadlyvenom"))
+				Rembrandt::DrawDamageOnChampionHPBar(Enemy, CalcEDamage(Enemy), "E", BarColor);
+		}
+	}
 
 	if (DrawReady->Enabled())
 	{
-		if (W->IsReady() && DrawW->Enabled()) { GRender->DrawOutlinedCircle(GEntityList->Player()->GetPosition(), Vec4(255, 255, 0, 255), W->Range()); }
-
-		if (E->IsReady() && DrawE->Enabled()) { GRender->DrawOutlinedCircle(GEntityList->Player()->GetPosition(), Vec4(255, 255, 0, 255), E->Range()); }
-
-		if (R->IsReady() && DrawR->Enabled()) { GRender->DrawOutlinedCircle(GEntityList->Player()->GetPosition(), Vec4(255, 255, 0, 255), R->Range()); }
-
+		Vec4 CircleColor;
+		WColor->GetColor(&CircleColor);
+		if (W->IsReady() && DrawW->Enabled()) { GRender->DrawOutlinedCircle(Hero->GetPosition(), CircleColor, W->Range()); }
+		EColor->GetColor(&CircleColor);
+		if (E->IsReady() && DrawE->Enabled()) { GRender->DrawOutlinedCircle(Hero->GetPosition(), CircleColor, E->Range()); }
+		RColor->GetColor(&CircleColor);
+		if (R->IsReady() && DrawR->Enabled()) { GRender->DrawOutlinedCircle(Hero->GetPosition(), CircleColor, R->Range()); }
 	}
 	else
 	{
-		if (DrawW->Enabled()) { GRender->DrawOutlinedCircle(GEntityList->Player()->GetPosition(), Vec4(255, 255, 0, 255), W->Range()); }
-
-		if (DrawE->Enabled()) { GRender->DrawOutlinedCircle(GEntityList->Player()->GetPosition(), Vec4(255, 255, 0, 255), E->Range()); }
-
-		if (DrawR->Enabled()) { GRender->DrawOutlinedCircle(GEntityList->Player()->GetPosition(), Vec4(255, 255, 0, 255), R->Range()); }
+		Vec4 CircleColor;
+		WColor->GetColor(&CircleColor);
+		if (DrawW->Enabled()) { GRender->DrawOutlinedCircle(Hero->GetPosition(), CircleColor, W->Range()); }
+		EColor->GetColor(&CircleColor);
+		if (DrawE->Enabled()) { GRender->DrawOutlinedCircle(Hero->GetPosition(), CircleColor, E->Range()); }
+		RColor->GetColor(&CircleColor);
+		if (DrawR->Enabled()) { GRender->DrawOutlinedCircle(Hero->GetPosition(), CircleColor, R->Range()); }
 	}
 }
 
@@ -201,7 +273,7 @@ void Twitch::OnOrbwalkAttack(IUnit* Source, IUnit* Target)
 			if (!WUnderTurret->Enabled() && GUtility->IsPositionUnderTurret(Hero->GetPosition()))
 				return;
 
-			W->CastOnTarget(GTargetSelector->FindTarget(QuickestKill, PhysicalDamage, W->Range()));
+			if (W->CastOnTarget(GTargetSelector->FindTarget(QuickestKill, PhysicalDamage, W->Range()))) return;
 		}
 	}
 }

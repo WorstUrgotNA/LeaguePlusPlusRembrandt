@@ -5,7 +5,14 @@
 #include "Gui.h"
 #include "Awareness.h"
 #include "ObjectTracker.h"
-#include "ChampionHandler.h"
+#include "Champion.h"
+#include "Graves.h"
+#include "Caitlyn.h"
+#include "Twitch.h"
+#include "Sivir.h"
+#include "Tristana.h"
+#include "Kogmaw.h"
+
 
 
 PluginSetup("Rembrandt [AIO]");
@@ -38,6 +45,8 @@ IMenu* SummonerTeller;
 
 IMenu* AutoLevelMainMenu;
 IMenu* ChampNameMenu;
+
+IMenuOption*	LoadChampPlugin;
 
 IMenuOption* EnableAutoLevelUp;
 IMenuOption* ALUQ;
@@ -109,7 +118,7 @@ IMenu* TiamatMenu;
 IMenuOption* SkinID;
 IMenuOption* SkinEnable;
 
-IMenu* SkinMenu;
+IMenu* SkinMenu, *ChampMenu;
 
 IUnit* CleanseTeamate01;
 IUnit* CleanseTeamate02;
@@ -158,7 +167,7 @@ Vec3 JungleNotification;
 
 Awareness* GPluginInstance = nullptr;
 ObjectTracker* GPluginInstance2 = nullptr;
-ChampionHandler* GPluginInstance3 = nullptr;
+Champion * ChampHandler = nullptr;
 
 
 std::string	formattedTime;
@@ -174,10 +183,12 @@ bool SummonerTellerKeyWasDown = false;
 bool smiteKeyWasDown = false;
 bool DelayedCleanse = false;
 bool SkinNeedsReset = false;
+bool PluginActive;
 int CurrentSkinID;
 float AfkTimer;
 
-#pragma region Events
+
+
 void LoadSpells()
 {
 	AutoSmiteTextPos = Vec2(0, 0);
@@ -188,9 +199,8 @@ void LoadSpells()
 	auto PlayerSum1  = Hero->GetSpellName(kSummonerSlot1);
 	auto PlayerSum2 = Hero->GetSpellName(kSummonerSlot2);
 
-
 	if (strstr(PlayerSum1, "SummonerSmite")) { SMITE = GPluginSDK->CreateSpell2(kSummonerSlot1, kTargetCast, false, false, kCollidesWithNothing); }
-	else if (strcmp(PlayerSum1, "SummonerHeal") == 0) { HEAL = GPluginSDK->CreateSpell(kSummonerSlot1, 850); }
+	else if (!strcmp(PlayerSum1, "SummonerHeal")) { HEAL = GPluginSDK->CreateSpell(kSummonerSlot1, 850); }
 	else if (strcmp(PlayerSum1, "SummonerBarrier") == 0) { BARRIER = GPluginSDK->CreateSpell(kSummonerSlot1, 0); }
 	else if (strcmp(PlayerSum1, "SummonerExhaust") == 0) { EXHAUST = GPluginSDK->CreateSpell(kSummonerSlot1, 650); }
 	else if (strcmp(PlayerSum1, "SummonerBoost") == 0) { CLEANSE = GPluginSDK->CreateSpell(kSummonerSlot1, 0); }
@@ -407,7 +417,6 @@ void UseDefensives()
 			Biscuit->CastOnPlayer();
 		}
 	}
-	
 }
 
 
@@ -434,76 +443,6 @@ void CheckKeyPresses()
 			smiteKeyWasDown = false;
 		}
 	}
-
-	/*if (SummonerTellerEnabled->Enabled())
-	{
-		keystate2 = GetAsyncKeyState(SummonerTellerKey->GetInteger()); // summoner teller key
-
-		if (GUtility->IsLeagueWindowFocused() && !GGame->IsChatOpen())
-		{
-			if (keystate2 < 0) // If most-significant bit is set...
-			{
-				// key is down . . .
-				if (SummonerTellerKeyWasDown == false)
-				{
-					//print sums
-					auto Enemies = GEntityList->GetAllHeros(true, true);
-					
-
-					for (auto Enemy : Enemies)
-					{
-						if (Enemy->GetSpellRemainingCooldown(kSummonerSlot1) > 0 || Enemy->GetSpellRemainingCooldown(kSummonerSlot2) > 0)
-						{
-							std::string parser;
-							
-							parser += Enemy->ChampionName();
-							parser += " ";
-							if (Enemy->GetSpellRemainingCooldown(kSummonerSlot1) > 0)
-							{
-								if (strstr(Enemy->GetSpellName(kSummonerSlot1), "SummonerSmite")) { parser += "Smite "; }
-								else if (strcmp(Enemy->GetSpellName(kSummonerSlot1), "SummonerHeal") == 0) { parser += "Heal "; }
-								else if (strcmp(Enemy->GetSpellName(kSummonerSlot1), "SummonerBarrier") == 0) { parser += "Barrier "; }
-								else if (strcmp(Enemy->GetSpellName(kSummonerSlot1), "SummonerExhaust") == 0) { parser += "Exhaust "; }
-								else if (strcmp(Enemy->GetSpellName(kSummonerSlot1), "SummonerBoost") == 0) { parser += "Cleanse "; }
-								else if (strcmp(Enemy->GetSpellName(kSummonerSlot1), "SummonerDot") == 0) { parser += "Ignite "; }
-								else if (strcmp(Enemy->GetSpellName(kSummonerSlot1), "SummonerFlash") == 0) { parser += "Flash "; }
-								else if (strcmp(Enemy->GetSpellName(kSummonerSlot1), "SummonerHaste") == 0) { parser += "Ghost "; }
-								else if (strcmp(Enemy->GetSpellName(kSummonerSlot1), "SummonerTeleport") == 0) { parser += "Teleport "; }
-
-								//parser += static_cast<int>(Enemy->GetSpellRemainingCooldown(kSummonerSlot1));
-								//parser += " ";
-							}
-								
-							if (Enemy->GetSpellRemainingCooldown(kSummonerSlot2) > 0)
-							{
-								if (strstr(Enemy->GetSpellName(kSummonerSlot2), "SummonerSmite")) { parser += "Smite "; }
-								else if (strcmp(Enemy->GetSpellName(kSummonerSlot2), "SummonerHeal") == 0) { parser += "Heal "; }
-								else if (strcmp(Enemy->GetSpellName(kSummonerSlot2), "SummonerBarrier") == 0) { parser += "Barrier "; }
-								else if (strcmp(Enemy->GetSpellName(kSummonerSlot2), "SummonerExhaust") == 0) { parser += "Exhaust "; }
-								else if (strcmp(Enemy->GetSpellName(kSummonerSlot2), "SummonerBoost") == 0) { parser += "Cleanse "; }
-								else if (strcmp(Enemy->GetSpellName(kSummonerSlot2), "SummonerDot") == 0) { parser += "Ignite "; }
-								else if (strcmp(Enemy->GetSpellName(kSummonerSlot2), "SummonerFlash") == 0) { parser += "Flash "; }
-								else if (strcmp(Enemy->GetSpellName(kSummonerSlot2), "SummonerHaste") == 0) { parser += "Ghost "; }
-								else if (strcmp(Enemy->GetSpellName(kSummonerSlot2), "SummonerTeleport") == 0) { parser += "Teleport "; }
-
-								//parser += static_cast<int>(Enemy->GetSpellRemainingCooldown(kSummonerSlot2));
-							}
-							
-							GGame->Say("%s", parser);
-						}
-					}
-
-					SummonerTellerKeyWasDown = true;
-				}
-			}
-			else
-			{
-				// key is up . . .
-				SummonerTellerKeyWasDown = false;
-			}
-		}
-	}*/
-	
 }
 
 int GetSmiteDamage(int PlayerLevel)
@@ -610,9 +549,7 @@ void Combo()
 			}
 		}
 	}
-	
-
-	
+		
 	//Ravenous
 	if (RavenousEnabled->Enabled() && Ravenous->IsOwned() && Ravenous->IsReady() && !Hero->IsDead())
 	{
@@ -719,46 +656,7 @@ void AutoTrinket()
 	}
 }
 
-/*PLUGIN_EVENT(void) OnJungleNotify(JungleNotifyData* Args)
-{
-	
-}*/
-
-/*PLUGIN_EVENT(void) OnOrbwalkBeforeAttack(IUnit* Target)
-{
-
-}
-
-PLUGIN_EVENT(void) OnOrbwalkAttack(IUnit* Source, IUnit* Target)
-{
-
-}
-*/
-PLUGIN_EVENT(void) OnOrbwalkAfterAttack(IUnit* Source, IUnit* Target)
-{
-	//Titanic
-	if (TitanicEnabled->Enabled() && Titanic->IsOwned() && Titanic->IsReady() && !Hero->IsDead())
-	{
-		Titanic->CastOnPlayer();
-	}
-}
-
-// Return an IUnit object here to force the orbwalker to select it for this tick
-/*PLUGIN_EVENT(IUnit*) OnOrbwalkingFindTarget()
-{
-	return nullptr;
-}*/
-
-/*PLUGIN_EVENT(void) OnOrbwalkTargetChange(IUnit* OldTarget, IUnit* NewTarget)
-{
-
-}*/
-
-/*PLUGIN_EVENT(void) OnOrbwalkNonKillableMinion(IUnit* NonKillableMinion)
-{
-
-}*/
-
+ 
 void UpdateSkin()
 {
 	if (SkinEnable->Enabled())
@@ -780,6 +678,7 @@ void UpdateSkin()
 		}
 	}
 }
+ 
 
 PLUGIN_EVENT(void) OnGameUpdate()
 {
@@ -790,7 +689,9 @@ PLUGIN_EVENT(void) OnGameUpdate()
 	AutoSmite();
 	AutoTrinket();
 
-	if (GOrbwalking->GetOrbwalkingMode() == kModeCombo) { Combo();}
+	if (GOrbwalking->GetOrbwalkingMode() == kModeCombo) { Combo(); }
+
+	ChampHandler->OnGameUpdate();
 }
 
 PLUGIN_EVENT(void) OnRender()
@@ -803,50 +704,51 @@ PLUGIN_EVENT(void) OnRender()
 			GRender->DrawTextW(AutoSmiteTextPos, Vec4(255, 255, 255, 255), "%s", SmiteActive->Enabled() ? "AUTOSMITE ON" : "AUTOSMITE OFF");
 		}
 	}
+	ChampHandler->OnRender();
 }
 
-/*PLUGIN_EVENT(void) OnSpellCast(CastedSpell const& Args)
+PLUGIN_EVENT(void) OnRealSpellCast(CastedSpell const& Args)
 {
+	ChampHandler->OnRealSpellCast(Args);
+}
 
-}*/
-
-/*PLUGIN_EVENT(void) OnUnitDeath(IUnit* Source)
+PLUGIN_EVENT(void) OnSpellCast(CastedSpell const& Args)
 {
-
-}*/
-
-/*PLUGIN_EVENT(void) OnCreateObject(IUnit* Source)
+	ChampHandler->OnSpellCast(Args);
+}
+PLUGIN_EVENT(bool) OnPreCast(int Slot, IUnit* Target, Vec3* StartPosition, Vec3* EndPosition)
 {
+	return ChampHandler->OnPreCast(Slot,Target, StartPosition, EndPosition);
+}
 
-}*/
-
-/*PLUGIN_EVENT(void) OnDestroyObject(IUnit* Source)
+PLUGIN_EVENT(void) OnOrbwalkAttack(IUnit* Source, IUnit* Target)
 {
+	ChampHandler->OnOrbwalkAttack(Source, Target);
+}
 
-}*/
-
-/*PLUGIN_EVENT(void) OnDoCast(CastedSpell const& Args)
+PLUGIN_EVENT(void) BeforeAttack(IUnit* Target)
 {
-}*/
+	ChampHandler->BeforeAttack(Target);
+}
 
-/*PLUGIN_EVENT(void) OnInterruptible(InterruptibleSpell const& Args)
+PLUGIN_EVENT(void) OnInterruptible(InterruptibleSpell const& Args)
 {
+	ChampHandler->OnInterruptible(Args);
+}
 
-}*/
-
-/*PLUGIN_EVENT(void) OnGapCloser(GapCloserSpell const& Args)
+PLUGIN_EVENT(void) OnGapCloser(GapCloserSpell const& Args)
 {
+	ChampHandler->OnGapCloser(Args);
+}
 
-}*/
-
-// Called when issuing an order (e.g move, attack, etc.)
-// Return false to stop order from executing
-//PLUGIN_EVENT(bool) OnIssueOrder(IUnit* Source, DWORD OrderIdx, Vec3* Position, IUnit* Target)
-//{
-//	AfkTimer = GGame->Time();
-
-	//return true;
-//}
+PLUGIN_EVENT(void) OnOrbwalkAfterAttack(IUnit* Source, IUnit* Target)
+{
+	//Titanic
+	if (TitanicEnabled->Enabled() && Titanic->IsOwned() && Titanic->IsReady() && !Hero->IsDead())
+	{
+		Titanic->CastOnPlayer();
+	}
+}
 
 PLUGIN_EVENT(void) OnBuffAdd(IUnit* Source, void* BuffData)
 {
@@ -1127,21 +1029,12 @@ PLUGIN_EVENT(void) OnBuffAdd(IUnit* Source, void* BuffData)
 	}
 }
 
-/*PLUGIN_EVENT(void) OnBuffRemove(IUnit* Source, void* BuffData)
-{
-
-}*/
-
-/*PLUGIN_EVENT(void) OnGameEnd()
-{
-
-}*/
 
 PLUGIN_EVENT(void) OnLevelUp(IUnit* Source, int NewLevel)
 {
 	if (EnableAutoLevelUp->Enabled() && Source == Hero && NewLevel >= ALUStartLevel->GetInteger()) //auto level
 	{
-		
+
 		for (int i = 1; i <= 4; i++)
 		{
 			if (ALUR->GetInteger() == i) {
@@ -1161,248 +1054,196 @@ PLUGIN_EVENT(void) OnLevelUp(IUnit* Source, int NewLevel)
 	}
 }
 
-// Only called for local player, before the spell packet is sent
-//PLUGIN_EVENT(void) OnPreCast(int Slot, IUnit* Target, Vec3* StartPosition, Vec3* EndPosition)
-//{
-	//GGame->PrintChat(std::to_string(Slot).data());
-		
-//}
-
-/*PLUGIN_EVENT(void) OnDash(UnitDash* Args)
+void  LoadEvents()
 {
+	GEventManager->AddEventHandler(kEventOrbwalkAfterAttack, OnOrbwalkAfterAttack);
+	GEventManager->AddEventHandler(kEventOnGameUpdate, OnGameUpdate);
+	GEventManager->AddEventHandler(kEventOnRender, OnRender);
+	GEventManager->AddEventHandler(kEventOnBuffAdd, OnBuffAdd);
+	GEventManager->AddEventHandler(kEventOnLevelUp, OnLevelUp);
+	GEventManager->AddEventHandler(kEventOnSpellCast, OnRealSpellCast);
+	GEventManager->AddEventHandler(kEventOnDoCast, OnSpellCast);
+	GEventManager->AddEventHandler(kEventOnPreCast, OnPreCast);
+	GEventManager->AddEventHandler(kEventOrbwalkAfterAttack, OnOrbwalkAttack);
+	GEventManager->AddEventHandler(kEventOrbwalkBeforeAttack, BeforeAttack);
+	GEventManager->AddEventHandler(kEventOnInterruptible, OnInterruptible);
+	GEventManager->AddEventHandler(kEventOnGapCloser, OnGapCloser);
+}
 
-}*/
-
-/*PLUGIN_EVENT(void) OnD3DPresent(void* Direct3D9DevicePtr)
+void  UnloadEvents()
 {
-
-}*/
-
-/*PLUGIN_EVENT(void) OnD3DPreReset(void* Direct3D9DevicePtr)
-{
-
-}*/
-
-/*PLUGIN_EVENT(void) OnD3DPostReset(void* Direct3D9DevicePtr)
-{
-
-}*/
-
-/*PLUGIN_EVENT(void) OnRenderBehindHUD()
-{
-
-}*/
-
-// Return false to set this message as handled
-/*PLUGIN_EVENT(bool) OnWndProc(HWND Wnd, UINT Message, WPARAM wParam, LPARAM lParam)
-{
-	return true;
-}*/
-
-/*PLUGIN_EVENT(void) OnEnterVisible(IUnit* Source)
-{
-
-}*/
-
-//PLUGIN_EVENT(void) OnExitVisible(IUnit* Source)
-//{
-	/*if (GOrbwalking->GetOrbwalkingMode() == kModeCombo && Source == GTargetSelector->GetFocusedTarget())
-	{
-		float flDistance = (Source->GetPosition() - GEntityList->Player()->GetPosition()).Length();
-		GGame->PrintChat(Source->ChampionName());
-		if (flDistance < 525 &&	WardTrinket->IsOwned() && WardTrinket->IsReady())
-		{
-			WardTrinket->CastOnPosition(Source->GetPosition());
-		}
-	}*/
-//}
-#pragma endregion
+	GEventManager->RemoveEventHandler(kEventOrbwalkAfterAttack, OnOrbwalkAfterAttack);
+	GEventManager->RemoveEventHandler(kEventOnBuffAdd, OnBuffAdd);
+	GEventManager->RemoveEventHandler(kEventOnLevelUp, OnLevelUp);
+	GEventManager->RemoveEventHandler(kEventOnGameUpdate, OnGameUpdate);
+	GEventManager->RemoveEventHandler(kEventOnSpellCast, OnRealSpellCast);
+	GEventManager->RemoveEventHandler(kEventOnDoCast, OnSpellCast);
+	GEventManager->RemoveEventHandler(kEventOnPreCast, OnPreCast);
+	GEventManager->RemoveEventHandler(kEventOnRender, OnRender);
+	GEventManager->RemoveEventHandler(kEventOrbwalkAfterAttack, OnOrbwalkAttack);
+	GEventManager->RemoveEventHandler(kEventOrbwalkBeforeAttack, BeforeAttack);
+	GEventManager->RemoveEventHandler(kEventOnInterruptible, OnInterruptible);
+	GEventManager->RemoveEventHandler(kEventOnGapCloser, OnGapCloser);
+}
 
 // Called when plugin is first loaded
 PLUGIN_API void OnLoad(IPluginSDK* PluginSDK)
 {
 	// Initializes global interfaces for core access
 	PluginSDKSetup(PluginSDK);
-	
+
 	//GUtility->CreateDebugConsole();
 
 	Hero = GEntityList->Player();
 
-		//Initialize Menus
-		MainMenu = GPluginSDK->AddMenu("[Rembrandt AIO] Utility PRO++");
-		
-		Defensives = MainMenu->AddMenu("Activator PRO");
+	//Initialize Menus
+	MainMenu = GPluginSDK->AddMenu("[Rembrandt AIO] Utility PRO++");
 
-		GUtility->LogConsole("Debug before awareness active");
+	Defensives = MainMenu->AddMenu("Activator PRO");
 
-		GPluginInstance = new Awareness(MainMenu);
-		
-		GUtility->LogConsole("Awareness active");
+	GUtility->LogConsole("Debug before awareness active");
 
-		GPluginInstance2 = new ObjectTracker(MainMenu);
-		
-		CleanseMenu = Defensives->AddMenu("Cleanse / QSS / Mikaels");
-		CleanseActive = CleanseMenu->CheckBox("Enabled: ", true);
-		CleanseHumanizerDelay = CleanseMenu->AddInteger("Humanizer Delay in Ticks:", 0, 60, 0);
-		CleanseDurationMin = CleanseMenu->AddFloat("Minimum Duration (secs) to Cleanse:", 0, 3, 1);
-		CCFilter = CleanseMenu->AddMenu("CC Filter");
-		MikaelsMenu = CleanseMenu->AddMenu("Mikaels Filter");
-		AddTeamatesToCleanse();
-		CleanseCharm = CCFilter->CheckBox("Use on Charm ", true);
-		CleanseDisarm = CCFilter->CheckBox("Use on Disarm ", true);
-		CleanseFear = CCFilter->CheckBox("Use on Fear ", true);
-		CleanseFlee = CCFilter->CheckBox("Use on Flee ", true);
-		CleansePolymorph = CCFilter->CheckBox("Use on Polymorph ", true);
-		CleanseSnare = CCFilter->CheckBox("Use on Snare", true);
-		CleanseStun = CCFilter->CheckBox("Use on Stun ", true);
-		CleanseExhaust = CCFilter->CheckBox("Use on Exhaust ", true);
-		CleanseSuppression = CCFilter->CheckBox("Use on Suppression ", true);
-		CleanseBlind = CCFilter->CheckBox("Use on Blind ", true);
-		CleanseTaunt = CCFilter->CheckBox("Use on Taunt ", true);
+	GPluginInstance = new Awareness(MainMenu);
 
-		DefensiveItems = Defensives->AddMenu("Defensive Items"); // DEFENSIVE ITEMS MENU
-		FaceOfTheMountainMenu = DefensiveItems->AddMenu("Face of The Mountain");
-		FaceOfTheMountainEnabled = FaceOfTheMountainMenu->CheckBox("Enabled:", true);
-		FaceOfTheMountainPercent = FaceOfTheMountainMenu->AddFloat("Use at Health %:", 1, 99, 50);
+	GUtility->LogConsole("Awareness active");
 
-		RedemptionMenu = DefensiveItems->AddMenu("Redemption");
-		RedemptionEnabled = RedemptionMenu->CheckBox("Enabled:", true);
-		RedemptionPercent = RedemptionMenu->AddFloat("Use at Health %:", 1, 99, 40);
+	GPluginInstance2 = new ObjectTracker(MainMenu);
 
-		ZhonyasMenu = DefensiveItems->AddMenu("Zhonyas Hourglass");
-		ZhonyasEnabled = ZhonyasMenu->CheckBox("COMING SOON WITH DAMAGE PREDICTION:", true);
+	CleanseMenu = Defensives->AddMenu("Cleanse / QSS / Mikaels");
+	CleanseActive = CleanseMenu->CheckBox("Enabled: ", true);
+	CleanseHumanizerDelay = CleanseMenu->AddInteger("Humanizer Delay in Ticks:", 0, 60, 0);
+	CleanseDurationMin = CleanseMenu->AddFloat("Minimum Duration (secs) to Cleanse:", 0, 3, 1);
+	CCFilter = CleanseMenu->AddMenu("CC Filter");
+	MikaelsMenu = CleanseMenu->AddMenu("Mikaels Filter");
+	AddTeamatesToCleanse();
+	CleanseCharm = CCFilter->CheckBox("Use on Charm ", true);
+	CleanseDisarm = CCFilter->CheckBox("Use on Disarm ", true);
+	CleanseFear = CCFilter->CheckBox("Use on Fear ", true);
+	CleanseFlee = CCFilter->CheckBox("Use on Flee ", true);
+	CleansePolymorph = CCFilter->CheckBox("Use on Polymorph ", true);
+	CleanseSnare = CCFilter->CheckBox("Use on Snare", true);
+	CleanseStun = CCFilter->CheckBox("Use on Stun ", true);
+	CleanseExhaust = CCFilter->CheckBox("Use on Exhaust ", true);
+	CleanseSuppression = CCFilter->CheckBox("Use on Suppression ", true);
+	CleanseBlind = CCFilter->CheckBox("Use on Blind ", true);
+	CleanseTaunt = CCFilter->CheckBox("Use on Taunt ", true);
 
-		SeraphsMenu = DefensiveItems->AddMenu("Seraphs Embrace");
-		SeraphsEnabled = SeraphsMenu->CheckBox("Enabled:", true);
-		SeraphsPercent = SeraphsMenu->AddFloat("Use at Health %:", 1, 99, 50);
+	DefensiveItems = Defensives->AddMenu("Defensive Items"); // DEFENSIVE ITEMS MENU
+	FaceOfTheMountainMenu = DefensiveItems->AddMenu("Face of The Mountain");
+	FaceOfTheMountainEnabled = FaceOfTheMountainMenu->CheckBox("Enabled:", true);
+	FaceOfTheMountainPercent = FaceOfTheMountainMenu->AddFloat("Use at Health %:", 1, 99, 50);
 
-		LocketMenu = DefensiveItems->AddMenu("Locket of the Iron Solari");
-		LocketEnabled = LocketMenu->CheckBox("Enabled:", true);
-		LocketPercent = LocketMenu->AddFloat("Use at Health %:", 1, 99, 45);
+	RedemptionMenu = DefensiveItems->AddMenu("Redemption");
+	RedemptionEnabled = RedemptionMenu->CheckBox("Enabled:", true);
+	RedemptionPercent = RedemptionMenu->AddFloat("Use at Health %:", 1, 99, 40);
 
-		RanduinsMenu = DefensiveItems->AddMenu("Randuins Omen");
-		RanduinsEnabled = RanduinsMenu->CheckBox("Enabled:", true);
+	ZhonyasMenu = DefensiveItems->AddMenu("Zhonyas Hourglass");
+	ZhonyasEnabled = ZhonyasMenu->CheckBox("COMING SOON WITH DAMAGE PREDICTION:", true);
 
-		OffensiveItems = Defensives->AddMenu("Offensive Items");//OFFENSIVE ITEMS MENU
+	SeraphsMenu = DefensiveItems->AddMenu("Seraphs Embrace");
+	SeraphsEnabled = SeraphsMenu->CheckBox("Enabled:", true);
+	SeraphsPercent = SeraphsMenu->AddFloat("Use at Health %:", 1, 99, 50);
 
-		TiamatMenu = OffensiveItems->AddMenu("Tiamat/Hydras");
-		TiamatEnabled = TiamatMenu->CheckBox("Use Tiamat:", true);
-		RavenousEnabled = TiamatMenu->CheckBox("Use Ravenous Hydra:", true);
-		TitanicEnabled = TiamatMenu->CheckBox("Use Titanic Hydra:", true);
-		GunbladeMenu = OffensiveItems->AddMenu("Hextech Gunblade");
-		GunbladeEnabled = GunbladeMenu->CheckBox("Enabled in Combo:", true);
-		BotrkMenu = OffensiveItems->AddMenu("Blade of the Ruined King");
-		BotrkEnabled = BotrkMenu->CheckBox("Enabled in Combo:", true);
-		CutlassMenu = OffensiveItems->AddMenu("Bilgewater Cutlass");
-		CutlassEnabled = CutlassMenu->CheckBox("Enabled in Combo:", true);
-		YoumuusMenu = OffensiveItems->AddMenu("Youmuus Ghostblade");
-		YoumuusEnabled = YoumuusMenu->CheckBox("Enabled in Combo:", true);
+	LocketMenu = DefensiveItems->AddMenu("Locket of the Iron Solari");
+	LocketEnabled = LocketMenu->CheckBox("Enabled:", true);
+	LocketPercent = LocketMenu->AddFloat("Use at Health %:", 1, 99, 45);
 
-		GLP800Menu = OffensiveItems->AddMenu("Hextech GLP-800");
-		GLP800Enabled = GLP800Menu->CheckBox("Enabled in Combo:", true);
+	RanduinsMenu = DefensiveItems->AddMenu("Randuins Omen");
+	RanduinsEnabled = RanduinsMenu->CheckBox("Enabled:", true);
 
-		SummonerHealMenu = Defensives->AddMenu("Summoner: Heal");
-		HealActive = SummonerHealMenu->CheckBox("Enabled: ", true);
-		HealPercent = SummonerHealMenu->AddInteger("Use at Health %: ", 1, 99, 30);
-		HealTeamateActive = SummonerHealMenu->CheckBox("Use on Teamates: ", true);
-		HealTeamatePercent = SummonerHealMenu->AddInteger("Use at Teamate Health %: ", 1, 99, 30);
-		
-		SummonerBarrierMenu = Defensives->AddMenu("Summoner: Barrier");
-		BarrierActive = SummonerBarrierMenu->CheckBox("Enabled: ", true);
-		BarrierPercent = SummonerBarrierMenu->AddInteger("Use at Health %: ", 1, 99, 30);
+	OffensiveItems = Defensives->AddMenu("Offensive Items");//OFFENSIVE ITEMS MENU
 
-		AutoSmiteMenu = Defensives->AddMenu("Summoner: Smite");
-		SmiteActive = AutoSmiteMenu->CheckBox("Smite Epic Monsters: ", true);
-		SmiteRed = AutoSmiteMenu->CheckBox("Smite Red Buff:", true);
-		SmiteBlue = AutoSmiteMenu->CheckBox("Smite Blue Buff:", true);
-		SmiteKey = AutoSmiteMenu->AddKey("Toggle Key:", 77);
-		DrawSmiteEnabled = AutoSmiteMenu->CheckBox("Draw Auto Smite Enabled:", true);
-		SmiteEnemies = AutoSmiteMenu->CheckBox("Smite Enemy Champions in Combo:", true);
-		SmiteEnemies2Stacks = AutoSmiteMenu->CheckBox("Only Smite Champions at 2 Stacks:", true);
+	TiamatMenu = OffensiveItems->AddMenu("Tiamat/Hydras");
+	TiamatEnabled = TiamatMenu->CheckBox("Use Tiamat:", true);
+	RavenousEnabled = TiamatMenu->CheckBox("Use Ravenous Hydra:", true);
+	TitanicEnabled = TiamatMenu->CheckBox("Use Titanic Hydra:", true);
+	GunbladeMenu = OffensiveItems->AddMenu("Hextech Gunblade");
+	GunbladeEnabled = GunbladeMenu->CheckBox("Enabled in Combo:", true);
+	BotrkMenu = OffensiveItems->AddMenu("Blade of the Ruined King");
+	BotrkEnabled = BotrkMenu->CheckBox("Enabled in Combo:", true);
+	CutlassMenu = OffensiveItems->AddMenu("Bilgewater Cutlass");
+	CutlassEnabled = CutlassMenu->CheckBox("Enabled in Combo:", true);
+	YoumuusMenu = OffensiveItems->AddMenu("Youmuus Ghostblade");
+	YoumuusEnabled = YoumuusMenu->CheckBox("Enabled in Combo:", true);
 
-		SummonerIgniteMenu = Defensives->AddMenu("Summoner: Ignite");
-		IgniteKSEnable = SummonerIgniteMenu->CheckBox("Enable Ignite KS:", true);
-		IgniteInCombo = SummonerIgniteMenu->CheckBox("Enable Ignite in Combo:", true);
+	GLP800Menu = OffensiveItems->AddMenu("Hextech GLP-800");
+	GLP800Enabled = GLP800Menu->CheckBox("Enabled in Combo:", true);
 
-		Potions = Defensives->AddMenu("Potions");
-		PotionsEnabled = Potions->CheckBox("Use Potions: ", true);
-		PotionsPercent = Potions->AddFloat("Drink at Health %: ", 1, 99, 60);
-		
-		AutoTrinketMenu = MainMenu->AddMenu("Auto Trinket");
-		AutoUpgradeTrinket = AutoTrinketMenu->AddInteger("Auto Buy [0] None [1] Red [2] Blue:", 0, 2, 0);
-		/*
-		SummonerTeller = MainMenu->AddMenu("Summoner Chat-Logger");
-		SummonerTellerEnabled = SummonerTeller->CheckBox("Enabled:", false);
-		SummonerTellerKey = SummonerTeller->AddKey("Press to Post Sums to Chat:", 76);
-		*/
-		GUtility->LogConsole("Menus Loaded");
+	SummonerHealMenu = Defensives->AddMenu("Summoner: Heal");
+	HealActive = SummonerHealMenu->CheckBox("Enabled: ", true);
+	HealPercent = SummonerHealMenu->AddInteger("Use at Health %: ", 1, 99, 30);
+	HealTeamateActive = SummonerHealMenu->CheckBox("Use on Teamates: ", true);
+	HealTeamatePercent = SummonerHealMenu->AddInteger("Use at Teamate Health %: ", 1, 99, 30);
 
-		std::string szMenuName = std::string(Hero->ChampionName());
-		szMenuName += " Level Builder";
+	SummonerBarrierMenu = Defensives->AddMenu("Summoner: Barrier");
+	BarrierActive = SummonerBarrierMenu->CheckBox("Enabled: ", true);
+	BarrierPercent = SummonerBarrierMenu->AddInteger("Use at Health %: ", 1, 99, 30);
 
-		AutoLevelMainMenu = MainMenu->AddMenu("Auto Level PRO");
-		ChampNameMenu = AutoLevelMainMenu->AddMenu(szMenuName.c_str());
+	AutoSmiteMenu = Defensives->AddMenu("Summoner: Smite");
+	SmiteActive = AutoSmiteMenu->CheckBox("Smite Epic Monsters: ", true);
+	SmiteRed = AutoSmiteMenu->CheckBox("Smite Red Buff:", true);
+	SmiteBlue = AutoSmiteMenu->CheckBox("Smite Blue Buff:", true);
+	SmiteKey = AutoSmiteMenu->AddKey("Toggle Key:", 77);
+	DrawSmiteEnabled = AutoSmiteMenu->CheckBox("Draw Auto Smite Enabled:", true);
+	SmiteEnemies = AutoSmiteMenu->CheckBox("Smite Enemy Champions in Combo:", true);
+	SmiteEnemies2Stacks = AutoSmiteMenu->CheckBox("Only Smite Champions at 2 Stacks:", true);
 
-		EnableAutoLevelUp = ChampNameMenu->CheckBox("Enable: ", false);
-		ALUOnlyR = ChampNameMenu->CheckBox("Only level R (Ultimate):", false);
-		ALUR = ChampNameMenu->AddInteger("R: ", 1, 4, 1);
-		ALUQ = ChampNameMenu->AddInteger("Q: ", 1, 4, 2);
-		ALUW = ChampNameMenu->AddInteger("W: ", 1, 4, 3);
-		ALUE = ChampNameMenu->AddInteger("E: ", 1, 4, 4);
-		ALUStartLevel = ChampNameMenu->AddInteger("Start at level: ", 1, 16, 4);
+	SummonerIgniteMenu = Defensives->AddMenu("Summoner: Ignite");
+	IgniteKSEnable = SummonerIgniteMenu->CheckBox("Enable Ignite KS:", true);
+	IgniteInCombo = SummonerIgniteMenu->CheckBox("Enable Ignite in Combo:", true);
 
-		SkinMenu = MainMenu->AddMenu("Skin Changer");
-		{
-			SkinEnable = SkinMenu->CheckBox("Enable:", false);
-			SkinID = SkinMenu->AddInteger("Select Skin ID:", 1, 30, 1);
-		}
-		LoadSpells();
-		GUtility->LogConsole("Spells Created");
+	Potions = Defensives->AddMenu("Potions");
+	PotionsEnabled = Potions->CheckBox("Use Potions: ", true);
+	PotionsPercent = Potions->AddFloat("Drink at Health %: ", 1, 99, 60);
 
-		//MiscMenu = MainMenu->AddMenu("Misc Settings");
-		//MinionHpKillableDraw = MiscMenu->CheckBox("Draw AA Damage on Minions:", false);
+	AutoTrinketMenu = MainMenu->AddMenu("Auto Trinket");
+	AutoUpgradeTrinket = AutoTrinketMenu->AddInteger("Auto Buy [0] None [1] Red [2] Blue:", 0, 2, 0);
+	
+	GUtility->LogConsole("Menus Loaded");
 
-		/*GEventManager->AddEventHandler(kEventOrbwalkBeforeAttack, OnOrbwalkBeforeAttack);
-		GEventManager->AddEventHandler(kEventOrbwalkOnAttack, OnOrbwalkAttack);*/
-		GEventManager->AddEventHandler(kEventOrbwalkAfterAttack, OnOrbwalkAfterAttack);
-		/*GEventManager->AddEventHandler(kEventOrbwalkFindTarget, OnOrbwalkingFindTarget);
-		GEventManager->AddEventHandler(kEventOrbwalkTargetChange, OnOrbwalkTargetChange);
-		GEventManager->AddEventHandler(kEventOrbwalkNonKillableMinion, OnOrbwalkNonKillableMinion);*/
-		GEventManager->AddEventHandler(kEventOnGameUpdate, OnGameUpdate);
-		GUtility->LogConsole("Events Section 1");
-		//GEventManager->AddEventHandler(kEventOnJungleNotification, OnJungleNotify);
-		GUtility->LogConsole("Events Section 2");
-		GEventManager->AddEventHandler(kEventOnRender, OnRender);
-		//GEventManager->AddEventHandler(kEventOnSpellCast, OnSpellCast);
-		//GEventManager->AddEventHandler(kEventOnUnitDeath, OnUnitDeath);
-		//GEventManager->AddEventHandler(kEventOnCreateObject, OnCreateObject);
-		//GEventManager->AddEventHandler(kEventOnDestroyObject, OnDestroyObject);
-		//GEventManager->AddEventHandler(kEventOnDoCast, OnDoCast);
-		//GEventManager->AddEventHandler(kEventOnInterruptible, OnInterruptible);
-		//GEventManager->AddEventHandler(kEventOnGapCloser, OnGapCloser);
-		//GEventManager->AddEventHandler(kEventOnIssueOrder, OnIssueOrder);
-		GEventManager->AddEventHandler(kEventOnBuffAdd, OnBuffAdd);
-		//GEventManager->AddEventHandler(kEventOnBuffRemove, OnBuffRemove);
-		//GEventManager->AddEventHandler(kEventOnGameEnd, OnGameEnd);
-		GEventManager->AddEventHandler(kEventOnLevelUp, OnLevelUp);
-		//GEventManager->AddEventHandler(kEventOnPreCast, OnPreCast);
-		GUtility->LogConsole("Events Section 3");
-		//GEventManager->AddEventHandler(kEventOnDash, OnDash);
-		GUtility->LogConsole("OnDash Loaded");
-		//GEventManager->AddEventHandler(kEventOnD3DPresent, OnD3DPresent);
-		GUtility->LogConsole("OnD3DPresent Loaded");
-		//GEventManager->AddEventHandler(kEventOnD3DPreReset, OnD3DPreReset);
-		//GUtility->LogConsole("OnD3DPostReset Loaded");
-		//GEventManager->AddEventHandler(kEventOnD3DPostReset, OnD3DPostReset);
-		GUtility->LogConsole("Events Section 4");
-		//GEventManager->AddEventHandler(kEventOnRenderBehindHud, OnRenderBehindHUD);
-		//GEventManager->AddEventHandler(kEventOnWndProc, OnWndProc);
-		//GEventManager->AddEventHandler(kEventOnEnterVisible, OnEnterVisible);
-		//GEventManager->AddEventHandler(kEventOnExitVisible, OnExitVisible);
+	std::string szMenuName = std::string(Hero->ChampionName());
+	szMenuName += " Level Builder";
 
-		GUtility->LogConsole("Events Created");
+	AutoLevelMainMenu = MainMenu->AddMenu("Auto Level PRO");
+	ChampNameMenu = AutoLevelMainMenu->AddMenu(szMenuName.c_str());
 
-		GPluginInstance3 = new ChampionHandler();
+	EnableAutoLevelUp = ChampNameMenu->CheckBox("Enable: ", false);
+	ALUOnlyR = ChampNameMenu->CheckBox("Only level R (Ultimate):", false);
+	ALUR = ChampNameMenu->AddInteger("R: ", 1, 4, 1);
+	ALUQ = ChampNameMenu->AddInteger("Q: ", 1, 4, 2);
+	ALUW = ChampNameMenu->AddInteger("W: ", 1, 4, 3);
+	ALUE = ChampNameMenu->AddInteger("E: ", 1, 4, 4);
+	ALUStartLevel = ChampNameMenu->AddInteger("Start at level: ", 1, 16, 4);
+
+
+	ChampMenu = GPluginSDK->AddMenu("[Rembrandt AIO] Champion Settings");
+	LoadChampPlugin = ChampMenu->CheckBox("Use Rembrandt AIO Champion Plugins:", true);
+	PluginActive = LoadChampPlugin->Enabled();
+
+	SkinMenu = MainMenu->AddMenu("Skin Changer");
+	SkinEnable = SkinMenu->CheckBox("Enable:", false);
+	SkinID = SkinMenu->AddInteger("Select Skin ID:", 1, 30, 1);
+	LoadSpells();
+
+	// LOAD CHAMP PLUGIN
+	if (strstr(Hero->ChampionName(), "Graves"))
+		ChampHandler = new Graves(ChampMenu, Hero);
+	else if (strstr(Hero->ChampionName(), "Caitlyn"))
+		ChampHandler = new Caitlyn(ChampMenu, Hero);
+	else if (strstr(Hero->ChampionName(), "Twitch"))
+		ChampHandler = new Twitch(ChampMenu, Hero);
+	else if (strstr(Hero->ChampionName(), "Sivir"))
+		ChampHandler = new Sivir(ChampMenu, Hero);
+	else if (strstr(Hero->ChampionName(), "Tristana"))
+		ChampHandler = new Tristana(ChampMenu, Hero);
+	else if (strstr(Hero->ChampionName(), "KogMaw"))
+		ChampHandler = new Kogmaw(ChampMenu, Hero);
+	else
+		ChampHandler = new Champion(ChampMenu, Hero);
+
+	LoadEvents();
+
+
 }
 
 // Called when plugin is unloaded
@@ -1410,39 +1251,10 @@ PLUGIN_API void OnUnload()
 {
 	GUtility->LogConsole("--- UNLOADED ---");
 	MainMenu->Remove();
-	/*
-	GEventManager->RemoveEventHandler(kEventOrbwalkBeforeAttack, OnOrbwalkBeforeAttack);
-	GEventManager->RemoveEventHandler(kEventOrbwalkOnAttack, OnOrbwalkAttack);*/
-	GEventManager->RemoveEventHandler(kEventOrbwalkAfterAttack, OnOrbwalkAfterAttack);
-	/*GEventManager->RemoveEventHandler(kEventOrbwalkFindTarget, OnOrbwalkingFindTarget);
-	GEventManager->RemoveEventHandler(kEventOrbwalkTargetChange, OnOrbwalkTargetChange);
-	GEventManager->RemoveEventHandler(kEventOrbwalkNonKillableMinion, OnOrbwalkNonKillableMinion);*/
-	//GEventManager->RemoveEventHandler(kEventOnJungleNotification, OnJungleNotify);
-	GEventManager->RemoveEventHandler(kEventOnGameUpdate, OnGameUpdate);
-	GEventManager->RemoveEventHandler(kEventOnRender, OnRender);
-	//GEventManager->RemoveEventHandler(kEventOnSpellCast, OnSpellCast);
-	//GEventManager->RemoveEventHandler(kEventOnUnitDeath, OnUnitDeath);
-	//GEventManager->RemoveEventHandler(kEventOnCreateObject, OnCreateObject);
-	//GEventManager->RemoveEventHandler(kEventOnDestroyObject, OnDestroyObject);
-	//GEventManager->RemoveEventHandler(kEventOnDoCast, OnDoCast);
-	//GEventManager->RemoveEventHandler(kEventOnInterruptible, OnInterruptible);
-	//GEventManager->RemoveEventHandler(kEventOnGapCloser, OnGapCloser);
-	//GEventManager->RemoveEventHandler(kEventOnIssueOrder, OnIssueOrder);
-	GEventManager->RemoveEventHandler(kEventOnBuffAdd, OnBuffAdd);
-	//GEventManager->RemoveEventHandler(kEventOnBuffRemove, OnBuffRemove);
-	//GEventManager->RemoveEventHandler(kEventOnGameEnd, OnGameEnd);
-	GEventManager->RemoveEventHandler(kEventOnLevelUp, OnLevelUp);
-	//GEventManager->RemoveEventHandler(kEventOnPreCast, OnPreCast);
-	//GEventManager->RemoveEventHandler(kEventOnDash, OnDash);
-	//GEventManager->RemoveEventHandler(kEventOnD3DPresent, OnD3DPresent);
-	//GEventManager->RemoveEventHandler(kEventOnD3DPreReset, OnD3DPreReset);
-	//GEventManager->RemoveEventHandler(kEventOnD3DPostReset, OnD3DPostReset);
-	//GEventManager->RemoveEventHandler(kEventOnRenderBehindHud, OnRenderBehindHUD);
-	//GEventManager->RemoveEventHandler(kEventOnWndProc, OnWndProc);
-	//GEventManager->RemoveEventHandler(kEventOnEnterVisible, OnEnterVisible);
-	//GEventManager->RemoveEventHandler(kEventOnExitVisible, OnExitVisible);
+
+	UnloadEvents();
 
 	delete GPluginInstance;
 	delete GPluginInstance2;
-	delete GPluginInstance3;
+	delete ChampHandler;
 }

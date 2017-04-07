@@ -1,20 +1,22 @@
 #pragma once
 #include "PluginSDK.h"
+#include "Champion.h"
 
-class Graves
+class Graves: public virtual Champion
 {
 public:
-	Graves(IMenu* Parent);
+	Graves(IMenu* Parent, IUnit* Hero);
 	~Graves();
 
 	int EnemiesInRange(IUnit* Source, float range);
 	float CalcRDamage(IUnit* Target);
-
+	
+	void ClearStack();
+	//virtual override
 	void OnGameUpdate();
+	void Combo();
 	void OnRender();
 	void OnSpellCast(CastedSpell const& Args);
-	void ClearStack();
-	void Combo();
 
 private:
 	IMenu*			GravesMenu;
@@ -34,14 +36,9 @@ private:
 	IMenuOption*	ComboQTypeOption;
 
 	std::vector<std::string> ComboQType;
+
 private:
-	ISpell2*		Q;
-	ISpell2*		W;
-	ISpell2*		E;
-	ISpell2*		R;
-	short			keystate;
-	IUnit*			ComboTarget;
+
 	int				StackIndex;
-	bool			SemiManualKey;
 	std::vector<std::string> Stack;
 };

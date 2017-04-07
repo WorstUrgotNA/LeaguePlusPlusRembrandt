@@ -79,3 +79,8 @@ auto Rembrandt::DrawDamageOnChampionHPBar(IUnit* Hero, double Damage, const char
 		GRender->DrawTextW(LinePos2 - Vec2(13, 13), Vec4(255, 255, 255, 255), Text);
 	}
 }
+
+auto Rembrandt::LengthSqr(Vec3 v) -> float
+{
+	return (v.x * v.x + v.y * v.y + v.z * v.z);
+}

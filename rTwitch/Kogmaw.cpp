@@ -1,7 +1,12 @@
 #include "Kogmaw.h"
 #include "Rembrandt.h"
 
-Kogmaw::Kogmaw(IMenu* Parent)
+Kogmaw::~Kogmaw()
+{
+	KogmawMenu->Remove();
+}
+
+Kogmaw::Kogmaw(IMenu* Parent, IUnit* Hero) :Champion(Parent, Hero)
 {
 	Hero = GEntityList->Player();
 
@@ -43,10 +48,6 @@ Kogmaw::Kogmaw(IMenu* Parent)
 
 }
 
-Kogmaw::~Kogmaw()
-{
-	KogmawMenu->Remove();
-}
 
 float Kogmaw::GetWRange()
 {
@@ -61,10 +62,8 @@ float Kogmaw::CalcRDamage(IUnit* Target)
 {
 	auto InitDamage = std::vector<double>({ 100, 140, 180 }).at(Hero->GetSpellLevel(kSlotR) - 1) + (0.65 * Hero->BonusDamage()) + (0.25 * Hero->TotalMagicDamage());
 
-	if (Target->HealthPercent() > 40)
-		InitDamage *= (1 + ((100 - Target->HealthPercent()) * 0.83) / 100);
-	else
-		InitDamage *= 2;
+	InitDamage *= Target->HealthPercent() > 40 ? (1 + ((100 - Target->HealthPercent()) * 0.83) / 100) : 2;
+	
 
 	// MAGIC DAMAGE: 100 / 140 / 180 (+ 65% bonus AD) (+ 25% AP)
 
@@ -144,7 +143,7 @@ void Kogmaw::OnGameUpdate()
 		if (keystate < 0) // If most-significant bit is set...
 		{
 			// key is down . . .
-			if (SemiManualKey == false)
+			if (!SemiManualKey)
 			{
 				//toggle smite
 				if (R->IsReady())

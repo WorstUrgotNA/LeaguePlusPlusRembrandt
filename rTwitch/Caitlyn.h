@@ -1,16 +1,18 @@
 #pragma once
 #include "PluginSDK.h"
+#include "Champion.h"
 
 
-class Caitlyn
+class Caitlyn : public virtual Champion
 {
 public:
-	Caitlyn(IMenu* Parent);
+	Caitlyn(IMenu* Parent, IUnit* Hero);
 	~Caitlyn();
 
 	int EnemiesInRange(IUnit* Source, float range);
 	int AlliesInRange(IUnit* Source, float range);
 	float CalcSpellDamage(IUnit* Target, eSpellSlot Slot);
+
 	void Combo();
 	void LaneClear();
 
@@ -22,11 +24,17 @@ public:
 
 private:
 	IMenu*			CaitlynMenu;
-	IMenu*			ComboMenu;
+
 	IMenu*			DrawMenu;
+
+	IMenu*			ComboMenu;
+
 	IMenu*			HarassMenu;
+
 	IMenu*			LaneClearMenu;
+
 	IMenu*			ExtraMenu;
+
 	IMenuOption*	WAfterE;
 	IMenuOption*	SafeQKS;
 	IMenuOption*	RInCombo;
@@ -38,11 +46,11 @@ private:
 	IMenuOption*	ShortQDisableLevel;
 	IMenuOption*	SemiManualMenuKey;
 	IMenuOption*	DrawReady;
-	IMenuOption*	DrawQ;
 	IMenuOption*	QColor;
 	IMenuOption*	WColor;
 	IMenuOption*	EColor;
 	IMenuOption*	RColor;
+	IMenuOption*	DrawQ;
 	IMenuOption*	DrawW;
 	IMenuOption*	DrawE;
 	IMenuOption*	DrawR;
@@ -57,17 +65,11 @@ private:
 	IMenuOption*	EToMouse;
 	IMenuOption*	EWhenClose;
 	IMenuOption*	EBeforeLevel;
+
 	std::vector<std::string> TrapEnemyCastType;
 
 private:
-	ISpell2*		Q;
-	ISpell2*		W;
-	ISpell2*		E;
-	ISpell2*		R;
-	short			keystate;
-	IUnit*			ComboTarget;
-	IUnit*			Hero;
-	bool			SemiManualKey;
+
 	bool			ComboTrap;
 	bool			UseNet;
 	bool			UseNetCombo;

@@ -1,10 +1,11 @@
 #pragma once
 #include "PluginSDK.h"
+#include "Champion.h"
 
-class Kogmaw
+class Kogmaw : public virtual Champion
 {
 public:
-	Kogmaw(IMenu* Parent);
+	Kogmaw(IMenu* Parent, IUnit* Hero);
 	~Kogmaw();
 	
 	void OnGameUpdate();
@@ -37,15 +38,6 @@ private:
 	void Combo();
 	void OnWaveClear();
 	float CalcRDamage(IUnit* Target);
-	float Kogmaw::GetWRange();
+	float GetWRange();
 	float GetRRange();
-	bool SemiManualKey;
-	short keystate;
-
-private:
-	ISpell2*		Q;
-	ISpell2*		W;
-	ISpell2*		E;
-	ISpell2*		R;
-	IUnit*			Hero;
 };

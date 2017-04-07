@@ -1,26 +1,30 @@
 #include "Caitlyn.h"
 #include "Rembrandt.h"
 
-Caitlyn::Caitlyn(IMenu* Parent)
+Caitlyn::~Caitlyn()
 {
+	CaitlynMenu->Remove();
+}
+
+Caitlyn::Caitlyn(IMenu* Parent, IUnit* Hero):Champion(Parent, Hero)
+{
+	
 	TrapEnemyCastType = { "Exact Position", "Vector Extension", "Turn Off" };
-
-	Hero = GEntityList->Player();
-
+	
 	//Create Spells
 	Q = GPluginSDK->CreateSpell2(kSlotQ, kLineCast, true, false, (kCollidesWithYasuoWall));
 	Q->SetSkillshot(0.625, 50, 2200, 1300);
 	W = GPluginSDK->CreateSpell2(kSlotW, kCircleCast, false, false, (kCollidesWithNothing));
 	W->SetSkillshot(1.1, 100, 3200, 800);
-	E = GPluginSDK->CreateSpell2(kSlotE, kLineCast, true, false, (kCollidesWithYasuoWall, kCollidesWithHeroes, kCollidesWithMinions));
+	E = GPluginSDK->CreateSpell2(kSlotE, kLineCast, true, false, (kCollidesWithYasuoWall | kCollidesWithHeroes | kCollidesWithMinions));
 	E->SetSkillshot(0.25, 90, 1600, 950);
-	R = GPluginSDK->CreateSpell2(kSlotR, kTargetCast, true, false, (kCollidesWithYasuoWall, kCollidesWithHeroes));
+	R = GPluginSDK->CreateSpell2(kSlotR, kTargetCast, true, false, (kCollidesWithYasuoWall | kCollidesWithHeroes));
 	R->SetOverrideDelay(3.0);
 	R->SetOverrideSpeed(1000);
 
 	E->SetTriggerEvents(false);
+	
 
-	//E->SetOverrideRange(750);
 	SemiManualKey = false;
 	ComboTrap = false;
 	UseNet = false;
@@ -51,7 +55,8 @@ Caitlyn::Caitlyn(IMenu* Parent)
 	SafeQKS = ComboMenu->CheckBox("Safe Q KS:", true);
 	ShortQDisableLevel = ComboMenu->AddInteger("Disable Short-Q after level:", 0, 18, 11);
 	WAfterE = ComboMenu->CheckBox("Use W in Burst Combo:", true);
-	TrapEnemyCast = ComboMenu->AddSelection("Use W on Enemy AA/Spellcast:", 0, TrapEnemyCastType);
+	//TrapEnemyCast = ComboMenu->AddSelection("Use W on Enemy AA/Spellcast:", 0, TrapEnemyCastType);
+	TrapEnemyCast = ComboMenu->AddInteger("W [0]Exact Position [1]Vector Extension [2]Turn Off", 0, 2, 0);
 	TrapImmobileCombo = ComboMenu->CheckBox("Use W on Immobile Enemies:", true);
 	EBeforeLevel = ComboMenu->AddInteger("Disable Long-E After Level:", 0, 18, 18);
 	EWhenClose = ComboMenu->CheckBox("Use E on Gapcloser/Close Enemy:", true);
@@ -59,11 +64,12 @@ Caitlyn::Caitlyn(IMenu* Parent)
 	SemiManualMenuKey = ComboMenu->AddKey("R Semi-Manual Key:", 84);
 	UltRange = ComboMenu->AddFloat("Dont R if Enemies in Range:", 0, 3000, 900);
 	EnemyToBlockR = ComboMenu->CheckBox("Dont R if an Enemy Can Block:", false);
-
+	
 	HarassMenu = CaitlynMenu->AddMenu("++ Harass");
 	SafeQHarass = HarassMenu->CheckBox("Use Q Smart Harass:", true);
 	SafeQHarassMana = HarassMenu->AddFloat("Q Harass Above Mana Percent:", 0, 100, 60);
-	TrapEnemyCastHarass = HarassMenu->AddSelection("Use W on Enemy AA/Spellcast:", 1, TrapEnemyCastType);
+	TrapEnemyCastHarass = HarassMenu->AddInteger("W [0]Exact Position [1]Vector Extension [2]Turn Off", 0, 2, 0);
+	//TrapEnemyCastHarass = HarassMenu->AddSelection("Use W on Enemy AA/Spellcast:", 1, TrapEnemyCastType);
 
 	LaneClearMenu = CaitlynMenu->AddMenu("++ Lane Clear");
 	LaneClearQ = LaneClearMenu->CheckBox("Use Q to Laneclear:", true);
@@ -72,12 +78,6 @@ Caitlyn::Caitlyn(IMenu* Parent)
 	ExtraMenu = CaitlynMenu->AddMenu("++ Extra Settings");
 	WDelay = ExtraMenu->AddFloat("Minimum Delay Between Traps (W):", 0, 15, 2);
 	EToMouse = ExtraMenu->CheckBox("Enable E-to-Cursor:", false);
-
-}
-
-Caitlyn::~Caitlyn()
-{
-	CaitlynMenu->Remove();
 }
 
 int Caitlyn::AlliesInRange(IUnit* Source, float range)
@@ -106,7 +106,7 @@ int Caitlyn::EnemiesInRange(IUnit* Source, float range)
 
 	for (auto target : Targets)
 	{
-		if (target != nullptr && !target->IsDead())
+		if (target && !target->IsDead())
 		{
 			auto flDistance = (target->GetPosition() - Source->GetPosition()).Length();
 			if (flDistance < range)
@@ -126,13 +126,7 @@ float Caitlyn::CalcSpellDamage(IUnit* Target, eSpellSlot Slot)
 	if (Slot == kSlotR)
 	{
 		InitDamage = 2 * Hero->BonusDamage();
-
-		if (Hero->GetSpellLevel(kSlotR) == 1)
-			InitDamage += 250;
-		else if (Hero->GetSpellLevel(kSlotR) == 2)
-			InitDamage += 475;
-		else if (Hero->GetSpellLevel(kSlotR) == 3)
-			InitDamage += 700;
+		InitDamage += std::vector<double>({ 250, 475, 700 }).at(Hero->GetSpellLevel(kSlotR) - 1);
 	}
 	else if (Slot == kSlotQ)
 	{
@@ -216,20 +210,9 @@ void Caitlyn::OnGameUpdate()
 		if (keystate < 0) // If most-significant bit is set...
 		{
 			// key is down . . .
-			if (SemiManualKey == false)
+			if (!SemiManualKey)
 			{
 				R->CastOnTarget(GTargetSelector->FindTarget(QuickestKill, PhysicalDamage, R->Range()));
-
-				std::vector<HeroMastery> MyMasteryBuffer;
-				if (Hero->GetMasteries(MyMasteryBuffer))
-				{
-					for (auto Mastery : MyMasteryBuffer)
-					{
-						GUtility->LogConsole("%i - %i - %i", Mastery.MasteryId, Mastery.PageId, Mastery.Points);
-					}
-				}
-
-				//GRender->Notification(Vec4(255, 255, 255, 255), 0, "%.1f", CalcRDamage(GTargetSelector->FindTarget(QuickestKill, PhysicalDamage, R->Range())));
 				SemiManualKey = true;
 			}
 		}
@@ -278,17 +261,22 @@ void Caitlyn::OnRender()
 	//GRender->DrawCircle(GGame->CursorPosition(), circletestradius->GetFloat(), Vec4(255, 255, 255, 255), 1);
 	if (R->IsReady() && DrawRDamage->Enabled())
 	{
+		Vec4 BarColor;
+		DrawRDamageColor->GetColor(&BarColor);
+
 		for (auto Enemy : GEntityList->GetAllHeros(false, true))
 		{
-			Vec4 BarColor;
 			if (Enemy->IsOnScreen() && Enemy->IsVisible() && Hero->IsValidTarget(Enemy, R->Range()))
-			{
-				DrawRDamageColor->GetColor(&BarColor);
 				Rembrandt::DrawDamageOnChampionHPBar(Enemy, CalcSpellDamage(Enemy, kSlotR), "R", BarColor);
-			}
 		}
-		
 	}
+
+	/*Vec4 CircleColor;
+		for (int i = 0; i < 4; i++)
+		{
+			colors[i]->GetColor(&CircleColor);
+			if (spells[i]->IsReady() && draws[i]->Enabled()) { GRender->DrawOutlinedCircle(Hero->GetPosition(), CircleColor, spells[i]->Range()); }
+		}*/
 
 	if (DrawReady->Enabled())
 	{
@@ -385,9 +373,6 @@ void Caitlyn::OnSpellCast(CastedSpell const& Args)
 				if (Q->CastOnTarget(GTargetSelector->FindTarget(QuickestKill, PhysicalDamage, Q->Range()), kHitChanceVeryHigh)) { return; }
 		}
 	}
-	
-	//if ((strstr(Args.Name_, "CaitlynBasicAttack") || strstr(Args.Name_, "CaitlynCritAttack") || strstr(Args.Name_, "CaitlynHeadshotMissile")) && Args.Target_->IsHero() && Args.Target_->IsValidTarget() && !Args.Target_->IsDead())
-
 
 	if (WAfterE->Enabled() && strstr(Args.Name_, "CaitlynEntrapment"))
 	{

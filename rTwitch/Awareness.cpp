@@ -5,7 +5,7 @@
 
 Awareness::Awareness(IMenu* Parent)
 {
-	Menu		= Parent->AddMenu("Tracker PRO");
+	Menu = Parent->AddMenu("Tracker PRO");
 	EnableUi = Menu->CheckBox("Enable GUI Modules:", true);
 	EnableTracking = Menu->CheckBox("Enable Tracking Modules:", true);
 	EnableGanks = Menu->CheckBox("Enable Awareness Modules:", true);

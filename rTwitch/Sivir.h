@@ -1,10 +1,11 @@
 #pragma once
 #include "PluginSDK.h"
+#include "Champion.h"
 
-class Sivir
+class Sivir : public virtual Champion
 {
 public:
-	Sivir(IMenu* Parent);
+	Sivir(IMenu* Parent, IUnit* Hero);
 	~Sivir();
 
 	int EnemiesInRange(IUnit* Source, float range);
@@ -31,12 +32,5 @@ private:
 	std::vector<std::string> HitChance;
 
 private:
-	ISpell2*		Q;
-	ISpell2*		W;
-	ISpell2*		E;
-	ISpell2*		R;
-	IUnit*			Hero;
-
-	short			keystate;
 	bool			SpellFarm;
 };

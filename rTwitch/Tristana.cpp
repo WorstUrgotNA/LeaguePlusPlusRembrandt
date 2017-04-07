@@ -1,6 +1,11 @@
 #include "Tristana.h"
 
-Tristana::Tristana(IMenu* Parent)
+Tristana::~Tristana()
+{
+	TristanaMenu->Remove();
+}
+
+Tristana::Tristana(IMenu* Parent, IUnit* Hero) :Champion(Parent, Hero)
 {
 	Hero = GEntityList->Player();
 
@@ -28,10 +33,6 @@ Tristana::Tristana(IMenu* Parent)
 
 }
 
-Tristana::~Tristana()
-{
-	TristanaMenu->Remove();
-}
 
 float Tristana::CalcRDamage(IUnit* Target)
 {
