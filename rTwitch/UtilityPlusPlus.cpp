@@ -1226,7 +1226,9 @@ PLUGIN_API void OnLoad(IPluginSDK* PluginSDK)
 	LoadSpells();
 
 	// LOAD CHAMP PLUGIN
-	if (strstr(Hero->ChampionName(), "Graves"))
+	if (!PluginActive)
+		ChampHandler = new Champion(ChampMenu, Hero);
+	else if (strstr(Hero->ChampionName(), "Graves"))
 		ChampHandler = new Graves(ChampMenu, Hero);
 	else if (strstr(Hero->ChampionName(), "Caitlyn"))
 		ChampHandler = new Caitlyn(ChampMenu, Hero);

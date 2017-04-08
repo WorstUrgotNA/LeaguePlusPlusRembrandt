@@ -203,7 +203,6 @@ void Twitch::OnGameUpdate()
 			}
 		}
 	}
-
 }
 
 void Twitch::OnRender()

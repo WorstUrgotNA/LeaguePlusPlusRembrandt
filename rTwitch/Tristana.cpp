@@ -1,4 +1,5 @@
 #include "Tristana.h"
+#include "Rembrandt.h"
 
 Tristana::~Tristana()
 {
@@ -36,79 +37,13 @@ Tristana::Tristana(IMenu* Parent, IUnit* Hero) :Champion(Parent, Hero)
 
 float Tristana::CalcRDamage(IUnit* Target)
 {
+	if (Hero->GetSpellLevel(kSlotR) == 0) return 0;
+
 	float InitDamage = Hero->TotalMagicDamage();
 
-	if (Hero->GetSpellLevel(kSlotR) == 1)
-		InitDamage += 300;
-	else if (Hero->GetSpellLevel(kSlotR) == 2)
-		InitDamage += 400;
-	else if (Hero->GetSpellLevel(kSlotR) == 3)
-		InitDamage += 500;
+	InitDamage += std::vector<double>({ 300, 400, 500 }).at(Hero->GetSpellLevel(kSlotR) - 1);
 
-	auto FinalDamage = GDamage->CalcMagicDamage(Hero, Target, InitDamage);
-
-	std::vector<HeroMastery> MyMasteryBuffer;
-	if (Hero->GetMasteries(MyMasteryBuffer))
-	{
-		double Modifier = 0;
-
-		for (auto Mastery : MyMasteryBuffer)
-		{
-			//PageId 193 - MasteryId 201 - SORCERY: Increases ability and spell damage by 0.4 / 0.8 / 1.2 / 1.6 / 2 %
-			if (Mastery.PageId == 193 && Mastery.MasteryId == 201)
-			{
-				Modifier += (0.4 * Mastery.Points) / 100;
-			}
-			//PageId 193 - MasteryId 124 - DOUBLE EDGED SWORD: You deal 3% increased damage from all sources, but take 1.5% increased damage from all sources.
-			else if (Mastery.PageId == 193 && Mastery.MasteryId == 124)
-			{
-				Modifier += 0.03;
-			}
-			//PageId 62 - MasteryId 254 - ASSASSAIN: Grants 2% increased damage against enemy champions while no allied champions are nearby - 800 range
-			else if (Mastery.PageId == 62 && Mastery.MasteryId == 254)
-			{
-				bool IsActive = true;
-				for (auto Friend : GEntityList->GetAllHeros(true, false))
-				{
-					if (Friend != Hero && (Hero->GetPosition() - Friend->GetPosition()).Length() <= 800)
-					{
-						IsActive = false;
-						break;
-					}
-				}
-
-				if (IsActive) { Modifier += 0.02; }
-			}
-			// PageId 62 - MasteryId 119 - MERCILESS: Grants 0.6 / 1.2 / 1.8 / 2.4 / 3 % increased damage against champions below 40 % health.
-			else if (Mastery.PageId == 62 && Mastery.MasteryId == 119)
-			{
-				if (Target->HealthPercent() < 40)
-					Modifier += (0.6 * Mastery.Points) / 100;
-			}
-		}
-
-		FinalDamage += FinalDamage * Modifier;
-	}
-
-	//check if enemy has double edged sword
-	std::vector<HeroMastery> TarMasteryBuffer;
-	if (Target->GetMasteries(TarMasteryBuffer))
-	{
-		double Modifier = 0;
-
-		for (auto Mastery : TarMasteryBuffer)
-		{
-			//PageId 193 - MasteryId 124 - DOUBLE EDGED SWORD: You deal 3% increased damage from all sources, but take 1.5% increased damage from all sources.
-			if (Mastery.PageId == 193 && Mastery.MasteryId == 124)
-			{
-				Modifier += 0.015;
-			}
-		}
-
-		FinalDamage += FinalDamage * Modifier;
-	}
-
-	return FinalDamage;
+	return GDamage->CalcMagicDamage(Hero, Target, InitDamage) * Rembrandt::DamageModifierFromMasteries(Hero, Target);
 }
 
 float Tristana::CalcEDamage(IUnit* Target)
@@ -132,70 +67,7 @@ float Tristana::CalcEDamage(IUnit* Target)
 	(+50 / 65 / 80 / 95 / 110 % bonus AD) 
 	(+50 % AP) */
 
-	auto FinalDamage = GDamage->CalcPhysicalDamage(Hero, Target, AlmostFinalDamage);
-
-	std::vector<HeroMastery> MyMasteryBuffer;
-	if (Hero->GetMasteries(MyMasteryBuffer))
-	{
-		double Modifier = 0;
-
-		for (auto Mastery : MyMasteryBuffer)
-		{
-			//PageId 193 - MasteryId 201 - SORCERY: Increases ability and spell damage by 0.4 / 0.8 / 1.2 / 1.6 / 2 %
-			if (Mastery.PageId == 193 && Mastery.MasteryId == 201)
-			{
-				Modifier += (0.4 * Mastery.Points) / 100;
-			}
-			//PageId 193 - MasteryId 124 - DOUBLE EDGED SWORD: You deal 3% increased damage from all sources, but take 1.5% increased damage from all sources.
-			else if (Mastery.PageId == 193 && Mastery.MasteryId == 124)
-			{
-				Modifier += 0.03;
-			}
-			//PageId 62 - MasteryId 254 - ASSASSAIN: Grants 2% increased damage against enemy champions while no allied champions are nearby - 800 range
-			else if (Mastery.PageId == 62 && Mastery.MasteryId == 254)
-			{
-				bool IsActive = true;
-				for (auto Friend : GEntityList->GetAllHeros(true, false))
-				{
-					if (Friend != Hero && (Hero->GetPosition() - Friend->GetPosition()).Length() <= 800)
-					{
-						IsActive = false;
-						break;
-					}
-				}
-
-				if (IsActive) { Modifier += 0.02; }
-			}
-			// PageId 62 - MasteryId 119 - MERCILESS: Grants 0.6 / 1.2 / 1.8 / 2.4 / 3 % increased damage against champions below 40 % health.
-			else if (Mastery.PageId == 62 && Mastery.MasteryId == 119)
-			{
-				if (Target->HealthPercent() < 40)
-					Modifier += (0.6 * Mastery.Points) / 100;
-			}
-		}
-
-		FinalDamage += FinalDamage * Modifier;
-	}
-
-	//check if enemy has double edged sword
-	std::vector<HeroMastery> TarMasteryBuffer;
-	if (Target->GetMasteries(TarMasteryBuffer))
-	{
-		double Modifier = 0;
-
-		for (auto Mastery : TarMasteryBuffer)
-		{
-			//PageId 193 - MasteryId 124 - DOUBLE EDGED SWORD: You deal 3% increased damage from all sources, but take 1.5% increased damage from all sources.
-			if (Mastery.PageId == 193 && Mastery.MasteryId == 124)
-			{
-				Modifier += 0.015;
-			}
-		}
-
-		FinalDamage += FinalDamage * Modifier;
-	}
-
-	return FinalDamage;
+	return GDamage->CalcPhysicalDamage(Hero, Target, AlmostFinalDamage) * Rembrandt::DamageModifierFromMasteries(Hero, Target);
 }
 
 int Tristana::EnemiesInRange(IUnit* Source, float range)
@@ -225,7 +97,6 @@ void Tristana::Combo()
 	{
 		if (R->IsReady() && RinCombo->Enabled() && CalcRDamage(Target) > Target->GetHealth())
 		{
-
 			R->CastOnTarget(Target);
 		}
 	}

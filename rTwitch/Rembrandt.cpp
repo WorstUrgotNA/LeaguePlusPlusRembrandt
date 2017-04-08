@@ -26,7 +26,7 @@ auto Rembrandt::DamageModifierFromMasteries(IUnit* Hero, IUnit* Target) -> doubl
 				bool IsActive = true;
 				for (auto Friend : GEntityList->GetAllHeros(true, false))
 				{
-					if (Friend != Hero && (Hero->GetPosition() - Friend->GetPosition()).Length() <= 800)
+					if (Friend != Hero && (Hero->GetPosition() - Friend->GetPosition()).Length2D() <= 800)
 					{
 						IsActive = false;
 						break;

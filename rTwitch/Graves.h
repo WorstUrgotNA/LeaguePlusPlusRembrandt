@@ -28,12 +28,30 @@ private:
 	IMenuOption*	QJungleMana;
 	IMenuOption*	WJungleMana;
 	IMenuOption*	EJungleMana;
+	IMenuOption*	ComboQTypeOption;
+
+	IMenu*			DrawMenu;
 	IMenuOption*	DrawReady;
 	IMenuOption*	DrawQ;
 	IMenuOption*	DrawW;
 	IMenuOption*	DrawE;
 	IMenuOption*	DrawR;
-	IMenuOption*	ComboQTypeOption;
+	IMenuOption*	QColor;
+	IMenuOption*	WColor;
+	IMenuOption*	EColor;
+	IMenuOption*	RColor;
+	IMenuOption*	DrawRDamage;
+	IMenuOption*	DrawRDamageColor;
+	IMenuOption*	UseECombo;
+	IMenuOption*	UseRCombo;
+
+	IMenu*			ComboMenu;
+
+	IMenu*			HarassMenu;
+
+	IMenu*			LaneClearMenu;
+
+	IMenu*			ExtraMenu;
 
 	std::vector<std::string> ComboQType;
 

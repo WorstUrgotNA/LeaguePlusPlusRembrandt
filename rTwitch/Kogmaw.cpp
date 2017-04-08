@@ -52,7 +52,6 @@ Kogmaw::Kogmaw(IMenu* Parent, IUnit* Hero) :Champion(Parent, Hero)
 	RMaxStacks = ComboMenu->AddInteger("R Max Stacks Combo:", 0, 10, 3);
 	RKillSteal = ComboMenu->CheckBox("Force R KillSteal:", true);
 
-
 	HarassMenu = KogmawMenu->AddMenu("++ Harass");
 	RHarassEnable = HarassMenu->CheckBox("Use R on Enemy AA/Spellcast:", true);
 	RMaxStacksHarass = HarassMenu->AddInteger("R Max Stacks Harass", 0, 10, 1);
@@ -61,15 +60,6 @@ Kogmaw::Kogmaw(IMenu* Parent, IUnit* Hero) :Champion(Parent, Hero)
 	LaneClearMenu = KogmawMenu->AddMenu("++ Lane Clear");
 
 	ExtraMenu = KogmawMenu->AddMenu("++ Extra Settings");
-
-
-
-	
-
-	
-	
-	
-	
 }
 
 

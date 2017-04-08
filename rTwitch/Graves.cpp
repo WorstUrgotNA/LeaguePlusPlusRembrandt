@@ -34,26 +34,38 @@ Graves::Graves(IMenu* Parent, IUnit* Hero):Champion(Parent, Hero)
 
 	//Menu
 	GravesMenu = Parent->AddMenu("Graves PRO++");
-	SemiManualMenuKey = GravesMenu->AddKey("Semi-Manual Ult Key:", 84);
 
-	ComboQTypeOption = GravesMenu->AddSelection("Q Combo Usage:", 0, ComboQType);
+	DrawMenu = GravesMenu->AddMenu("++ Drawings");
+	DrawReady = DrawMenu->CheckBox("Draw Only Ready Spells:", true);
+	DrawQ = DrawMenu->CheckBox("Draw Q Range:", true);
+	QColor = DrawMenu->AddColor("Q Range Color:", 255, 255, 0, 255);
+	DrawW = DrawMenu->CheckBox("Draw W Range:", true);
+	WColor = DrawMenu->AddColor("W Range Color:", 255, 255, 0, 255);
+	DrawE = DrawMenu->CheckBox("Draw E Range:", true);
+	EColor = DrawMenu->AddColor("E Range Color:", 255, 255, 0, 255);
+	DrawR = DrawMenu->CheckBox("Draw R Range:", true);
+	RColor = DrawMenu->AddColor("R Range Color:", 255, 255, 0, 255);
+	DrawRDamage = DrawMenu->CheckBox("Draw R Damage:", true);
+	DrawRDamageColor = DrawMenu->AddColor("R Damage Color:", 255, 255, 0, 150);
 
-	UseWCombo = GravesMenu->CheckBox("Use W in Combo:", true);
+	ComboMenu = GravesMenu->AddMenu("++ Combo");
+	ComboQTypeOption = ComboMenu->AddSelection("Q Combo Usage:", 0, ComboQType);
+	UseWCombo = ComboMenu->CheckBox("Use W in Combo:", true);
+	UseECombo = ComboMenu->CheckBox("Use E in Combo:", true);
+	UseRCombo = ComboMenu->CheckBox("Use R in Combo:", true);
+	SemiManualMenuKey = ComboMenu->AddKey("Semi-Manual Ult Key:", 84);
 
-	UseQJungle = GravesMenu->CheckBox("Use Q in Jungle Clear:", true);
-	QJungleMana = GravesMenu->AddFloat("Minimum Mana Percent:", 0, 100, 40);
+	HarassMenu = GravesMenu->AddMenu("++ Harass");
 
-	UseWJungle = GravesMenu->CheckBox("Use W in Jungle Clear:", true);
-	WJungleMana = GravesMenu->AddFloat("Minimum Mana Percent:", 0, 100, 75);
+	LaneClearMenu = GravesMenu->AddMenu("++ Jungle Clear");
+	UseQJungle = LaneClearMenu->CheckBox("Use Q in Jungle Clear:", true);
+	QJungleMana = LaneClearMenu->AddFloat("Q Minimum Mana Percent:", 0, 100, 40);
+	UseWJungle = LaneClearMenu->CheckBox("Use W in Jungle Clear:", true);
+	WJungleMana = LaneClearMenu->AddFloat("W Minimum Mana Percent:", 0, 100, 75);
+	UseEJungle = LaneClearMenu->CheckBox("Use E in Jungle Clear:", true);
+	EJungleMana = LaneClearMenu->AddFloat("E Minimum Mana Percent:", 0, 100, 10);
 
-	UseEJungle = GravesMenu->CheckBox("Use E in Jungle Clear:", true);
-	EJungleMana = GravesMenu->AddFloat("Minimum Mana Percent:", 0, 100, 10);
-
-	DrawReady = GravesMenu->CheckBox("Draw Only Ready Spells:", true);
-	DrawQ = GravesMenu->CheckBox("Draw Q Range:", true);
-	DrawW = GravesMenu->CheckBox("Draw W Range:", true);
-	DrawE = GravesMenu->CheckBox("Draw E Range:", true);
-	DrawR = GravesMenu->CheckBox("Draw R Range:", true);
+	ExtraMenu = GravesMenu->AddMenu("++ Extra Settings");
 }
  
 int Graves::EnemiesInRange(IUnit* Source, float range)
@@ -63,7 +75,7 @@ int Graves::EnemiesInRange(IUnit* Source, float range)
 
 	for (auto target : Targets)
 	{
-		if (target != nullptr && !target->IsDead())
+		if (target && !target->IsDead())
 		{
 			auto flDistance = (target->GetPosition() - Source->GetPosition()).Length();
 			if (flDistance < range)
@@ -98,7 +110,7 @@ float Graves::CalcRDamage(IUnit* Target)
 
 void Graves::Combo()
 {
-	if (R->IsReady())
+	if (UseRCombo->Enabled() &&	R->IsReady())
 	{
 		for (auto enemy : GEntityList->GetAllHeros(false, true))
 		{
@@ -157,7 +169,7 @@ void Graves::OnGameUpdate()
 					}
 					R->CastOnTarget(GTargetSelector->FindTarget(QuickestKill, PhysicalDamage, 1500), kHitChanceVeryHigh);
 				}
-				else if (Stack[StackIndex] == "GravesMove")
+				else if (Stack[StackIndex] == "GravesMove" && UseECombo->Enabled())
 				{
 					E->CastOnPosition(GGame->CursorPosition());
 					if (Hero->GetSpellRemainingCooldown(kSlotE) > 0.1f)
@@ -229,22 +241,41 @@ void Graves::OnGameUpdate()
 
 void Graves::OnRender()
 { 
-//	Champion::OnRender();
+	if (R->IsReady() && DrawRDamage->Enabled())
+	{
+		Vec4 BarColor;
+		DrawRDamageColor->GetColor(&BarColor);
+
+		for (auto Enemy : GEntityList->GetAllHeros(false, true))
+		{
+			if (Enemy->IsOnScreen() && Enemy->IsVisible() && Hero->IsValidTarget(Enemy, R->Range()))
+				Rembrandt::DrawDamageOnChampionHPBar(Enemy, CalcRDamage(Enemy), "R", BarColor);
+		}
+	}
+
 	if (DrawReady->Enabled())
 	{
-		if (Q->IsReady() && DrawQ->Enabled()) { GRender->DrawOutlinedCircle(Hero->GetPosition(), Vec4(255, 255, 0, 255), Q->Range()); }
-
-		if (W->IsReady() && DrawW->Enabled()) { GRender->DrawOutlinedCircle(Hero->GetPosition(), Vec4(255, 255, 0, 255), W->Range()); }
-
-		if (R->IsReady() && DrawR->Enabled()) { GRender->DrawOutlinedCircle(Hero->GetPosition(), Vec4(255, 255, 0, 255), R->Range()); }
+		Vec4 CircleColor;
+		QColor->GetColor(&CircleColor);
+		if (Q->IsReady() && DrawQ->Enabled()) { GRender->DrawOutlinedCircle(Hero->GetPosition(), CircleColor, Q->Range()); }
+		WColor->GetColor(&CircleColor);
+		if (W->IsReady() && DrawW->Enabled()) { GRender->DrawOutlinedCircle(Hero->GetPosition(), CircleColor, W->Range()); }
+		EColor->GetColor(&CircleColor);
+		if (E->IsReady() && DrawE->Enabled()) { GRender->DrawOutlinedCircle(Hero->GetPosition(), CircleColor, E->Range()); }
+		RColor->GetColor(&CircleColor);
+		if (R->IsReady() && DrawR->Enabled()) { GRender->DrawOutlinedCircle(Hero->GetPosition(), CircleColor, R->Range()); }
 	}
 	else
 	{
-		if (DrawQ->Enabled()) { GRender->DrawOutlinedCircle(Hero->GetPosition(), Vec4(255, 255, 0, 255), Q->Range()); }
-
-		if (DrawW->Enabled()) { GRender->DrawOutlinedCircle(Hero->GetPosition(), Vec4(255, 255, 0, 255), W->Range()); }
-
-		if (DrawR->Enabled()) { GRender->DrawOutlinedCircle(Hero->GetPosition(), Vec4(255, 255, 0, 255), R->Range()); }
+		Vec4 CircleColor;
+		QColor->GetColor(&CircleColor);
+		if (DrawQ->Enabled()) { GRender->DrawOutlinedCircle(Hero->GetPosition(), CircleColor, Q->Range()); }
+		WColor->GetColor(&CircleColor);
+		if (DrawW->Enabled()) { GRender->DrawOutlinedCircle(Hero->GetPosition(), CircleColor, W->Range()); }
+		EColor->GetColor(&CircleColor);
+		if (DrawE->Enabled()) { GRender->DrawOutlinedCircle(Hero->GetPosition(), CircleColor, E->Range()); }
+		RColor->GetColor(&CircleColor);
+		if (DrawR->Enabled()) { GRender->DrawOutlinedCircle(Hero->GetPosition(), CircleColor, R->Range()); }
 	}
 }
 
@@ -261,7 +292,7 @@ void Graves::OnSpellCast(CastedSpell const& Args)
 				int StackPushIndex = 0;
 				ComboTarget = Args.Target_;
 
-				if (E->IsReady() && R->IsReady() && (ComboTarget->GetHealth() - (GDamage->CalcPhysicalDamage(Hero, ComboTarget, 2 * AttackDamage) + CalcRDamage(ComboTarget)) < 0))
+				if (UseRCombo->Enabled() && E->IsReady() && R->IsReady() && (ComboTarget->GetHealth() - (GDamage->CalcPhysicalDamage(Hero, ComboTarget, 2 * AttackDamage) + CalcRDamage(ComboTarget)) < 0))
 				{
 					Stack[StackPushIndex] = "GravesChargeShot";
 					StackPushIndex++;
