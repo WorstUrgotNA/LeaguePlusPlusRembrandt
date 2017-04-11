@@ -65,6 +65,7 @@ private:
 	IMenuOption*	EToMouse;
 	IMenuOption*	EWhenClose;
 	IMenuOption*	EBeforeLevel;
+	IMenuOption*	SemiManualEMenuKey;
 
 	std::vector<std::string> TrapEnemyCastType;
 

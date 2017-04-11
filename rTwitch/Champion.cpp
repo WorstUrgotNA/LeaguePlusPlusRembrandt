@@ -64,3 +64,13 @@ void Champion::OnGapCloser(GapCloserSpell const& Args)
 {
 	
 }
+
+void Champion::OnLevelUp(IUnit* Source, int NewLevel)
+{
+
+}
+
+void Champion::OnPlayAnimation(IUnit* Source, std::string const Args)
+{
+
+}

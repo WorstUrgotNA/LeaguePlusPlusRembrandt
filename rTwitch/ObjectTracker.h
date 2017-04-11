@@ -26,6 +26,7 @@ private:
 	IMenuOption*	Enabled;
 	IFont*			TrackerFont;
 	std::vector<TimedObject>	TimedObjects;
+	std::vector<IUnit*>			Shadows;
 
 private:
 	PLUGIN_EVENT(void) OnProcessSpell(CastedSpell const& Args);

@@ -1,10 +1,9 @@
 #pragma once
-
 #include "PluginSDK.h"
 
 enum Champions
 {
-	KOGMAW, CAITLYN, TWITCH, GRAVES, TRISTANA, SIVIR
+	KOGMAW, CAITLYN, TWITCH, GRAVES, TRISTANA, SIVIR, LUCIAN
 };
 
 class Champion
@@ -12,6 +11,7 @@ class Champion
 public:
 	Champion(IMenu* Parent, IUnit* Hero):Hero(Hero), ParentMenu(Parent){}
 	~Champion();
+
 	IUnit * GetHero();
 	IMenu* GetMenu();
 
@@ -26,10 +26,12 @@ public:
 	virtual void BeforeAttack(IUnit* Target);
 	virtual void OnInterruptible(InterruptibleSpell const& Args);
 	virtual void OnGapCloser(GapCloserSpell const& Args);
+	virtual void OnLevelUp(IUnit* Source, int NewLevel);
+	virtual void OnPlayAnimation(IUnit* Source, std::string const Args);
 
 protected :
-	IUnit* Hero;
-	IMenu* ParentMenu;
+	IUnit*			Hero;
+	IMenu*			ParentMenu;
 	ISpell2*		Q;
 	ISpell2*		W;
 	ISpell2*		E;

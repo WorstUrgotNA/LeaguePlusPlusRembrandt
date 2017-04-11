@@ -116,9 +116,6 @@ void ObjectTracker::_OnCreateObject(IUnit* Source)
 		bool IsMoving;
 	};
 
-	//if (!strstr(Source->GetObjectName(), "missile"))
-		//GRender->Notification(Vec4(255, 255, 255, 255), 0, "%s", Source->GetObjectName());
-
 
 	static std::vector<TimedObjectsDefinition> Definitions =
 	{

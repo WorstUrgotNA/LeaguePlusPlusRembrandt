@@ -12,6 +12,7 @@
 #include "Sivir.h"
 #include "Tristana.h"
 #include "Kogmaw.h"
+#include "Lucian.h"
 
 
 
@@ -689,6 +690,8 @@ PLUGIN_EVENT(void) OnGameUpdate()
 	AutoSmite();
 	AutoTrinket();
 
+	PluginActive = LoadChampPlugin->Enabled();
+
 	if (GOrbwalking->GetOrbwalkingMode() == kModeCombo) { Combo(); }
 
 	ChampHandler->OnGameUpdate();
@@ -1032,6 +1035,8 @@ PLUGIN_EVENT(void) OnBuffAdd(IUnit* Source, void* BuffData)
 
 PLUGIN_EVENT(void) OnLevelUp(IUnit* Source, int NewLevel)
 {
+	ChampHandler->OnLevelUp(Source, NewLevel);
+
 	if (EnableAutoLevelUp->Enabled() && Source == Hero && NewLevel >= ALUStartLevel->GetInteger()) //auto level
 	{
 
@@ -1054,6 +1059,11 @@ PLUGIN_EVENT(void) OnLevelUp(IUnit* Source, int NewLevel)
 	}
 }
 
+PLUGIN_EVENT(void) OnPlayAnimation(IUnit* Source, std::string const Args)
+{
+	ChampHandler->OnPlayAnimation(Source, Args);
+}
+
 void  LoadEvents()
 {
 	GEventManager->AddEventHandler(kEventOrbwalkAfterAttack, OnOrbwalkAfterAttack);
@@ -1068,6 +1078,7 @@ void  LoadEvents()
 	GEventManager->AddEventHandler(kEventOrbwalkBeforeAttack, BeforeAttack);
 	GEventManager->AddEventHandler(kEventOnInterruptible, OnInterruptible);
 	GEventManager->AddEventHandler(kEventOnGapCloser, OnGapCloser);
+	GEventManager->AddEventHandler(kEventOnPlayAnimation, OnPlayAnimation);
 }
 
 void  UnloadEvents()
@@ -1084,6 +1095,7 @@ void  UnloadEvents()
 	GEventManager->RemoveEventHandler(kEventOrbwalkBeforeAttack, BeforeAttack);
 	GEventManager->RemoveEventHandler(kEventOnInterruptible, OnInterruptible);
 	GEventManager->RemoveEventHandler(kEventOnGapCloser, OnGapCloser);
+	GEventManager->RemoveEventHandler(kEventOnPlayAnimation, OnPlayAnimation);
 }
 
 // Called when plugin is first loaded
@@ -1097,7 +1109,7 @@ PLUGIN_API void OnLoad(IPluginSDK* PluginSDK)
 	Hero = GEntityList->Player();
 
 	//Initialize Menus
-	MainMenu = GPluginSDK->AddMenu("[Rembrandt AIO] Utility PRO++");
+	MainMenu = GPluginSDK->AddMenu("Rembrandt AIO & Utility PRO++");
 
 	Defensives = MainMenu->AddMenu("Activator PRO");
 
@@ -1215,10 +1227,9 @@ PLUGIN_API void OnLoad(IPluginSDK* PluginSDK)
 	ALUE = ChampNameMenu->AddInteger("E: ", 1, 4, 4);
 	ALUStartLevel = ChampNameMenu->AddInteger("Start at level: ", 1, 16, 4);
 
-
-	ChampMenu = GPluginSDK->AddMenu("[Rembrandt AIO] Champion Settings");
+	ChampMenu = GPluginSDK->AddMenu("Rembrandt AIO Champion Settings");
 	LoadChampPlugin = ChampMenu->CheckBox("Use Rembrandt AIO Champion Plugins:", true);
-	PluginActive = LoadChampPlugin->Enabled();
+	PluginActive = LoadChampPlugin->Enabled();	
 
 	SkinMenu = MainMenu->AddMenu("Skin Changer");
 	SkinEnable = SkinMenu->CheckBox("Enable:", false);
@@ -1230,6 +1241,8 @@ PLUGIN_API void OnLoad(IPluginSDK* PluginSDK)
 		ChampHandler = new Champion(ChampMenu, Hero);
 	else if (strstr(Hero->ChampionName(), "Graves"))
 		ChampHandler = new Graves(ChampMenu, Hero);
+	else if (strstr(Hero->ChampionName(), "Lucian"))
+		ChampHandler = new Lucian(ChampMenu, Hero);
 	else if (strstr(Hero->ChampionName(), "Caitlyn"))
 		ChampHandler = new Caitlyn(ChampMenu, Hero);
 	else if (strstr(Hero->ChampionName(), "Twitch"))
@@ -1244,8 +1257,6 @@ PLUGIN_API void OnLoad(IPluginSDK* PluginSDK)
 		ChampHandler = new Champion(ChampMenu, Hero);
 
 	LoadEvents();
-
-
 }
 
 // Called when plugin is unloaded

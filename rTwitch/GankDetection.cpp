@@ -160,8 +160,8 @@ void GankDetection::OnGameUpdate()
 	}
 
 	//clear junglenotifications vector if too much time has passed
-	if (GGame->Time() - LastPingTimeTracker > 5)
-		JungleNotifications.clear();
+	//if (GGame->Time() - LastPingTimeTracker > 5)
+		//JungleNotifications.clear();
 
 
 	if (FoWUpdated) //try to push notification position and time to vector
@@ -319,7 +319,7 @@ void GankDetection::OnRender()
 	Vec2 vecScreen;
 
 	//Draw FoW Jungle Tracker
-	if (Menu.TrackJungler->Enabled())
+	if (Menu.TrackJungler->Enabled() && JungleNotifications.size())
 	{
 		for (auto obj : JungleNotifications)
 		{

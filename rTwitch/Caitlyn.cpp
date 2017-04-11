@@ -60,6 +60,7 @@ Caitlyn::Caitlyn(IMenu* Parent, IUnit* Hero):Champion(Parent, Hero)
 	TrapImmobileCombo = ComboMenu->CheckBox("Use W on Immobile Enemies:", true);
 	EBeforeLevel = ComboMenu->AddInteger("Disable Long-E After Level:", 0, 18, 18);
 	EWhenClose = ComboMenu->CheckBox("Use E on Gapcloser/Close Enemy:", true);
+	SemiManualEMenuKey = ComboMenu->AddKey("E Semi-Manual Key:", 17);
 	RInCombo = ComboMenu->CheckBox("Use R in Combo:", true);
 	SemiManualMenuKey = ComboMenu->AddKey("R Semi-Manual Key:", 84);
 	UltRange = ComboMenu->AddFloat("Dont R if Enemies in Range:", 0, 3000, 900);
@@ -140,13 +141,14 @@ void Caitlyn::LaneClear()
 {
 	if (LaneClearQ->Enabled() && Hero->ManaPercent() > LaneClearMana->GetFloat())
 	{
-		Vec3 CastPosition;
-		int EnemiesHit;
-		GPrediction->FindBestCastPosition(Q->Range(), Q->Radius(), true, true, true, CastPosition, EnemiesHit);
+		std::vector<Vec3> CastPos; 
+		CastPos.push_back(Hero->GetPosition());
+		FarmLocation Farmlocation;
+		Rembrandt::FindBestLineCastPosition(CastPos, Q->Range(), Q->Range(), 50, true, true, Farmlocation);
 
-		if (EnemiesHit > 3)
+		if (Farmlocation.HitCount > 3)
 		{
-			if (Q->CastOnPosition(CastPosition)) { return; }
+			if (Q->CastOnPosition(Farmlocation.CastPosition)) { return; }
 		}
 	}
 }
@@ -213,6 +215,27 @@ void Caitlyn::OnGameUpdate()
 			if (!SemiManualKey)
 			{
 				R->CastOnTarget(GTargetSelector->FindTarget(QuickestKill, PhysicalDamage, R->Range()));
+				SemiManualKey = true;
+			}
+		}
+		else
+		{
+			// key is up . . .
+			SemiManualKey = false;
+		}
+	}
+
+	//key press
+	keystate = GetAsyncKeyState(SemiManualEMenuKey->GetInteger()); //smite key
+
+	if (GUtility->IsLeagueWindowFocused() && !GGame->IsChatOpen())
+	{
+		if (keystate < 0) // If most-significant bit is set...
+		{
+			// key is down . . .
+			if (!SemiManualKey)
+			{
+				E->CastOnTarget(GTargetSelector->FindTarget(ClosestPriority, PhysicalDamage, E->Range()));
 				SemiManualKey = true;
 			}
 		}
@@ -376,7 +399,7 @@ void Caitlyn::OnSpellCast(CastedSpell const& Args)
 
 	if (WAfterE->Enabled() && strstr(Args.Name_, "CaitlynEntrapment"))
 	{
-		if (ComboTarget != nullptr && ComboTarget->IsValidTarget())
+		if (ComboTarget && ComboTarget->IsValidTarget())
 		{
 			Vec3 EstimatedEnemyPos;
 			GPrediction->GetFutureUnitPosition(ComboTarget, 0.5, true, EstimatedEnemyPos);
@@ -418,7 +441,7 @@ void Caitlyn::OnOrbwalkAttack(IUnit* Source, IUnit* Target)
 {	
 	if (GOrbwalking->GetOrbwalkingMode() == kModeCombo && Target->IsHero() && Target->IsValidTarget())
 	{
-		if (Hero->GetLevel() <= EBeforeLevel->GetInteger() && E->CastOnTarget(Target, kHitChanceVeryHigh))
+		if (Hero->GetLevel() <= EBeforeLevel->GetInteger() && E->CastOnTarget(Target, kHitChanceHigh))
 		{
 			UseNetCombo = true;
 			ComboTarget = Target;

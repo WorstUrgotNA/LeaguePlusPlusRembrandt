@@ -161,10 +161,12 @@
     <ClInclude Include="Champion.h" />
     <ClInclude Include="Color.h" />
     <ClInclude Include="GankDetection.h" />
+    <ClInclude Include="Geometry.h" />
     <ClInclude Include="Graves.h" />
     <ClInclude Include="Gui.h" />
     <ClInclude Include="Kogmaw.h" />
     <ClInclude Include="LPPConstants.h" />
+    <ClInclude Include="Lucian.h" />
     <ClInclude Include="ObjectTracker.h" />
     <ClInclude Include="PluginData.h" />
     <ClInclude Include="PluginSDK.h" />
@@ -185,6 +187,7 @@
     <ClCompile Include="Graves.cpp" />
     <ClCompile Include="Gui.cpp" />
     <ClCompile Include="Kogmaw.cpp" />
+    <ClCompile Include="Lucian.cpp" />
     <ClCompile Include="ObjectTracker.cpp" />
     <ClCompile Include="PluginSDK.cpp" />
     <ClCompile Include="Sivir.cpp" />
