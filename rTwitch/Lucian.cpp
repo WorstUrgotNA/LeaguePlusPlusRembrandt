@@ -189,7 +189,10 @@ void Lucian::OnGameUpdate()
 				if (R->CastOnPosition(Target->GetPosition())) return;
 		}
 	}
-	
+	if (Hero->HasBuff("lucianr"))
+		GOrbwalking->SetAttacksAllowed(false);
+	else
+		GOrbwalking->SetAttacksAllowed(true);
 
 	if (RLock->Enabled() && Hero->HasBuff("lucianr"))
 	{

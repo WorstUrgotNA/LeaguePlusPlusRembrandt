@@ -28,8 +28,10 @@ public:
 	virtual void OnGapCloser(GapCloserSpell const& Args);
 	virtual void OnLevelUp(IUnit* Source, int NewLevel);
 	virtual void OnPlayAnimation(IUnit* Source, std::string const Args);
+	virtual void OnExitVisible(IUnit* Source);
 
 protected :
+	std::vector<IUnit*>	EnemyHeros;
 	IUnit*			Hero;
 	IMenu*			ParentMenu;
 	ISpell2*		Q;

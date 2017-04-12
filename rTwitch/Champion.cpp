@@ -74,3 +74,8 @@ void Champion::OnPlayAnimation(IUnit* Source, std::string const Args)
 {
 
 }
+
+void Champion::OnExitVisible(IUnit* Source)
+{
+
+}

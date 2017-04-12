@@ -13,10 +13,11 @@
 #include "Tristana.h"
 #include "Kogmaw.h"
 #include "Lucian.h"
+#include "Ashe.h"
 
 
 
-PluginSetup("Rembrandt [AIO]");
+PluginSetup("Rembrandt AIO");
 
 IMenu* MainMenu;
 IMenu* AutoSmiteMenu;
@@ -1064,6 +1065,11 @@ PLUGIN_EVENT(void) OnPlayAnimation(IUnit* Source, std::string const Args)
 	ChampHandler->OnPlayAnimation(Source, Args);
 }
 
+PLUGIN_EVENT(void) OnExitVisible(IUnit* Source)
+{
+	ChampHandler->OnExitVisible(Source);
+}
+
 void  LoadEvents()
 {
 	GEventManager->AddEventHandler(kEventOrbwalkAfterAttack, OnOrbwalkAfterAttack);
@@ -1079,6 +1085,7 @@ void  LoadEvents()
 	GEventManager->AddEventHandler(kEventOnInterruptible, OnInterruptible);
 	GEventManager->AddEventHandler(kEventOnGapCloser, OnGapCloser);
 	GEventManager->AddEventHandler(kEventOnPlayAnimation, OnPlayAnimation);
+	GEventManager->AddEventHandler(kEventOnExitVisible, OnExitVisible);
 }
 
 void  UnloadEvents()
@@ -1096,6 +1103,7 @@ void  UnloadEvents()
 	GEventManager->RemoveEventHandler(kEventOnInterruptible, OnInterruptible);
 	GEventManager->RemoveEventHandler(kEventOnGapCloser, OnGapCloser);
 	GEventManager->RemoveEventHandler(kEventOnPlayAnimation, OnPlayAnimation);
+	GEventManager->RemoveEventHandler(kEventOnExitVisible, OnExitVisible);
 }
 
 // Called when plugin is first loaded
@@ -1251,6 +1259,8 @@ PLUGIN_API void OnLoad(IPluginSDK* PluginSDK)
 		ChampHandler = new Sivir(ChampMenu, Hero);
 	else if (strstr(Hero->ChampionName(), "Tristana"))
 		ChampHandler = new Tristana(ChampMenu, Hero);
+	else if (strstr(Hero->ChampionName(), "Ashe"))
+		ChampHandler = new Ashe(ChampMenu, Hero);
 	else if (strstr(Hero->ChampionName(), "KogMaw"))
 		ChampHandler = new Kogmaw(ChampMenu, Hero);
 	else

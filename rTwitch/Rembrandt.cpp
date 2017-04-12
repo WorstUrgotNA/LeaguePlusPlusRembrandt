@@ -1,5 +1,6 @@
 #include "Rembrandt.h"
 #include "Geometry.h"
+#include "algorithm"
 
 /*				UPDATED PATCH #7.7				*/
 auto Rembrandt::DamageModifierFromMasteries(IUnit* Hero, IUnit* Target) -> double
@@ -173,4 +174,14 @@ auto Rembrandt::FindBestLineCastPosition(std::vector<Vec3> RangeCheckFroms, floa
 		}
 	}
 	Output = result;
+}
+
+auto Rembrandt::UnitsInRange(Vec3 Position, std::vector<IUnit*> UnitsToCheck, float Range) -> int
+{
+	int Count = 0;
+	std::for_each(UnitsToCheck.begin(), UnitsToCheck.end(), [&](IUnit* Unit)
+	{
+		if (IsInRange(Position, Unit->GetPosition(), Range)) Count++;
+	});
+	return Count;
 }

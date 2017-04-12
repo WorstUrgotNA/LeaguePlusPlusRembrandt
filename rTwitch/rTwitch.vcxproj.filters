@@ -16,47 +16,20 @@
     <Filter Include="SDK">
       <UniqueIdentifier>{400586fe-a9b2-482b-b1be-e7427ca11aa0}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Resource Files\Source Files\Champions">
+      <UniqueIdentifier>{3ed6db73-4d3d-4a77-b7d4-487a60272701}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resource Files\Source Files\Utility">
+      <UniqueIdentifier>{eddde4ef-2007-42db-b860-b2684b707d78}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Champions">
+      <UniqueIdentifier>{393e6590-8c44-4b06-8deb-6c2088dfcc14}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Utility">
+      <UniqueIdentifier>{97fbc6ca-23e3-4f94-8d6f-9e12d9ffe36b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Gui.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Awareness.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="GankDetection.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Tracker.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ObjectTracker.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="resource.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="resource1.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Graves.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Caitlyn.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Twitch.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Sivir.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Tristana.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Kogmaw.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Vector3.h">
       <Filter>SDK</Filter>
     </ClInclude>
@@ -73,66 +46,105 @@
       <Filter>SDK</Filter>
     </ClInclude>
     <ClInclude Include="Rembrandt.h">
-      <Filter>Header Files</Filter>
+      <Filter>SDK</Filter>
     </ClInclude>
-    <ClInclude Include="Champion.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Ashe.h">
+      <Filter>Header Files\Champions</Filter>
+    </ClInclude>
+    <ClInclude Include="Caitlyn.h">
+      <Filter>Header Files\Champions</Filter>
+    </ClInclude>
+    <ClInclude Include="Graves.h">
+      <Filter>Header Files\Champions</Filter>
+    </ClInclude>
+    <ClInclude Include="Kogmaw.h">
+      <Filter>Header Files\Champions</Filter>
     </ClInclude>
     <ClInclude Include="Lucian.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\Champions</Filter>
+    </ClInclude>
+    <ClInclude Include="Sivir.h">
+      <Filter>Header Files\Champions</Filter>
+    </ClInclude>
+    <ClInclude Include="Twitch.h">
+      <Filter>Header Files\Champions</Filter>
+    </ClInclude>
+    <ClInclude Include="Awareness.h">
+      <Filter>Header Files\Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="GankDetection.h">
+      <Filter>Header Files\Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="Gui.h">
+      <Filter>Header Files\Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="ObjectTracker.h">
+      <Filter>Header Files\Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="Tracker.h">
+      <Filter>Header Files\Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="Champion.h">
+      <Filter>Header Files\Champions</Filter>
+    </ClInclude>
+    <ClInclude Include="Tristana.h">
+      <Filter>Header Files\Champions</Filter>
     </ClInclude>
     <ClInclude Include="Geometry.h">
-      <Filter>Header Files</Filter>
+      <Filter>SDK</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="UtilityPlusPlus.cpp">
-      <Filter>Resource Files\Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Awareness.cpp">
-      <Filter>Resource Files\Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="GankDetection.cpp">
-      <Filter>Resource Files\Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Gui.cpp">
-      <Filter>Resource Files\Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Tracker.cpp">
-      <Filter>Resource Files\Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ObjectTracker.cpp">
-      <Filter>Resource Files\Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Graves.cpp">
-      <Filter>Resource Files\Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Caitlyn.cpp">
-      <Filter>Resource Files\Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Twitch.cpp">
-      <Filter>Resource Files\Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Sivir.cpp">
-      <Filter>Resource Files\Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Tristana.cpp">
-      <Filter>Resource Files\Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Kogmaw.cpp">
-      <Filter>Resource Files\Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="PluginSDK.cpp">
       <Filter>SDK</Filter>
     </ClCompile>
-    <ClCompile Include="Rembrandt.cpp">
-      <Filter>Resource Files\Source Files</Filter>
+    <ClCompile Include="Ashe.cpp">
+      <Filter>Resource Files\Source Files\Champions</Filter>
     </ClCompile>
-    <ClCompile Include="Champion.cpp">
-      <Filter>Resource Files\Source Files</Filter>
+    <ClCompile Include="Caitlyn.cpp">
+      <Filter>Resource Files\Source Files\Champions</Filter>
+    </ClCompile>
+    <ClCompile Include="Graves.cpp">
+      <Filter>Resource Files\Source Files\Champions</Filter>
+    </ClCompile>
+    <ClCompile Include="Kogmaw.cpp">
+      <Filter>Resource Files\Source Files\Champions</Filter>
     </ClCompile>
     <ClCompile Include="Lucian.cpp">
-      <Filter>Resource Files\Source Files</Filter>
+      <Filter>Resource Files\Source Files\Champions</Filter>
+    </ClCompile>
+    <ClCompile Include="Sivir.cpp">
+      <Filter>Resource Files\Source Files\Champions</Filter>
+    </ClCompile>
+    <ClCompile Include="Tristana.cpp">
+      <Filter>Resource Files\Source Files\Champions</Filter>
+    </ClCompile>
+    <ClCompile Include="Twitch.cpp">
+      <Filter>Resource Files\Source Files\Champions</Filter>
+    </ClCompile>
+    <ClCompile Include="Awareness.cpp">
+      <Filter>Resource Files\Source Files\Utility</Filter>
+    </ClCompile>
+    <ClCompile Include="GankDetection.cpp">
+      <Filter>Resource Files\Source Files\Utility</Filter>
+    </ClCompile>
+    <ClCompile Include="Gui.cpp">
+      <Filter>Resource Files\Source Files\Utility</Filter>
+    </ClCompile>
+    <ClCompile Include="ObjectTracker.cpp">
+      <Filter>Resource Files\Source Files\Utility</Filter>
+    </ClCompile>
+    <ClCompile Include="Tracker.cpp">
+      <Filter>Resource Files\Source Files\Utility</Filter>
+    </ClCompile>
+    <ClCompile Include="UtilityPlusPlus.cpp">
+      <Filter>Resource Files\Source Files\Utility</Filter>
+    </ClCompile>
+    <ClCompile Include="Champion.cpp">
+      <Filter>Resource Files\Source Files\Champions</Filter>
+    </ClCompile>
+    <ClCompile Include="Rembrandt.cpp">
+      <Filter>SDK</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

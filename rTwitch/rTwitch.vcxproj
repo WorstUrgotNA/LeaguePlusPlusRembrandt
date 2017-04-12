@@ -156,6 +156,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="Ashe.h" />
     <ClInclude Include="Awareness.h" />
     <ClInclude Include="Caitlyn.h" />
     <ClInclude Include="Champion.h" />
@@ -171,8 +172,6 @@
     <ClInclude Include="PluginData.h" />
     <ClInclude Include="PluginSDK.h" />
     <ClInclude Include="Rembrandt.h" />
-    <ClInclude Include="resource.h" />
-    <ClInclude Include="resource1.h" />
     <ClInclude Include="Sivir.h" />
     <ClInclude Include="Tracker.h" />
     <ClInclude Include="Tristana.h" />
@@ -180,6 +179,7 @@
     <ClInclude Include="Vector3.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Ashe.cpp" />
     <ClCompile Include="Awareness.cpp" />
     <ClCompile Include="Caitlyn.cpp" />
     <ClCompile Include="Champion.cpp" />

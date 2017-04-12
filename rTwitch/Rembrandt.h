@@ -19,22 +19,6 @@ namespace Rembrandt
 	auto IsInRange(Vec2 PositionA, Vec2 PositionB, float Range) -> bool;
 	auto IsInRange(Vec3 PositionA, Vec3 PositionB, float Range) -> bool;
 	auto FindBestLineCastPosition(std::vector<Vec3> RangeCheckFroms, float range, float castrange, float radius, bool Minions, bool Heroes, FarmLocation& Output) -> void;
+	auto UnitsInRange(Vec3 Position, std::vector<IUnit*> UnitsToCheck, float Range) -> int;
 }
-
-/*class FarmLocation
-{
-public:
-	Vec3 CastPosition;
-	Vec3 CastPositionFrom;
-	int HitCount = 0;
-	IUnit* CastOnUnit = nullptr;
-	FarmLocation(Vec3 castposition, Vec3 castpositionfrom, int hitcount, IUnit* castonunit)
-	{
-		CastPosition = castposition;
-		CastPositionFrom = castpositionfrom;
-		HitCount = hitcount;
-		CastOnUnit = castonunit;
-	}
-	FarmLocation() {};
-};*/
 
